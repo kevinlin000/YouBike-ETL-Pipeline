@@ -5,8 +5,8 @@ from datetime import datetime
 import time
 
 # --- 設定區 (Configuration) ---
-DB_USER = 'admin'        # 改用新建立的帳號
-DB_PASSWORD = '123456'   # 剛剛設定的密碼
+DB_USER = 'admin'        
+DB_PASSWORD = '123456'   
 DB_HOST = '127.0.0.1'    
 DB_PORT = '3306'
 DB_NAME = 'youbike_db'
@@ -38,7 +38,6 @@ def transform_data(raw_data):
     
     # --- 1. 整理 [station_info] 站點基本資料 ---
     # 使用正確的 API 欄位名稱: sno, sna, sarea, latitude, longitude, Quantity
-    # 注意：這裡選取的欄位名稱必須跟 API 給的一模一樣
     try:
         df_info = df[['sno', 'sna', 'sarea', 'latitude', 'longitude', 'Quantity']].copy()
         
@@ -73,9 +72,8 @@ def load_data(df_info, df_status):
     if df_info is None or df_status is None:
         return
 
-    # 1. 更新站點資訊 (使用 'replace' 會 drop table，這裡我們用 'append' 搭配 SQL 語法處理重複比較好)
-    # 但為了簡化示範 Data Engineer 常用技巧：Upsert (Update or Insert)
-    # 這裡我們先簡單做：先寫入 info (如果是第一次)，實務上通常檢查是否有新站點
+    # 1. 更新站點資訊
+    # 先寫入 info (如果是第一次)，實務上通常檢查是否有新站點
     try:
         # 使用 SQLAlchemy 的一招：先查詢現有站點，只 Insert 新的
         existing_ids = pd.read_sql("SELECT station_no FROM station_info", engine)
@@ -94,8 +92,6 @@ def load_data(df_info, df_status):
 
 if __name__ == "__main__":
     # 這裡模擬排程，每 10 分鐘跑一次
-    # 在真正的 DE 專案中，這裡會用 Airflow 或 Crontab 來觸發，而不是用 while 迴圈
-    # 但為了讓你現在就能跑，我們先用 loop
     print("ETL Service Started...")
     while True:
         data = extract_data()
