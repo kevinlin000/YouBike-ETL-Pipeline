@@ -1,5 +1,17 @@
+# Mac 系統垃圾檔
 .DS_Store
+
+# Python 編譯檔
 __pycache__/
 *.pyc
+
+# Airflow 日誌 (重要！不要上傳這個)
+logs/
+plugins/
+
+# 環境變數與機密
 .env
 
+# 資料檔 (數據不進 Git)
+*.csv
+*.db

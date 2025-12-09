@@ -1,0 +1,66 @@
+version: '3'
+services:
+  # 1. 初始化 Airflow 資料庫
+  airflow-init:
+    build: .
+    command: >
+      bash -c "airflow db init &&
+      airflow users create --username admin --password admin --firstname Kevin --lastname Lin --role Admin --email admin@example.com"
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=SequentialExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=sqlite:////opt/airflow/airflow.db
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+    volumes:
+      - airflow-data:/opt/airflow
+
+  # 2. Airflow 網頁伺服器
+  webserver:
+    build: .
+    command: webserver
+    ports:
+      - "8080:8080"
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=SequentialExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=sqlite:////opt/airflow/airflow.db
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__WEBSERVER__SECRET_KEY=secret_key
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - airflow-data:/opt/airflow
+    depends_on:
+      - airflow-init
+
+  # 3. Airflow 排程器
+  scheduler:
+    build: .
+    command: scheduler
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=SequentialExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=sqlite:////opt/airflow/airflow.db
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__WEBSERVER__SECRET_KEY=secret_key
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - airflow-data:/opt/airflow
+    depends_on:
+      - airflow-init
+
+  # 4. [新增] MySQL 資料庫 (這是我們要存 YouBike 資料的地方)
+  mysql-db:
+    image: mysql:8.0
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password  # Root 密碼
+      MYSQL_DATABASE: youbike_db          # 自動建立資料庫
+      MYSQL_USER: admin                   # 自動建立使用者
+      MYSQL_PASSWORD: 123456              # 使用者密碼
+    ports:
+      - "3306:3306"                       # 開放 Port 讓你從 Mac 可以連進去查資料
+    volumes:
+      - mysql-data:/var/lib/mysql         # 確保資料永久保存
+
+volumes:
+  airflow-data:
+  mysql-data:  # 新增 MySQL 的資料卷
