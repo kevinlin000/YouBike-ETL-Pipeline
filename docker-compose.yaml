@@ -52,14 +52,14 @@ services:
     image: mysql:8.0
     command: --default-authentication-plugin=mysql_native_password
     environment:
-      MYSQL_ROOT_PASSWORD: root_password  # Root 密碼
-      MYSQL_DATABASE: youbike_db          # 自動建立資料庫
-      MYSQL_USER: admin                   # 自動建立使用者
-      MYSQL_PASSWORD: 123456              # 使用者密碼
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}  
+      MYSQL_DATABASE: youbike_db
+      MYSQL_USER: ${DB_USER}                   
+      MYSQL_PASSWORD: ${DB_PASSWORD}            
     ports:
-      - "3306:3306"                       # 開放 Port 讓你從 Mac 可以連進去查資料
+      - "3306:3306"
     volumes:
-      - mysql-data:/var/lib/mysql         # 確保資料永久保存
+      - mysql-data:/var/lib/mysql
 
 volumes:
   airflow-data:
