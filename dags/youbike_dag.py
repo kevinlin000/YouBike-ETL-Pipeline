@@ -10,7 +10,7 @@ import time
 DB_USER = 'admin'
 DB_PASSWORD = '123456'
 # ⚠️ 重要：Docker 內部要連到 Mac 本機的 MySQL，必須用這個特殊的 Hostname
-DB_HOST = 'host.docker.internal' 
+DB_HOST = 'mysql-db'
 DB_PORT = '3306'
 DB_NAME = 'youbike_db'
 
