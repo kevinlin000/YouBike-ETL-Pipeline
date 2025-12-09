@@ -3,9 +3,34 @@ import pandas as pd
 from sqlalchemy import create_engine
 from datetime import datetime
 import time
+from google.cloud import secretmanager
+import os
 
 # --- 設定區 (Configuration) ---
-DB_USER = 'admin'        
+PROJECT_ID = 'youbike-airflow-server' 
+SECRET_ID = 'mysql_password' 
+VERSION_ID = 'latest'
+
+def get_gcp_secret(secret_id):
+    """從 GCP Secret Manager 獲取密碼"""
+    try:
+        # 建立 Client
+        client = secretmanager.SecretManagerServiceClient()
+        # 組合完整的路徑
+        name = f"projects/{PROJECT_ID}/secrets/{secret_id}/versions/{VERSION_ID}"
+        # 呼叫 API
+        response = client.access_secret_version(request={"name": name})
+        # 解碼回傳的 payload
+        password = response.payload.data.decode("UTF-8")
+        return password
+    except Exception as e:
+        print(f"無法獲取密鑰: {e}")
+        # 這裡可以做一個 fallback，如果在本地測試失敗，就用環境變數或預設值
+        return "123456" 
+
+# --- 使用密碼 ---
+DB_USER = 'admin'
+DB_PASSWORD = get_gcp_secret(SECRET_ID) 
 DB_PASSWORD = '123456'   
 DB_HOST = '127.0.0.1'    
 DB_PORT = '3306'
@@ -91,7 +116,7 @@ def load_data(df_info, df_status):
         print(f"Database Error: {e}")
 
 if __name__ == "__main__":
-    # 這裡模擬排程，每 10 分鐘跑一次
+    # 這裡模擬排程，每 10 分鐘跑一次，本地測試檔
     print("ETL Service Started...")
     while True:
         data = extract_data()

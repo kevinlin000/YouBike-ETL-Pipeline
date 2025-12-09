@@ -5,11 +5,34 @@ import requests
 import pandas as pd
 from sqlalchemy import create_engine
 import time
+from google.cloud import secretmanager
+import os
 
-# --- 資料庫設定  ---
+# --- 設定區 (Configuration) ---
+PROJECT_ID = 'youbike-airflow-server' 
+SECRET_ID = 'mysql_password' 
+VERSION_ID = 'latest'
+
+def get_gcp_secret(secret_id):
+    """從 GCP Secret Manager 獲取密碼"""
+    try:
+        # 建立 Client
+        client = secretmanager.SecretManagerServiceClient()
+        # 組合完整的路徑
+        name = f"projects/{PROJECT_ID}/secrets/{secret_id}/versions/{VERSION_ID}"
+        # 呼叫 API
+        response = client.access_secret_version(request={"name": name})
+        # 解碼回傳的 payload
+        password = response.payload.data.decode("UTF-8")
+        return password
+    except Exception as e:
+        print(f"無法獲取密鑰: {e}")
+        # 這裡可以做一個 fallback，如果在本地測試失敗，就用環境變數或預設值
+        return "123456" 
+
+# --- 使用密碼 ---
 DB_USER = 'admin'
-DB_PASSWORD = '123456'
-# ⚠️ 重要：Docker 內部要連到 Mac 本機的 MySQL，必須用這個特殊的 Hostname
+DB_PASSWORD = get_gcp_secret(SECRET_ID) 
 DB_HOST = 'mysql-db'
 DB_PORT = '3306'
 DB_NAME = 'youbike_db'

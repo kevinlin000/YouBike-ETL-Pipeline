@@ -12,4 +12,5 @@ RUN pip install --no-cache-dir \
     requests \
     sqlalchemy \
     pymysql \
-    cryptography
+    cryptography \
+    google-cloud-secret-manager
