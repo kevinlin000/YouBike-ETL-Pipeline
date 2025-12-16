@@ -1,13 +1,13 @@
 import streamlit as st
 import requests
 import pandas as pd
-
+import os
 # --- 頁面設定 ---
 st.set_page_config(page_title="YouBike 預測系統", layout="centered")
 st.title("台北市 YouBike 2.0 流量預測系統")
 st.caption("技術：PyTorch Multi-Station LSTM & FastAPI")
 
-API_BASE_URL = "http://127.0.0.1:8000"
+API_BASE_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:8000")
 
 # --- 站點名稱對照表 ---
 STATION_NAME_MAP = {
