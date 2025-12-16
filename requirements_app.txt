@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+torch
+numpy
+pandas
+scikit-learn
+joblib
+streamlit      #  為了跑 Dashboard
+python-dotenv  #  為了讀取設定
+requests       #  Dashboard 呼叫 API 用
