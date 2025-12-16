@@ -71,7 +71,7 @@ YouBike-ETL-Pipeline/
 ```
 <br>
 
-## 🚀 How to Run
+##  How to Run
 
 ### Prerequisite
 1.  GCP Service Account with `Secret Manager Secret Accessor` role.
