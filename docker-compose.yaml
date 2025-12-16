@@ -64,3 +64,37 @@ services:
 volumes:
   airflow-data:
   mysql-data:  # 新增 MySQL 的資料卷
+
+  # =========================================
+  # 應用服務：API & Dashboard
+  # =========================================
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.app  #  指定用我們剛做好的通用版
+    container_name: youbike_api
+    command: uvicorn api.app.main:app --host 0.0.0.0 --port 8000
+    volumes:
+      - .:/app          #  把整個專案掛載進去，這樣 app/ 和 dashboard/ 都讀得到
+      - ./data:/app/data
+    ports:
+      - "8000:8000"
+    environment:
+      - TZ=Asia/Taipei
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.app  #  共用同一個環境
+    container_name: youbike_dashboard
+    command: streamlit run dashboard/app.py
+    volumes:
+      - .:/app          #  同樣掛載整個專案
+      - ./data:/app/data
+    ports:
+      - "8501:8501"
+    environment:
+      - TZ=Asia/Taipei
+      - API_BASE_URL=http://api:8000
+    depends_on:
+      - api
