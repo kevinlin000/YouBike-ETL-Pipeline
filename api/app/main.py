@@ -1,139 +1,145 @@
-import torch
-import torch.nn as nn
-import joblib
-import numpy as np
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from contextlib import asynccontextmanager
+import torch
+import joblib
+import pandas as pd
+import numpy as np
 import os
+from contextlib import asynccontextmanager
 
-# --- 1. Model Architecture Definition ---
-class MultiStationLSTM(nn.Module):
-    def __init__(self, num_stations, input_size=3, hidden_size=64, output_size=1, embedding_dim=5):
-        super(MultiStationLSTM, self).__init__()
-        self.station_embedding = nn.Embedding(num_stations, embedding_dim)
-        self.lstm_input_size = input_size + embedding_dim
-        self.lstm = nn.LSTM(self.lstm_input_size, hidden_size, batch_first=True)
-        self.dropout = nn.Dropout(0.2)
-        self.fc = nn.Linear(hidden_size, output_size)
-
-    def forward(self, x):
-        numerical_features = x[:, :, :3]
-        station_ids = x[:, :, 3].long()
-        station_embedded = self.station_embedding(station_ids)
-        combined_input = torch.cat((numerical_features, station_embedded), dim=2)
-        out, _ = self.lstm(combined_input)
-        out = out[:, -1, :]
-        out = self.dropout(out)
-        out = self.fc(out)
-        return out
-
-# --- 2. Global Artifacts Store ---
-artifacts = {}
-
-# --- 3. Lifespan Manager  ---
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    base_path = "model_files"
-    model_path = os.path.join(base_path, "youbike_lstm_multistation.pth")
-    scaler_path = os.path.join(base_path, "scaler.pkl")
-    mapping_path = os.path.join(base_path, "station_mapping.pkl")
-
-    if not os.path.exists(model_path):
-        print(f"[ERROR] Model file not found at {model_path}")
-    else:
-        print("[INFO] Loading model artifacts...")
-        
-        try:
-            scaler = joblib.load(scaler_path)
-            raw_mapping = joblib.load(mapping_path)
-            station_mapping = {str(k): v for k, v in raw_mapping.items()}
-            
-            num_stations = len(station_mapping)
-            model = MultiStationLSTM(num_stations=num_stations)
-            model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
-            model.eval()
-
-            artifacts["model"] = model
-            artifacts["scaler"] = scaler
-            artifacts["mapping"] = station_mapping
-            print("[INFO] Model, Scaler, and Mapping loaded successfully.")
-            print(f"[INFO] Supported Stations: {list(station_mapping.keys())}") # 印出來檢查一下
-        except Exception as e:
-            print(f"[ERROR] Failed to load artifacts: {e}")
-        
-    yield
-    artifacts.clear()
-
-app = FastAPI(title="YouBike Multi-Station Prediction API", lifespan=lifespan)
-
-# --- 4. Input Schema ---
-class PredictionRequest(BaseModel):
+# --- 定義資料格式 ---
+class PredictRequest(BaseModel):
     station_no: str
     bikes_available: int
     temperature: float
     rain: float
 
-# --- 5. API Endpoints ---
-@app.get("/")
-def health_check():
-    return {"status": "healthy", "version": "2.0.0"}
+class PredictResponse(BaseModel):
+    station_no: str
+    predicted_bikes_next_hour: int
 
-@app.get("/stations")
-def get_supported_stations():
-    mapping = artifacts.get("mapping")
-    if not mapping:
-        raise HTTPException(status_code=500, detail="Mapping not loaded")
-    return {"supported_stations": list(mapping.keys())}
+class StationsResponse(BaseModel):
+    supported_stations: list[str]
 
-@app.post("/predict")
-def predict_traffic(request: PredictionRequest):
-    model = artifacts.get("model")
-    scaler = artifacts.get("scaler")
-    mapping = artifacts.get("mapping")
+# --- 全域變數 ---
+model = None
+scaler = None
+station_mapping = None
 
-    if not model or not scaler or not mapping:
-        raise HTTPException(status_code=500, detail="Model artifacts not initialized")
+# --- 生命週期管理器 ---
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global model, scaler, station_mapping
+    
+    # 使用絕對路徑
+    base_path = "/app/model_files"
+    model_path = os.path.join(base_path, "youbike_lstm_multistation.pth")
+    scaler_path = os.path.join(base_path, "scaler.pkl")
+    mapping_path = os.path.join(base_path, "station_mapping.pkl")
 
-    if request.station_no not in mapping:
-        raise HTTPException(status_code=400, detail=f"Station {request.station_no} not supported.")
+    print(f"[INFO] Loading model from: {model_path}")
 
     try:
-        station_idx = mapping[request.station_no]
+        # 1. 載入對照表
+        raw_mapping = joblib.load(mapping_path)
+        station_mapping = {str(k): v for k, v in raw_mapping.items()}
+        
+        # 2. 載入 Scaler
+        scaler = joblib.load(scaler_path)
+        
+        # 3. 載入 PyTorch 模型
+        class MultiStationLSTM(torch.nn.Module):
+            def __init__(self, input_size, hidden_size, num_layers, output_size, num_stations, embedding_dim):
+                super(MultiStationLSTM, self).__init__()
+                self.station_embedding = torch.nn.Embedding(num_stations, embedding_dim)
+                self.lstm = torch.nn.LSTM(input_size + embedding_dim, hidden_size, num_layers, batch_first=True)
+                self.fc = torch.nn.Linear(hidden_size, output_size)
 
-        input_features = np.array([[
-            request.bikes_available, 
-            request.temperature, 
-            request.rain
-        ]]) 
+            def forward(self, x, station_idx):
+                station_emb = self.station_embedding(station_idx).unsqueeze(1)
+                station_emb = station_emb.repeat(1, x.size(1), 1)
+                combined_input = torch.cat((x, station_emb), dim=2)
+                out, _ = self.lstm(combined_input)
+                out = self.fc(out[:, -1, :])
+                return out
 
-        scaled_features = scaler.transform(input_features)
+        # [參數正確] 根據之前的報錯修正
+        input_size = 3  
+        hidden_size = 64
+        num_layers = 1      # 這裡是一層
+        output_size = 1
+        embedding_dim = 5   # 這裡是 5
+        num_stations = len(station_mapping)
 
-        # Replicate input to simulate time steps (1, 3, 3)
-        seq_values = np.tile(scaled_features, (1, 3, 1))
+        model = MultiStationLSTM(input_size, hidden_size, num_layers, output_size, num_stations, embedding_dim)
+        model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
+        model.eval()
         
-        # Create station ID tensor (1, 3, 1)
-        seq_ids = np.full((1, 3, 1), station_idx)
+        print("[INFO] Model loaded successfully.")
         
-        # Combine features (1, 3, 4)
-        final_input = np.dstack((seq_values, seq_ids))
+    except Exception as e:
+        print(f"[ERROR] Failed to load model: {e}")
+    
+    yield
+    model = None
+    scaler = None
+    print("[INFO] Model resources released.")
+
+app = FastAPI(lifespan=lifespan, title="YouBike Traffic Prediction API")
+
+@app.get("/")
+def home():
+    return {"message": "YouBike API is running!", "docs_url": "/docs"}
+
+@app.get("/stations", response_model=StationsResponse)
+def get_stations():
+    if station_mapping is None:
+        raise HTTPException(status_code=503, detail="Model not initialized")
+    return {"supported_stations": list(station_mapping.keys())}
+
+@app.post("/predict", response_model=PredictResponse)
+def predict(request: PredictRequest):
+    if model is None or scaler is None:
+        raise HTTPException(status_code=503, detail="Model not ready")
         
-        tensor_data = torch.FloatTensor(final_input)
+    if request.station_no not in station_mapping:
+        raise HTTPException(status_code=404, detail="Station not found")
+
+    try:
+        # 1. 準備特徵 [Bikes, Temp, Rain] (這是 Scaler 規定的順序)
+        features = np.array([[request.bikes_available, request.temperature, request.rain]])
         
+        # 2. 標準化
+        features_scaled = scaler.transform(features)
+        
+        # 3. 轉 Tensor
+        x_input = torch.FloatTensor(features_scaled).unsqueeze(1) 
+        station_idx = station_mapping[request.station_no]
+        station_input = torch.LongTensor([station_idx])
+
+        # 4. 推論
         with torch.no_grad():
-            prediction_scaled = model(tensor_data)
-            prediction_value = prediction_scaled.item()
+            prediction_scaled = model(x_input, station_input)
+            
+        # 5. 反標準化 (✅ 順序修正版)
+        pred_val = prediction_scaled.item()
+        
+        # Scaler 的欄位順序是 ['bikes', 'temp', 'rain']
+        # 我們要把預測出來的車輛數 (pred_val) 放在 "第 0 個位置"
+        dummy_features = np.array([[pred_val, 0, 0]]) 
+        
+        real_values = scaler.inverse_transform(dummy_features)
+        
+        # 取出第 0 個值 (也就是還原後的 bikes)
+        result_value = real_values[0][0] 
+        
+        predicted_bikes = max(0, int(round(result_value)))
 
-        # Inverse transform
-        dummy_array = np.zeros((1, 3))
-        dummy_array[0, 0] = prediction_value
-        actual_prediction = scaler.inverse_transform(dummy_array)[0, 0]
-        final_prediction = max(0.0, actual_prediction)
         return {
-            "station": request.station_no,
-            "inputs": request.dict(),
-            "predicted_bikes_next_hour": round(final_prediction, 1)
+            "station_no": request.station_no,
+            "predicted_bikes_next_hour": predicted_bikes
         }
 
     except Exception as e:
-        return {"error": str(e)}
+        print(f"[Error] Prediction failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
