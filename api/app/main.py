@@ -72,7 +72,7 @@ async def lifespan(app: FastAPI):
     # 模型檔案路徑
     # 取得目前 main.py 的所在目錄 (api/app)
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    base_path = "/app/model_files"
+    base_path = os.path.join(current_dir, "..", "model_files")
     model_path = os.path.join(base_path, "youbike_lstm_multistation.pth")
     scaler_path = os.path.join(base_path, "scaler.pkl")
     mapping_path = os.path.join(base_path, "station_mapping.pkl")
