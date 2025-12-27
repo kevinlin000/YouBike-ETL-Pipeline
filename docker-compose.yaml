@@ -70,17 +70,18 @@ services:
       - mysql-data:/var/lib/mysql
 
   # =========================================
-  # 新增服務：API & Dashboard (使用 Dockerfile.app)
+  # 新增服務：API & Dashboard
   # =========================================
   api:
     build:
       context: .
       dockerfile: Dockerfile.app
     container_name: youbike_api
-    command: uvicorn api.app.main:app --host 0.0.0.0 --port 8000
+    # 指定工作目錄在 api 下，這樣尋找 model_files 會更直覺
+    working_dir: /app/api
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     volumes:
-      - .:/app          
-      - ./data:/app/data
+      - .:/app
     ports:
       - "8000:8000"
     environment:
@@ -91,10 +92,11 @@ services:
       context: .
       dockerfile: Dockerfile.app
     container_name: youbike_dashboard
-    command: streamlit run dashboard/app.py
+    # 指定工作目錄在 dashboard 下
+    working_dir: /app/dashboard
+    command: streamlit run app.py
     volumes:
       - .:/app
-      - ./data:/app/data
     ports:
       - "8501:8501"
     environment:
@@ -102,10 +104,3 @@ services:
       - API_BASE_URL=http://api:8000
     depends_on:
       - api
-
-# =========================================
-# 儲存卷設定 (Volumes) - 這裡是在最外層
-# =========================================
-volumes:
-  airflow-data:
-  mysql-data:
