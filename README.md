@@ -106,6 +106,41 @@ YouBike-ETL-Pipeline/
 ```
 <br>
 
+##  Production Infrastructure & Performance Evidence
+This project is deployed on **Google Cloud Platform (GCP)** `e2-standard-4` instance. Below are the evidences verifying the system's stability, data scale, and security standards.
+
+### 1. System Stability & Architecture
+**Containerized Microservices:**
+The system runs on a Dockerized architecture managing 5 core services (Webserver, Scheduler, Worker, DB, API).
+![Docker Stats](docs/images/docker_stats.png)
+* **Long-Term Stability:** Verified **5 weeks of continuous uptime** without crash.
+* **Resource Control:** Each container has strict memory/CPU limits configured in `docker-compose`.
+
+**Workflow Automation:**
+![Airflow Success](docs/images/airflow_success.png)
+* **Reliability:** Achieved **365 consecutive successful DAG runs** (Total Success: 365), executing ETL jobs every 10 minutes.
+
+### 2. High-Volume Data Processing
+**Data Ingestion Capability:**
+![Data Volume](docs/images/data_volume.png)
+* **Scale:** Successfully processed and stored over **4.37 million records** (4,377,103 rows) of YouBike station status data, demonstrating capability to handle large-scale time-series datasets.
+
+### 3. Cloud Observability
+**Infrastructure Monitoring:**
+![GCP Metrics](docs/images/gcp_metrics.png)
+* **Real-time Metrics:** CPU and Network I/O spikes correlate perfectly with Airflow scheduled tasks, verifying active system operations on the cloud.
+
+### 4. Security & Compliance (DevSecOps)
+We implement a **Defense-in-Depth** strategy suitable for enterprise standards:
+
+**A. Network Security (Firewall):**
+![Firewall Rules](docs/images/firewall_rules.png)
+* **Traffic Control:** Strict ingress/egress rules allow traffic only on specific ports (e.g., 8080 for Web UI) from trusted IP ranges.
+
+**B. Application Security (Secrets Management):**
+![Secret Manager](docs/images/secret_manager.png)
+* **Zero Trust:** No hardcoded credentials in source code. All sensitive keys (Database Passwords, API Keys) are injected via **GCP Secret Manager** at runtime.
+
 ##  How to Run
 
 ### Prerequisite
