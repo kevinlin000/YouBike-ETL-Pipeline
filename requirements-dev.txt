@@ -1,0 +1,3 @@
+# 開發與測試用（在 requirements.txt 或 requirements_app.txt 之外額外安裝）
+-r requirements.txt
+pytest>=7.0.0

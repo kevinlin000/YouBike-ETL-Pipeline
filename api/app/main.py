@@ -4,9 +4,12 @@ import joblib
 import pandas as pd
 import numpy as np
 import os
+import logging
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from contextlib import asynccontextmanager
+
+logger = logging.getLogger(__name__)
 
 # --- 1. 定義資料格式 ---
 class PredictRequest(BaseModel):
@@ -14,6 +17,27 @@ class PredictRequest(BaseModel):
     bikes_available: int
     temperature: float
     rain: float
+
+    @field_validator("bikes_available")
+    @classmethod
+    def bikes_non_negative(cls, v: int) -> int:
+        if v < 0:
+            raise ValueError("bikes_available 不可為負數")
+        return v
+
+    @field_validator("temperature")
+    @classmethod
+    def temperature_reasonable(cls, v: float) -> float:
+        if not -50 <= v <= 60:
+            raise ValueError("temperature 需介於 -50 與 60 之間")
+        return v
+
+    @field_validator("rain")
+    @classmethod
+    def rain_non_negative(cls, v: float) -> float:
+        if v < 0:
+            raise ValueError("rain 不可為負數")
+        return v
 
 class PredictResponse(BaseModel):
     station_no: str
@@ -79,34 +103,24 @@ async def lifespan(app: FastAPI):
     info_map_path = os.path.join(base_path, "station_info_map.pkl")
 
     try:
-        print(f"[INFO] 正在從 {base_path} 載入資源...")
-        
-        # 1. 載入必要的 Pkl 檔案
+        logger.info("正在從 %s 載入資源...", base_path)
         scaler = joblib.load(scaler_path)
         station_mapping = {str(k): v for k, v in joblib.load(mapping_path).items()}
-        
-        # 載入站點資訊檔 (若無則使用空字典)
         if os.path.exists(info_map_path):
             station_info_map = joblib.load(info_map_path)
         else:
             station_info_map = {sid: sid for sid in station_mapping.keys()}
-
-        # 2. 初始化模型並載入權重
         num_stations = len(station_mapping)
-        model = MultiStationLSTM(num_stations=num_stations, input_size=4) # 關鍵修正: input_size=4
-        model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
+        model = MultiStationLSTM(num_stations=num_stations, input_size=4)
+        model.load_state_dict(torch.load(model_path, map_location=torch.device("cpu")))
         model.eval()
-        
-        print("[INFO] 所有模型資源載入成功。")
-        
+        logger.info("所有模型資源載入成功。")
     except Exception as e:
-        print(f"[ERROR] 模型載入失敗: {e}")
-    
+        logger.exception("模型載入失敗: %s", e)
     yield
-    # 釋放資源
     model = None
     scaler = None
-    print("[INFO] 模型資源已釋放。")
+    logger.info("模型資源已釋放。")
 
 app = FastAPI(lifespan=lifespan, title="YouBike LSTM Prediction API")
 
@@ -190,5 +204,5 @@ def predict(request: PredictRequest):
         }
 
     except Exception as e:
-        print(f"[RUNTIME ERROR] {e}")
+        logger.exception("Predict 執行錯誤: %s", e)
         raise HTTPException(status_code=500, detail="Internal Prediction Error")

@@ -96,13 +96,19 @@ YouBike-ETL-Pipeline/
 ├── data/
 │   ├── raw/                   # Raw CSV Data
 │   └── processed/             # Cleaned Data for ML
+├── sql/
+│   └── init_schema.sql        # MySQL 表結構初始化
+├── tests/
+│   └── test_etl.py            # ETL 單元測試
 ├── docker-compose.yaml        # Microservices Definition
 ├── Dockerfile                 # Custom Airflow Image
+├── .env.example               # 環境變數範例（複製為 .env 使用）
 ├── notebooks/
 │   ├── 01_youbike_analysis.ipynb
 │   ├── 02_weather_etl.ipynb
 │   └── 05_multistation_lstm.ipynb  # Main Deep Learning Training
-└── requirements.txt           # Python dependencies
+├── requirements.txt           # Python dependencies
+└── requirements-dev.txt       # 開發/測試用（含 pytest）
 ```
 <br>
 
@@ -148,7 +154,15 @@ We implement a **Defense-in-Depth** strategy suitable for enterprise standards:
 2.  GCP Service Account with `Secret Manager Secret Accessor` role.
 3.  Docker & Docker Compose installed.
 
-### 1. Deploy on GCP
+### 1. Environment Variables
+複製範例檔並填入實際值（勿將 `.env` 提交至版控）：
+```bash
+cp .env.example .env
+# 編輯 .env，至少設定 MYSQL_ROOT_PASSWORD 與 MYSQL_PASSWORD
+```
+`docker-compose` 會讀取 `.env` 作為 MySQL 與 ETL 的連線與密碼來源；若未設定 `DB_PASSWORD`，ETL 會改從 GCP Secret Manager 讀取。
+
+### 2. Deploy on GCP
 ```bash
 # Clone the repository
 git clone [Repo_URL]
@@ -156,12 +170,11 @@ cd YouBike-ETL-Pipeline
 
 # Build and Start Services
 docker-compose up -d --build
-
 ```
-### 2. Configure Secrets
+### 3. Configure Secrets
 Ensure the secret mysql_password is created in GCP Secret Manager in the project youbike-airflow-server.
 
-###  3. Access the Production Endpoints
+###  4. Access the Production Endpoints
 The system services are accessible via the VM 
 
 External IP:
@@ -173,7 +186,7 @@ Dashboard: http://34.105.181.XX:8501
 
 (Note: Replace .XX with the specific IP address)
 
-### 4. Model Retraining
+### 5. Model Retraining
 To update the LSTM model with the latest collected data:
 
 1. Navigate to notebooks/.
@@ -183,7 +196,7 @@ Open 05_multistation_lstm.ipynb.
 
 3. The new weights will be saved to api/app/model_files/.
 
-### 5. (conditional) Run Analysis Locally
+### 6. (conditional) Run Analysis Locally
 Export data from MySQL or use the provided CSVs in data/raw/.
 Set up the Conda environment:
 ```Bash
@@ -193,6 +206,11 @@ pip install -r requirements.txt
 ```
 Execute `notebooks/05_multistation_lstm.ipynb` to train the model.
 
-
+### 7. 執行測試
+ETL 單元測試（僅測試 transform 邏輯，不需 DB 或 GCP）：
+```bash
+pip install -r requirements-dev.txt   # 或 pip install pytest
+python -m pytest tests/ -v
+```
 
 Created by [Kevin Lin] | 2025

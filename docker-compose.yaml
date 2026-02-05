@@ -10,11 +10,13 @@ services:
       dockerfile: Dockerfile
     command: >
       bash -c "airflow db init &&
-      airflow users create --username admin --password admin --firstname Kevin --lastname Lin --role Admin --email admin@example.com"
+      airflow users create --username $${AIRFLOW_USER} --password $${AIRFLOW_PASSWORD} --firstname Kevin --lastname Lin --role Admin --email admin@example.com"
     environment:
       - AIRFLOW__CORE__EXECUTOR=SequentialExecutor
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=sqlite:////opt/airflow/airflow.db
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW_USER=${AIRFLOW_USER:-admin}
+      - AIRFLOW_PASSWORD=${AIRFLOW_PASSWORD:-admin}
     volumes:
       - airflow-data:/opt/airflow
 
@@ -29,14 +31,24 @@ services:
       - AIRFLOW__CORE__EXECUTOR=SequentialExecutor
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=sqlite:////opt/airflow/airflow.db
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
-      - AIRFLOW__WEBSERVER__SECRET_KEY=secret_key
+      - AIRFLOW__WEBSERVER__SECRET_KEY=${AIRFLOW_WEBSERVER_SECRET_KEY:-secret_key_change_in_production}
+      - AIRFLOW_USER=${AIRFLOW_USER:-admin}
+      - AIRFLOW_PASSWORD=${AIRFLOW_PASSWORD:-admin}
+      - DB_HOST=mysql-db
+      - DB_PORT=3306
+      - DB_USER=${MYSQL_USER:-youbike}
+      - DB_PASSWORD=${MYSQL_PASSWORD}
+      - DB_NAME=${MYSQL_DATABASE:-youbike_db}
     volumes:
       - ./dags:/opt/airflow/dags
       - ./logs:/opt/airflow/logs
       - airflow-data:/opt/airflow
       - ./data:/opt/airflow/data
     depends_on:
-      - airflow-init
+      airflow-init:
+        condition: service_started
+      mysql-db:
+        condition: service_healthy
 
   scheduler:
     build: 
@@ -47,27 +59,44 @@ services:
       - AIRFLOW__CORE__EXECUTOR=SequentialExecutor
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=sqlite:////opt/airflow/airflow.db
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
-      - AIRFLOW__WEBSERVER__SECRET_KEY=secret_key
+      - AIRFLOW__WEBSERVER__SECRET_KEY=${AIRFLOW_WEBSERVER_SECRET_KEY:-secret_key_change_in_production}
+      - AIRFLOW_USER=${AIRFLOW_USER:-admin}
+      - AIRFLOW_PASSWORD=${AIRFLOW_PASSWORD:-admin}
+      - DB_HOST=mysql-db
+      - DB_PORT=3306
+      - DB_USER=${MYSQL_USER:-youbike}
+      - DB_PASSWORD=${MYSQL_PASSWORD}
+      - DB_NAME=${MYSQL_DATABASE:-youbike_db}
     volumes:
       - ./dags:/opt/airflow/dags
       - ./logs:/opt/airflow/logs
       - airflow-data:/opt/airflow
       - ./data:/opt/airflow/data
     depends_on:
-      - airflow-init
+      airflow-init:
+        condition: service_started
+      mysql-db:
+        condition: service_healthy
 
   mysql-db:
     image: mysql:8.0
     command: --default-authentication-plugin=mysql_native_password
     environment:
-      MYSQL_ROOT_PASSWORD: root_password  
-      MYSQL_DATABASE: youbike_db
-      MYSQL_USER: user
-      MYSQL_PASSWORD: password
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-youbike_db}
+      MYSQL_USER: ${MYSQL_USER:-youbike}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     ports:
       - "3306:3306"
     volumes:
       - mysql-data:/var/lib/mysql
+      - ./sql:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$$MYSQL_ROOT_PASSWORD || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   # =========================================
   # 新增服務：API & Dashboard
@@ -77,7 +106,6 @@ services:
       context: .
       dockerfile: Dockerfile.app
     container_name: youbike_api
-    # 指定工作目錄在 api 下，這樣尋找 model_files 會更直覺
     working_dir: /app/api
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     volumes:
@@ -86,13 +114,26 @@ services:
       - "8000:8000"
     environment:
       - TZ=Asia/Taipei
+      - DB_HOST=mysql-db
+      - DB_PORT=3306
+      - DB_USER=${MYSQL_USER:-youbike}
+      - DB_PASSWORD=${MYSQL_PASSWORD}
+      - DB_NAME=${MYSQL_DATABASE:-youbike_db}
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/')\" || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
 
   dashboard:
     build:
       context: .
       dockerfile: Dockerfile.app
     container_name: youbike_dashboard
-    # 指定工作目錄在 dashboard 下
     working_dir: /app/dashboard
     command: streamlit run app.py
     volumes:
@@ -103,7 +144,8 @@ services:
       - TZ=Asia/Taipei
       - API_BASE_URL=http://api:8000
     depends_on:
-      - api
+      api:
+        condition: service_healthy
 
 volumes:
   airflow-data:
