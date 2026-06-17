@@ -91,13 +91,14 @@ Schema 以 `(station_no, record_time)` 作為唯一鍵，避免同一站點同�
 
 ### dbt analytics layer
 
-`analytics/dbt` 提供以下模型：
+`analytics/dbt` 提供 seed fixtures 與以下模型：
 
+- `station_info` / `station_status` seeds：CI 使用的小型 raw warehouse 測試資料
 - `stg_station_info`：清理後的站點維度模型
 - `stg_station_status`：清理後的站點狀態模型，加入缺車與滿站風險 flags
 - `mart_station_hourly_health`：小時層級站點營運健康指標，可供 dashboard 或後續分析使用
 
-dbt profiles 使用 `profiles.example.yml` 作為範本。實際 `profiles.yml` 需要使用本機或部署環境的 MySQL credentials，且不應提交到 Git。
+dbt profiles 使用 `profiles.example.yml` 作為範本。實際 `profiles.yml` 需要使用本機或部署環境的 MySQL credentials，且不應提交到 Git。CI 會啟動 disposable MySQL service，執行 `dbt seed` 與 `dbt build`。
 
 ## 分析方法與發現
 
@@ -287,7 +288,7 @@ make test
 
 測試涵蓋 ETL transform 與 FastAPI 基礎行為，不需要連線到 MySQL 或 GCP，也不會載入真實模型檔。
 
-GitHub Actions 會在 push / pull request 時自動執行同一組測試。
+GitHub Actions 會在 push / pull request 時自動執行 Python 測試，並啟動 MySQL service 執行 dbt seed/build。
 
 ### 4. 執行 dbt analytics scaffold
 
@@ -305,7 +306,9 @@ make dbt-parse
 make dbt-build
 ```
 
-公開 repo 不包含實際 database credentials，因此 CI 目前只跑 Python 測試，不直接連線執行 dbt build。
+`make install-dbt` 會建立專用 `.venv-dbt`，避免污染系統 Python。`dbt-mysql` 目前以 Python 3.11 驗證；如果本機預設是 Python 3.12+，可用 `DBT_PYTHON=/path/to/python3.11 make install-dbt` 指定安裝環境。
+
+公開 repo 不包含實際 database credentials；CI 使用一次性的 MySQL service 與 seed fixture 驗證 dbt layer。
 
 ## 測試狀態
 
@@ -318,6 +321,7 @@ make dbt-build
 - `/predict` request validation
 - unknown station 錯誤處理
 - mocked model prediction response
+- dbt seed fixtures、source/model tests、staging/mart build
 
 CI 設定位於 `.github/workflows/ci.yml`。
 
@@ -326,7 +330,7 @@ CI 設定位於 `.github/workflows/ci.yml`。
 - 本專案是作品展示，不是目前持續營運的 production service。
 - Tableau dashboard 與舊 Streamlit 雲端 demo 可能已失效，README 不依賴這些連結。
 - `etl_job.py` 與 `dags/youbike_dag.py` 仍有部分 ETL 邏輯重複，後續可抽成共用 module。
-- dbt analytics layer 目前是 scaffold，需要連接實際 MySQL warehouse 才能執行完整 `dbt build`。
+- dbt analytics layer 目前使用 seed fixtures 驗證模型結構；若要分析完整資料，需要連接實際 MySQL warehouse。
 - `/predict` 的即時 demo 會用目前狀態組成短序列；若要做更嚴謹的 production forecasting，應改由資料庫查詢真實 lag window。
 - Notebook 訓練流程尚未完全轉成可重現的 training script。
 
@@ -343,10 +347,10 @@ CI 設定位於 `.github/workflows/ci.yml`。
 ## 後續維護方向
 
 1. 抽出共用 ETL module，消除 DAG 與 standalone job 的重複邏輯。
-2. 將 dbt scaffold 接上可重現的本機 sample warehouse 或測試資料集。
-3. 加入 `/predict/batch` 或 `/stations/risk`，輸出多站點缺車風險排序。
-4. 將 notebook 訓練流程整理成可重現的 training script。
-5. 補充資料品質檢查，例如欄位 schema validation、重複資料檢查與時間斷點檢查。
+2. 加入 `/predict/batch` 或 `/stations/risk`，輸出多站點缺車風險排序。
+3. 將 notebook 訓練流程整理成可重現的 training script。
+4. 補充資料品質檢查，例如欄位 schema validation、重複資料檢查與時間斷點檢查。
+5. 擴充 dbt marts，加入行政區 / 尖峰時段分析模型。
 
 ## 作者
 

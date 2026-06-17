@@ -8,8 +8,23 @@ on:
 
 jobs:
   test:
-    name: Python tests
+    name: Python and dbt tests
     runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: youbike_dbt_ci
+          MYSQL_USER: youbike
+          MYSQL_PASSWORD: youbike
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
 
     steps:
       - name: Check out repository
@@ -27,3 +42,15 @@ jobs:
 
       - name: Run tests
         run: python -m pytest tests/ -v
+
+      - name: Install dbt dependencies
+        run: make install-dbt
+
+      - name: Run dbt seed and build
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: "3306"
+          DB_NAME: youbike_dbt_ci
+          DB_USER: youbike
+          DB_PASSWORD: youbike
+        run: make dbt-build

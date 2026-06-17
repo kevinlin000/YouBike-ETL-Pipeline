@@ -6,37 +6,37 @@ models:
     columns:
       - name: station_no
         description: Unique YouBike station identifier.
-        data_tests:
+        tests:
           - unique
           - not_null
       - name: district
-        data_tests:
+        tests:
           - not_null
       - name: total_spaces
-        data_tests:
+        tests:
           - not_null
 
   - name: stg_station_status
     description: Cleaned station status fact model with operational risk flags.
     columns:
       - name: id
-        data_tests:
+        tests:
           - unique
           - not_null
       - name: station_no
-        data_tests:
+        tests:
           - not_null
           - relationships:
               to: ref('stg_station_info')
               field: station_no
       - name: record_time
-        data_tests:
+        tests:
           - not_null
       - name: is_stock_out_risk
-        data_tests:
+        tests:
           - accepted_values:
               values: [0, 1]
       - name: is_full_load_risk
-        data_tests:
+        tests:
           - accepted_values:
               values: [0, 1]

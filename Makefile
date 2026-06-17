@@ -1,3 +1,7 @@
+DBT_PYTHON ?= python3.11
+DBT_VENV ?= .venv-dbt
+DBT_BIN := $(DBT_VENV)/bin/dbt
+
 .PHONY: help install-dev install-test install-dbt test dbt-parse dbt-build up down logs ps
 
 help:
@@ -20,16 +24,21 @@ install-test:
 	python -m pip install -r requirements-test.txt
 
 install-dbt:
-	python -m pip install -r requirements-dbt.txt
+	$(DBT_PYTHON) -m venv $(DBT_VENV)
+	$(DBT_VENV)/bin/python -m pip install --upgrade pip
+	$(DBT_VENV)/bin/python -m pip install -r requirements-dbt.txt
 
 test:
 	python -m pytest tests/ -v
 
 dbt-parse:
-	cd analytics/dbt && dbt parse --profiles-dir .
+	test -f analytics/dbt/profiles.yml || cp analytics/dbt/profiles.example.yml analytics/dbt/profiles.yml
+	cd analytics/dbt && ../../$(DBT_BIN) parse --profiles-dir .
 
 dbt-build:
-	cd analytics/dbt && dbt build --profiles-dir .
+	test -f analytics/dbt/profiles.yml || cp analytics/dbt/profiles.example.yml analytics/dbt/profiles.yml
+	cd analytics/dbt && ../../$(DBT_BIN) seed --profiles-dir .
+	cd analytics/dbt && ../../$(DBT_BIN) build --profiles-dir .
 
 up:
 	docker-compose up -d --build

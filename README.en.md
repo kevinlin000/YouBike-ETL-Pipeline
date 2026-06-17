@@ -84,13 +84,14 @@ The schema uses `(station_no, record_time)` as a uniqueness constraint to preven
 
 ### dbt analytics layer
 
-`analytics/dbt` provides:
+`analytics/dbt` provides seed fixtures and the following models:
 
+- `station_info` / `station_status` seeds: small raw warehouse fixtures used by CI
 - `stg_station_info`: cleaned station dimension model
 - `stg_station_status`: cleaned station status model with stock-out and full-load risk flags
 - `mart_station_hourly_health`: hourly station health metrics for dashboarding and downstream analysis
 
-Use `profiles.example.yml` as a template for a real `profiles.yml`. Do not commit credentials.
+Use `profiles.example.yml` as a template for a real `profiles.yml`. Do not commit credentials. CI starts a disposable MySQL service and runs `dbt seed` and `dbt build`.
 
 ## Analytical Findings
 
@@ -278,7 +279,7 @@ make test
 
 The tests cover ETL transform logic and basic FastAPI behavior. They do not require MySQL or GCP access and do not load real model artifacts.
 
-GitHub Actions runs the same test suite on push and pull request events.
+GitHub Actions runs Python tests and starts a MySQL service for dbt seed/build on push and pull request events.
 
 ### 4. Run the dbt analytics scaffold
 
@@ -296,7 +297,9 @@ make dbt-parse
 make dbt-build
 ```
 
-The public repository does not include database credentials, so CI currently runs Python tests only and does not execute `dbt build`.
+`make install-dbt` creates a dedicated `.venv-dbt` so dbt dependencies do not modify the system Python. `dbt-mysql` is currently validated with Python 3.11. If your local default Python is 3.12+, run `DBT_PYTHON=/path/to/python3.11 make install-dbt`.
+
+The public repository does not include database credentials. CI validates the dbt layer against a disposable MySQL service and seed fixtures.
 
 ## Test Coverage
 
@@ -309,6 +312,7 @@ Current tests cover:
 - `/predict` request validation
 - unknown station handling
 - mocked model prediction response
+- dbt seed fixtures, source/model tests, and staging/mart build
 
 CI configuration lives in `.github/workflows/ci.yml`.
 
@@ -317,7 +321,7 @@ CI configuration lives in `.github/workflows/ci.yml`.
 - This repository is a portfolio showcase, not an actively operated production service.
 - The Tableau dashboard and old Streamlit cloud demo may no longer be online.
 - ETL logic is still partially duplicated between `etl_job.py` and `dags/youbike_dag.py`.
-- The dbt analytics layer is currently a scaffold and needs a real MySQL warehouse connection for full `dbt build` execution.
+- The dbt analytics layer currently uses seed fixtures for model validation; full analysis requires connecting to the real MySQL warehouse.
 - The current `/predict` demo constructs a short sequence from the current state; production forecasting should use real lag windows from the database.
 - Notebook-based training has not yet been converted into a fully reproducible training script.
 
@@ -334,10 +338,10 @@ It does not claim to cover full-scale big-data platform work such as Spark, Kafk
 ## Maintenance Roadmap
 
 1. Extract shared ETL logic into a reusable module.
-2. Connect the dbt scaffold to a reproducible local sample warehouse or fixture dataset.
-3. Add `/predict/batch` or `/stations/risk` for multi-station risk ranking.
-4. Convert notebook training into a reproducible training script.
-5. Add data-quality checks for schema, duplicates, and time gaps.
+2. Add `/predict/batch` or `/stations/risk` for multi-station risk ranking.
+3. Convert notebook training into a reproducible training script.
+4. Add data-quality checks for schema, duplicates, and time gaps.
+5. Extend dbt marts with district-level and peak-hour analysis models.
 
 ## Author
 

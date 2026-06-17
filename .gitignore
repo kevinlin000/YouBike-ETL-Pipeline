@@ -16,9 +16,12 @@ plugins/
 # 資料檔 (數據不進 Git)
 *.csv
 *.db
+!analytics/dbt/seeds/*.csv
 
 # dbt local artifacts and credentials
+.venv-dbt/
 analytics/dbt/target/
 analytics/dbt/dbt_packages/
 analytics/dbt/logs/
 analytics/dbt/profiles.yml
+analytics/dbt/.user.yml

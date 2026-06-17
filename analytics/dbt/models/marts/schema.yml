@@ -5,15 +5,15 @@ models:
     description: Hourly station-level operational health metrics for dashboarding and downstream analysis.
     columns:
       - name: station_no
-        data_tests:
+        tests:
           - not_null
       - name: record_hour
         description: Hour bucket derived from record_time.
-        data_tests:
+        tests:
           - not_null
       - name: observations
         description: Number of station_status records in the hour bucket.
-        data_tests:
+        tests:
           - not_null
       - name: avg_filling_rate
         description: Average bikes_available divided by total station capacity.

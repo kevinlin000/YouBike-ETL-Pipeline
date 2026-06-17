@@ -6,6 +6,8 @@ profile: youbike_analytics
 
 model-paths:
   - models
+seed-paths:
+  - seeds
 test-paths:
   - tests
 macro-paths:
@@ -21,3 +23,7 @@ models:
       +materialized: view
     marts:
       +materialized: table
+
+seeds:
+  youbike_analytics:
+    +quote_columns: false

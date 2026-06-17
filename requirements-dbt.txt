@@ -1,4 +1,5 @@
 # Optional analytics dependencies for the dbt scaffold under analytics/dbt.
-# Pin these in a dedicated virtual environment when actively running dbt.
-dbt-core>=1.8,<2.0
-dbt-mysql>=1.8,<2.0
+# dbt-mysql currently lags dbt-core; keep these versions aligned.
+# Recommended runtime: Python 3.11.
+dbt-core>=1.7,<1.8
+dbt-mysql==1.7.0
