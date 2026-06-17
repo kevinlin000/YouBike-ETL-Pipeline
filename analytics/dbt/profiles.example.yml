@@ -1,0 +1,11 @@
+youbike_analytics:
+  target: dev
+  outputs:
+    dev:
+      type: mysql
+      server: "{{ env_var('DB_HOST', '127.0.0.1') }}"
+      port: "{{ env_var('DB_PORT', '3306') | int }}"
+      schema: "{{ env_var('DB_NAME', 'youbike_db') }}"
+      username: "{{ env_var('DB_USER', 'youbike') }}"
+      password: "{{ env_var('DB_PASSWORD') }}"
+      threads: 4

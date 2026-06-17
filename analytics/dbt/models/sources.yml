@@ -1,0 +1,63 @@
+version: 2
+
+sources:
+  - name: youbike_raw
+    description: Raw warehouse tables populated by the Airflow ETL pipeline.
+    schema: "{{ target.schema }}"
+    tables:
+      - name: station_info
+        description: Station dimension table containing relatively static station metadata.
+        columns:
+          - name: station_no
+            description: Unique station identifier from the YouBike API.
+            data_tests:
+              - unique
+              - not_null
+          - name: name_tw
+            description: Station name in Traditional Chinese.
+            data_tests:
+              - not_null
+          - name: district
+            description: Administrative district.
+            data_tests:
+              - not_null
+          - name: lat
+            description: Station latitude.
+            data_tests:
+              - not_null
+          - name: lng
+            description: Station longitude.
+            data_tests:
+              - not_null
+          - name: total_spaces
+            description: Total station capacity.
+            data_tests:
+              - not_null
+
+      - name: station_status
+        description: Append-only station status fact table captured at micro-batch intervals.
+        columns:
+          - name: id
+            description: Surrogate primary key.
+            data_tests:
+              - unique
+              - not_null
+          - name: station_no
+            description: Foreign key to station_info.
+            data_tests:
+              - not_null
+              - relationships:
+                  to: source('youbike_raw', 'station_info')
+                  field: station_no
+          - name: bikes_available
+            description: Bikes available for rental at record_time.
+            data_tests:
+              - not_null
+          - name: spaces_available
+            description: Empty docks available for returns at record_time.
+            data_tests:
+              - not_null
+          - name: record_time
+            description: UTC timestamp stored as DATETIME.
+            data_tests:
+              - not_null

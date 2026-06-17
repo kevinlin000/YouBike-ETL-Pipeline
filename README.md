@@ -27,6 +27,7 @@
 | 預測建模 | 使用 Multi-Station LSTM 整合站點、天氣與歷史狀態特徵 |
 | 服務化 | 以 FastAPI 提供模型推論 API，Streamlit 提供互動式操作介面 |
 | 部署證據 | 曾以 Docker Compose 部署於 GCP VM，並保留 Airflow、Docker、GCP 監控截圖 |
+| 工程化維護 | 以 pytest 覆蓋 ETL / API 基礎行為，並以 GitHub Actions 自動執行測試 |
 
 ## 問題背景
 
@@ -64,6 +65,8 @@ flowchart LR
 
 ## 資料模型
 
+MySQL schema 定義位於 `sql/init_schema.sql`，下游分析模型則以 `analytics/dbt` 的 dbt scaffold 描述。Airflow 負責把資料寫入 raw warehouse tables，dbt 負責將資料整理成分析用 staging / marts layer。
+
 ### `station_info`
 
 站點維度表，保存低變動資料：
@@ -85,6 +88,16 @@ flowchart LR
 - `record_time`
 
 Schema 以 `(station_no, record_time)` 作為唯一鍵，避免同一站點同一時間重複寫入。
+
+### dbt analytics layer
+
+`analytics/dbt` 提供以下模型：
+
+- `stg_station_info`：清理後的站點維度模型
+- `stg_station_status`：清理後的站點狀態模型，加入缺車與滿站風險 flags
+- `mart_station_hourly_health`：小時層級站點營運健康指標，可供 dashboard 或後續分析使用
+
+dbt profiles 使用 `profiles.example.yml` 作為範本。實際 `profiles.yml` 需要使用本機或部署環境的 MySQL credentials，且不應提交到 Git。
 
 ## 分析方法與發現
 
@@ -191,7 +204,8 @@ FastAPI endpoint：
 | ML | PyTorch, scikit-learn, joblib |
 | Dashboard | Streamlit, Tableau |
 | Infrastructure | Docker, Docker Compose, GCP VM, GCP Secret Manager |
-| Testing | pytest, FastAPI TestClient |
+| Analytics Engineering | dbt scaffold, source/model tests, staging/mart models |
+| Testing / CI | pytest, FastAPI TestClient, GitHub Actions |
 
 ## 專案結構
 
@@ -205,6 +219,8 @@ YouBike-ETL-Pipeline/
 │   └── youbike_dag.py              # Airflow ETL DAG
 ├── dashboard/
 │   └── app.py                      # Streamlit 預測介面
+├── analytics/
+│   └── dbt/                        # dbt analytics layer scaffold
 ├── docs/
 │   ├── adr/                        # 維護決策紀錄
 │   └── images/                     # 部署與資料規模截圖
@@ -227,6 +243,7 @@ YouBike-ETL-Pipeline/
 ├── Makefile
 ├── requirements.txt
 ├── requirements-dev.txt
+├── requirements-dbt.txt
 ├── requirements-test.txt
 └── requirements_app.txt
 ```
@@ -270,6 +287,26 @@ make test
 
 測試涵蓋 ETL transform 與 FastAPI 基礎行為，不需要連線到 MySQL 或 GCP，也不會載入真實模型檔。
 
+GitHub Actions 會在 push / pull request 時自動執行同一組測試。
+
+### 4. 執行 dbt analytics scaffold
+
+dbt 是可選的分析層，需要先建立 `analytics/dbt/profiles.yml`：
+
+```bash
+cp analytics/dbt/profiles.example.yml analytics/dbt/profiles.yml
+```
+
+設定好 MySQL 連線環境變數後執行：
+
+```bash
+make install-dbt
+make dbt-parse
+make dbt-build
+```
+
+公開 repo 不包含實際 database credentials，因此 CI 目前只跑 Python 測試，不直接連線執行 dbt build。
+
 ## 測試狀態
 
 目前測試包含：
@@ -282,11 +319,14 @@ make test
 - unknown station 錯誤處理
 - mocked model prediction response
 
+CI 設定位於 `.github/workflows/ci.yml`。
+
 ## 已知限制
 
 - 本專案是作品展示，不是目前持續營運的 production service。
 - Tableau dashboard 與舊 Streamlit 雲端 demo 可能已失效，README 不依賴這些連結。
 - `etl_job.py` 與 `dags/youbike_dag.py` 仍有部分 ETL 邏輯重複，後續可抽成共用 module。
+- dbt analytics layer 目前是 scaffold，需要連接實際 MySQL warehouse 才能執行完整 `dbt build`。
 - `/predict` 的即時 demo 會用目前狀態組成短序列；若要做更嚴謹的 production forecasting，應改由資料庫查詢真實 lag window。
 - Notebook 訓練流程尚未完全轉成可重現的 training script。
 
@@ -303,10 +343,10 @@ make test
 ## 後續維護方向
 
 1. 抽出共用 ETL module，消除 DAG 與 standalone job 的重複邏輯。
-2. 加入 `/predict/batch` 或 `/stations/risk`，輸出多站點缺車風險排序。
-3. 將 notebook 訓練流程整理成可重現的 training script。
-4. 補充資料品質檢查，例如欄位 schema validation、重複資料檢查與時間斷點檢查。
-5. 補上 CI workflow，讓測試能在 push / PR 時自動執行。
+2. 將 dbt scaffold 接上可重現的本機 sample warehouse 或測試資料集。
+3. 加入 `/predict/batch` 或 `/stations/risk`，輸出多站點缺車風險排序。
+4. 將 notebook 訓練流程整理成可重現的 training script。
+5. 補充資料品質檢查，例如欄位 schema validation、重複資料檢查與時間斷點檢查。
 
 ## 作者
 

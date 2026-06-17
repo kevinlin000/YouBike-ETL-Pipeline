@@ -27,6 +27,7 @@ This repository is a **portfolio showcase**, not an actively operated production
 | Forecasting | Built a Multi-Station LSTM with weather, station, and lag-style features |
 | Serving | Exposed model inference through FastAPI and a Streamlit UI |
 | Deployment evidence | Historical GCP VM deployment with Docker Compose, Airflow, MySQL, API, and dashboard services |
+| Engineering hygiene | pytest coverage for ETL / API behavior and GitHub Actions CI |
 
 ## Problem Context
 
@@ -57,6 +58,8 @@ flowchart LR
 
 ## Data Model
 
+The MySQL schema is defined in `sql/init_schema.sql`, and the downstream analytics model is documented in the `analytics/dbt` dbt scaffold. Airflow owns ingestion into raw warehouse tables; dbt owns the staging and mart layer for analysis.
+
 ### `station_info`
 
 Station dimension table:
@@ -78,6 +81,16 @@ Time-series station status fact table:
 - `record_time`
 
 The schema uses `(station_no, record_time)` as a uniqueness constraint to prevent duplicate status records.
+
+### dbt analytics layer
+
+`analytics/dbt` provides:
+
+- `stg_station_info`: cleaned station dimension model
+- `stg_station_status`: cleaned station status model with stock-out and full-load risk flags
+- `mart_station_hourly_health`: hourly station health metrics for dashboarding and downstream analysis
+
+Use `profiles.example.yml` as a template for a real `profiles.yml`. Do not commit credentials.
 
 ## Analytical Findings
 
@@ -182,7 +195,8 @@ Evidence screenshots are retained for portfolio context:
 | ML | PyTorch, scikit-learn, joblib |
 | Dashboard | Streamlit, Tableau |
 | Infrastructure | Docker, Docker Compose, GCP VM, GCP Secret Manager |
-| Testing | pytest, FastAPI TestClient |
+| Analytics Engineering | dbt scaffold, source/model tests, staging/mart models |
+| Testing / CI | pytest, FastAPI TestClient, GitHub Actions |
 
 ## Project Structure
 
@@ -196,6 +210,8 @@ YouBike-ETL-Pipeline/
 │   └── youbike_dag.py              # Airflow ETL DAG
 ├── dashboard/
 │   └── app.py                      # Streamlit prediction UI
+├── analytics/
+│   └── dbt/                        # dbt analytics layer scaffold
 ├── docs/
 │   ├── adr/                        # Maintenance decisions
 │   └── images/                     # Deployment and data-volume evidence
@@ -218,6 +234,7 @@ YouBike-ETL-Pipeline/
 ├── Makefile
 ├── requirements.txt
 ├── requirements-dev.txt
+├── requirements-dbt.txt
 ├── requirements-test.txt
 └── requirements_app.txt
 ```
@@ -261,6 +278,26 @@ make test
 
 The tests cover ETL transform logic and basic FastAPI behavior. They do not require MySQL or GCP access and do not load real model artifacts.
 
+GitHub Actions runs the same test suite on push and pull request events.
+
+### 4. Run the dbt analytics scaffold
+
+dbt is optional and requires a local `analytics/dbt/profiles.yml`:
+
+```bash
+cp analytics/dbt/profiles.example.yml analytics/dbt/profiles.yml
+```
+
+After setting the MySQL connection environment variables:
+
+```bash
+make install-dbt
+make dbt-parse
+make dbt-build
+```
+
+The public repository does not include database credentials, so CI currently runs Python tests only and does not execute `dbt build`.
+
 ## Test Coverage
 
 Current tests cover:
@@ -273,11 +310,14 @@ Current tests cover:
 - unknown station handling
 - mocked model prediction response
 
+CI configuration lives in `.github/workflows/ci.yml`.
+
 ## Known Limitations
 
 - This repository is a portfolio showcase, not an actively operated production service.
 - The Tableau dashboard and old Streamlit cloud demo may no longer be online.
 - ETL logic is still partially duplicated between `etl_job.py` and `dags/youbike_dag.py`.
+- The dbt analytics layer is currently a scaffold and needs a real MySQL warehouse connection for full `dbt build` execution.
 - The current `/predict` demo constructs a short sequence from the current state; production forecasting should use real lag windows from the database.
 - Notebook-based training has not yet been converted into a fully reproducible training script.
 
@@ -294,10 +334,10 @@ It does not claim to cover full-scale big-data platform work such as Spark, Kafk
 ## Maintenance Roadmap
 
 1. Extract shared ETL logic into a reusable module.
-2. Add `/predict/batch` or `/stations/risk` for multi-station risk ranking.
-3. Convert notebook training into a reproducible training script.
-4. Add data-quality checks for schema, duplicates, and time gaps.
-5. Add CI to run tests automatically on push / PR.
+2. Connect the dbt scaffold to a reproducible local sample warehouse or fixture dataset.
+3. Add `/predict/batch` or `/stations/risk` for multi-station risk ranking.
+4. Convert notebook training into a reproducible training script.
+5. Add data-quality checks for schema, duplicates, and time gaps.
 
 ## Author
 
