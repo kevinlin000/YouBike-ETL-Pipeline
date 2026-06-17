@@ -327,6 +327,14 @@ make up
 - Streamlit dashboard: http://localhost:8501
 - MySQL: localhost:3306
 
+如果只需要面試展示 dashboard，不想依賴真實 FastAPI、模型檔或 Docker Compose，可啟用 demo mode：
+
+```bash
+DASHBOARD_DEMO_MODE=true streamlit run dashboard/app.py
+```
+
+Demo mode 使用固定範例站點與 deterministic mock prediction，方便展示單站預測與多站風險排序流程；它不是模型效果評估結果。
+
 ### 3. 執行測試
 
 ```bash
@@ -368,7 +376,7 @@ make dbt-build
 - `/stations` model-not-ready 行為
 - `/predict` request validation
 - `/stations/risk` 批次風險排序、request validation 與 unknown station 行為
-- dashboard API client payload、錯誤處理與顯示 label mapping
+- dashboard API client payload、demo mode、錯誤處理與顯示 label mapping
 - unknown station 錯誤處理
 - mocked model prediction response
 - dbt seed fixtures、source/model tests、staging/mart build
@@ -382,6 +390,7 @@ CI 設定位於 `.github/workflows/ci.yml`。
 - `etl_job.py` 與 `dags/youbike_dag.py` 仍有部分 ETL 邏輯重複，後續可抽成共用 module。
 - dbt analytics layer 目前使用 seed fixtures 驗證模型結構；若要分析完整資料，需要連接實際 MySQL warehouse。
 - `/predict` 的即時 demo 會用目前狀態組成短序列；若要做更嚴謹的 production forecasting，應改由資料庫查詢真實 lag window。
+- Dashboard demo mode 是面試展示用的 deterministic mock，不代表真實模型評估表現。
 - Notebook 訓練流程尚未完全轉成可重現的 training script。
 
 ## 與職缺能力的對應
@@ -400,7 +409,7 @@ CI 設定位於 `.github/workflows/ci.yml`。
 2. 將 notebook 訓練流程整理成可重現的 training script。
 3. 補充資料品質檢查，例如欄位 schema validation、重複資料檢查與時間斷點檢查。
 4. 擴充 dbt marts，加入行政區 / 尖峰時段分析模型。
-5. 加入 dashboard demo/mock mode，讓面試展示不依賴真實模型檔與服務狀態。
+5. 補充 dashboard 截圖或短 demo GIF，讓 GitHub README 的展示更直觀。
 
 ## 作者
 

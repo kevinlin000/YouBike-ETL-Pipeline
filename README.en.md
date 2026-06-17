@@ -318,6 +318,14 @@ Default services:
 - Streamlit dashboard: http://localhost:8501
 - MySQL: localhost:3306
 
+For interview demos where you only need the dashboard and do not want to depend on live FastAPI services, model files, or Docker Compose, enable demo mode:
+
+```bash
+DASHBOARD_DEMO_MODE=true streamlit run dashboard/app.py
+```
+
+Demo mode uses fixed sample stations and deterministic mock prediction. It is useful for demonstrating the single-station prediction and multi-station risk-ranking flow; it is not a model evaluation result.
+
 ### 3. Run tests
 
 ```bash
@@ -359,7 +367,7 @@ Current tests cover:
 - `/stations` model-not-ready behavior
 - `/predict` request validation
 - `/stations/risk` batch ranking, request validation, and unknown station behavior
-- dashboard API client payloads, error handling, and display label mapping
+- dashboard API client payloads, demo mode, error handling, and display label mapping
 - unknown station handling
 - mocked model prediction response
 - dbt seed fixtures, source/model tests, and staging/mart build
@@ -373,6 +381,7 @@ CI configuration lives in `.github/workflows/ci.yml`.
 - ETL logic is still partially duplicated between `etl_job.py` and `dags/youbike_dag.py`.
 - The dbt analytics layer currently uses seed fixtures for model validation; full analysis requires connecting to the real MySQL warehouse.
 - The current `/predict` demo constructs a short sequence from the current state; production forecasting should use real lag windows from the database.
+- Dashboard demo mode is a deterministic mock for interviews, not a real model-performance result.
 - Notebook-based training has not yet been converted into a fully reproducible training script.
 
 ## Role Relevance
@@ -391,7 +400,7 @@ It does not claim to cover full-scale big-data platform work such as Spark, Kafk
 2. Convert notebook training into a reproducible training script.
 3. Add data-quality checks for schema, duplicates, and time gaps.
 4. Extend dbt marts with district-level and peak-hour analysis models.
-5. Add a dashboard demo/mock mode so interviews do not depend on real model artifacts or live services.
+5. Add dashboard screenshots or a short demo GIF to make the GitHub README easier to scan.
 
 ## Author
 

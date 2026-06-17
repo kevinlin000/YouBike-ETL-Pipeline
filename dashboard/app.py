@@ -6,7 +6,10 @@ import streamlit as st
 
 from api_client import (
     DashboardApiError,
+    demo_predict_station,
+    demo_rank_station_risks,
     get_station_data,
+    get_demo_station_data,
     parse_station_option,
     predict_station,
     rank_station_risks,
@@ -19,10 +22,13 @@ from api_client import (
 st.set_page_config(page_title="YouBike Prediction Dashboard", layout="wide")
 
 API_BASE_URL = os.getenv("API_BASE_URL", "http://api:8000")
+DEMO_MODE_DEFAULT = os.getenv("DASHBOARD_DEMO_MODE", "").lower() in {"1", "true", "yes", "on"}
 
 
 @st.cache_data(ttl=60)
-def load_station_map(api_base_url: str) -> dict:
+def load_station_map(api_base_url: str, demo_mode: bool) -> dict:
+    if demo_mode:
+        return get_demo_station_data()
     try:
         return get_station_data(api_base_url)
     except (DashboardApiError, requests.RequestException):
@@ -48,6 +54,7 @@ def render_single_prediction(
     selected_station_name: str,
     temperature: float,
     rain: float,
+    demo_mode: bool,
 ) -> None:
     st.subheader("單站一小時預測")
 
@@ -60,17 +67,20 @@ def render_single_prediction(
     col2.metric("天氣", rain_label(rain))
 
     if st.button("執行單站預測", type="primary", use_container_width=True):
-        try:
-            result = predict_station(
-                API_BASE_URL,
-                selected_station,
-                bikes_now,
-                temperature,
-                rain,
-            )
-        except (DashboardApiError, requests.RequestException) as exc:
-            st.error(f"API 呼叫失敗：{exc}")
-            return
+        if demo_mode:
+            result = demo_predict_station(selected_station, bikes_now, temperature, rain)
+        else:
+            try:
+                result = predict_station(
+                    API_BASE_URL,
+                    selected_station,
+                    bikes_now,
+                    temperature,
+                    rain,
+                )
+            except (DashboardApiError, requests.RequestException) as exc:
+                st.error(f"API 呼叫失敗：{exc}")
+                return
 
         prediction = result["predicted_bikes_next_hour"]
         delta = prediction - bikes_now
@@ -109,6 +119,7 @@ def render_risk_ranking(
     station_options: list[str],
     temperature: float,
     rain: float,
+    demo_mode: bool,
 ) -> None:
     st.subheader("多站點風險排序")
 
@@ -145,11 +156,14 @@ def render_risk_ranking(
             st.warning("請至少選擇一個站點。")
             return
 
-        try:
-            risks = rank_station_risks(API_BASE_URL, stations, temperature, rain)
-        except (DashboardApiError, requests.RequestException) as exc:
-            st.error(f"API 呼叫失敗：{exc}")
-            return
+        if demo_mode:
+            risks = demo_rank_station_risks(stations, temperature, rain)
+        else:
+            try:
+                risks = rank_station_risks(API_BASE_URL, stations, temperature, rain)
+            except (DashboardApiError, requests.RequestException) as exc:
+                st.error(f"API 呼叫失敗：{exc}")
+                return
 
         if not risks:
             st.warning("API 未回傳風險排序結果。")
@@ -194,12 +208,18 @@ def render_risk_ranking(
 st.title("台北市 YouBike 2.0 預測與調度輔助")
 st.caption("FastAPI + PyTorch LSTM + Streamlit")
 
-station_map = load_station_map(API_BASE_URL)
+with st.sidebar:
+    st.header("輸入參數")
+    demo_mode = st.checkbox("Demo mode", value=DEMO_MODE_DEFAULT)
+    if demo_mode:
+        st.info("Demo mode 使用固定範例站點與模擬預測，不需要 FastAPI 或模型檔。")
+    else:
+        st.caption(f"API: {API_BASE_URL}")
+
+station_map = load_station_map(API_BASE_URL, demo_mode)
 station_options = station_display_options(station_map)
 
 with st.sidebar:
-    st.header("輸入參數")
-    st.caption(f"API: {API_BASE_URL}")
 
     if station_options:
         selected_option = st.selectbox("單站預測站點", station_options)
@@ -221,6 +241,7 @@ with single_tab:
         selected_station_name,
         temperature,
         rain,
+        demo_mode,
     )
 
 with risk_tab:
@@ -229,4 +250,5 @@ with risk_tab:
         station_options,
         temperature,
         rain,
+        demo_mode,
     )

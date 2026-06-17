@@ -31,6 +31,13 @@ def test_get_station_data_returns_station_map(monkeypatch):
     }
 
 
+def test_get_demo_station_data_returns_copy():
+    station_map = api_client.get_demo_station_data()
+    station_map["500101001"] = "changed"
+
+    assert api_client.get_demo_station_data()["500101001"] == "捷運公館站 (大安區)"
+
+
 def test_get_station_data_raises_on_api_error(monkeypatch):
     def fake_get(_url, timeout):
         assert timeout == 5
@@ -118,6 +125,35 @@ def test_rank_station_risks_posts_expected_payload(monkeypatch):
         "timeout": 10,
     }
     assert result[0]["risk_level"] == "stock_out"
+
+
+def test_demo_predict_station_is_deterministic():
+    result = api_client.demo_predict_station(
+        "500101002",
+        bikes_available=8,
+        temperature=27.5,
+        rain=0,
+    )
+
+    assert result == {
+        "station_no": "500101002",
+        "predicted_bikes_next_hour": 4,
+    }
+
+
+def test_demo_rank_station_risks_returns_sorted_results():
+    result = api_client.demo_rank_station_risks(
+        [
+            {"station_no": "500101003", "bikes_available": 18, "spaces_available": 2},
+            {"station_no": "500101002", "bikes_available": 4, "spaces_available": 16},
+        ],
+        temperature=34,
+        rain=6,
+    )
+
+    assert [row["station_no"] for row in result] == ["500101002", "500101003"]
+    assert result[0]["risk_level"] == "stock_out"
+    assert result[0]["suggested_action"] == "rebalance_in"
 
 
 def test_station_display_options_are_sorted_and_parseable():
