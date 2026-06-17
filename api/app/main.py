@@ -43,6 +43,57 @@ class PredictResponse(BaseModel):
     station_no: str
     predicted_bikes_next_hour: int
 
+class StationRiskInput(BaseModel):
+    station_no: str
+    bikes_available: int
+    spaces_available: int
+
+    @field_validator("bikes_available", "spaces_available")
+    @classmethod
+    def availability_non_negative(cls, v: int) -> int:
+        if v < 0:
+            raise ValueError("availability values 不可為負數")
+        return v
+
+class StationsRiskRequest(BaseModel):
+    temperature: float
+    rain: float
+    stations: list[StationRiskInput]
+
+    @field_validator("temperature")
+    @classmethod
+    def temperature_reasonable(cls, v: float) -> float:
+        if not -50 <= v <= 60:
+            raise ValueError("temperature 需介於 -50 與 60 之間")
+        return v
+
+    @field_validator("rain")
+    @classmethod
+    def rain_non_negative(cls, v: float) -> float:
+        if v < 0:
+            raise ValueError("rain 不可為負數")
+        return v
+
+    @field_validator("stations")
+    @classmethod
+    def stations_non_empty(cls, v: list[StationRiskInput]) -> list[StationRiskInput]:
+        if not v:
+            raise ValueError("stations 不可為空")
+        return v
+
+class StationRiskResult(BaseModel):
+    station_no: str
+    current_bikes_available: int
+    current_spaces_available: int
+    predicted_bikes_next_hour: int
+    predicted_spaces_next_hour: int
+    risk_level: str
+    risk_score: int
+    suggested_action: str
+
+class StationsRiskResponse(BaseModel):
+    risks: list[StationRiskResult]
+
 class StationsResponse(BaseModel):
     # 改為回傳字典：{ "station_no": "中文名稱 (行政區)", ... }
     stations: dict 
@@ -126,6 +177,68 @@ app = FastAPI(lifespan=lifespan, title="YouBike LSTM Prediction API")
 
 # --- 5. API 路由設定 ---
 
+def get_rain_cat(rain: float) -> int:
+    if rain == 0:
+        return 0
+    if rain <= 2:
+        return 1
+    if rain <= 10:
+        return 2
+    return 3
+
+def ensure_model_ready() -> None:
+    if model is None or scaler is None:
+        raise HTTPException(status_code=503, detail="Model is not ready")
+
+def ensure_station_supported(station_no: str) -> None:
+    if station_mapping is None or station_no not in station_mapping:
+        raise HTTPException(status_code=404, detail="Station ID not supported by model")
+
+def predict_bikes_next_hour(
+    station_no: str,
+    bikes_available: int,
+    temperature: float,
+    rain: float,
+) -> int:
+    # 特徵工程與模型輸入必須與訓練流程保持一致。
+    rain_cat = get_rain_cat(rain)
+    raw_features = np.array([[
+        bikes_available,
+        temperature,
+        rain,
+        rain_cat
+    ]])
+
+    features_scaled = scaler.transform(raw_features)
+    seq_features = np.tile(features_scaled, (3, 1))
+
+    s_idx = station_mapping[station_no]
+    s_idx_seq = np.full((3, 1), s_idx)
+    combined_input = np.hstack((seq_features, s_idx_seq))
+    input_tensor = torch.FloatTensor(combined_input).unsqueeze(0)
+
+    with torch.no_grad():
+        prediction_scaled = model(input_tensor)
+
+    pred_val_scaled = prediction_scaled.item()
+    dummy_matrix = np.zeros((1, 4))
+    dummy_matrix[0, 0] = pred_val_scaled
+    real_values = scaler.inverse_transform(dummy_matrix)
+    result_bikes = real_values[0][0]
+
+    return max(0, int(round(result_bikes)))
+
+def classify_station_risk(predicted_bikes: int, predicted_spaces: int) -> tuple[str, int, str]:
+    if predicted_bikes <= 2:
+        return "stock_out", 100 + (2 - predicted_bikes), "rebalance_in"
+    if predicted_spaces <= 2:
+        return "full_load", 90 + (2 - predicted_spaces), "rebalance_out"
+    if predicted_bikes <= 5:
+        return "low_supply", 50 + (5 - predicted_bikes), "monitor_supply"
+    if predicted_spaces <= 5:
+        return "low_dock", 40 + (5 - predicted_spaces), "monitor_docks"
+    return "normal", 0, "monitor"
+
 @app.get("/")
 def home():
     return {"status": "online", "model": "LSTM Multi-Station", "features": ["Bikes", "Temp", "Rain", "Rain_Cat"]}
@@ -138,65 +251,16 @@ def get_stations():
 
 @app.post("/predict", response_model=PredictResponse)
 def predict(request: PredictRequest):
-    if model is None or scaler is None:
-        raise HTTPException(status_code=503, detail="Model is not ready")
-        
-    if request.station_no not in station_mapping:
-        raise HTTPException(status_code=404, detail="Station ID not supported by model")
+    ensure_model_ready()
+    ensure_station_supported(request.station_no)
 
     try:
-        # A. 特徵工程: 將原始降雨量轉換為 Rain_Cat (0, 1, 2, 3)
-        # 必須與訓練時的邏輯完全一致
-        def get_rain_cat(r):
-            if r == 0: return 0
-            elif r <= 2: return 1
-            elif r <= 10: return 2
-            else: return 3
-        
-        rain_cat = get_rain_cat(request.rain)
-
-        # B. 準備特徵矩陣 [Bikes, Temp, Rain, Rain_Cat]
-        # 注意：這裡的順序必須與 Scaler 訓練時一致
-        raw_features = np.array([[
-            request.bikes_available, 
-            request.temperature, 
-            request.rain, 
-            rain_cat
-        ]])
-        
-        # C. 數據標準化
-        features_scaled = scaler.transform(raw_features)
-        
-        # D. 製作序列輸入 (Time Steps = 3)
-        # 由於即時預測僅有當前數據，我們複製 3 份來模擬穩定狀態序列
-        seq_features = np.tile(features_scaled, (3, 1))
-        
-        # E. 加入站點索引 ID
-        s_idx = station_mapping[request.station_no]
-        s_idx_seq = np.full((3, 1), s_idx)
-        
-        # 合併為 (3, 5) -> 4個數值特徵 + 1個 ID
-        combined_input = np.hstack((seq_features, s_idx_seq))
-        
-        # F. 轉換為 Tensor 並增加 Batch 維度 -> (1, 3, 5)
-        input_tensor = torch.FloatTensor(combined_input).unsqueeze(0)
-
-        # G. 模型推論
-        with torch.no_grad():
-            prediction_scaled = model(input_tensor)
-            
-        # H. 反標準化 (Inverse Transform)
-        pred_val_scaled = prediction_scaled.item()
-        
-        # 建立與 Scaler 相同的 4 欄位 dummy 矩陣
-        dummy_matrix = np.zeros((1, 4))
-        dummy_matrix[0, 0] = pred_val_scaled # 將預測結果放在 bikes 欄位
-        
-        real_values = scaler.inverse_transform(dummy_matrix)
-        result_bikes = real_values[0][0]
-        
-        # I. 結果處理：四捨五入並確保不為負數
-        final_prediction = max(0, int(round(result_bikes)))
+        final_prediction = predict_bikes_next_hour(
+            request.station_no,
+            request.bikes_available,
+            request.temperature,
+            request.rain,
+        )
 
         return {
             "station_no": request.station_no,
@@ -206,3 +270,42 @@ def predict(request: PredictRequest):
     except Exception as e:
         logger.exception("Predict 執行錯誤: %s", e)
         raise HTTPException(status_code=500, detail="Internal Prediction Error")
+
+@app.post("/stations/risk", response_model=StationsRiskResponse)
+def rank_station_risks(request: StationsRiskRequest):
+    ensure_model_ready()
+
+    risks = []
+    try:
+        for station in request.stations:
+            ensure_station_supported(station.station_no)
+            predicted_bikes = predict_bikes_next_hour(
+                station.station_no,
+                station.bikes_available,
+                request.temperature,
+                request.rain,
+            )
+            observed_capacity = station.bikes_available + station.spaces_available
+            predicted_spaces = max(0, observed_capacity - predicted_bikes)
+            risk_level, risk_score, suggested_action = classify_station_risk(
+                predicted_bikes,
+                predicted_spaces,
+            )
+            risks.append({
+                "station_no": station.station_no,
+                "current_bikes_available": station.bikes_available,
+                "current_spaces_available": station.spaces_available,
+                "predicted_bikes_next_hour": predicted_bikes,
+                "predicted_spaces_next_hour": predicted_spaces,
+                "risk_level": risk_level,
+                "risk_score": risk_score,
+                "suggested_action": suggested_action,
+            })
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Station risk ranking 執行錯誤: %s", e)
+        raise HTTPException(status_code=500, detail="Internal Risk Ranking Error")
+
+    risks.sort(key=lambda item: (-item["risk_score"], item["station_no"]))
+    return {"risks": risks}

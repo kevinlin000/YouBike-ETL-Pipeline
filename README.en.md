@@ -25,7 +25,7 @@ This repository is a **portfolio showcase**, not an actively operated production
 | Data model | Split static station metadata and dynamic status logs into dimension / fact tables |
 | Analysis | Used CV, t-tests, ANOVA, chi-square testing, and regression to identify imbalance patterns |
 | Forecasting | Built a Multi-Station LSTM with weather, station, and lag-style features |
-| Serving | Exposed model inference through FastAPI and a Streamlit UI |
+| Serving | Exposed model inference and station risk ranking through FastAPI, with a Streamlit UI |
 | Deployment evidence | Historical GCP VM deployment with Docker Compose, Airflow, MySQL, API, and dashboard services |
 | Engineering hygiene | pytest coverage for ETL / API behavior and GitHub Actions CI |
 
@@ -142,6 +142,7 @@ FastAPI endpoints:
 | GET | `/` | Service status |
 | GET | `/stations` | Supported station list |
 | POST | `/predict` | Predicts available bikes one hour later |
+| POST | `/stations/risk` | Ranks multi-station stock-out / full-load risk |
 
 Example request:
 
@@ -162,6 +163,48 @@ Example response:
   "predicted_bikes_next_hour": 10
 }
 ```
+
+Risk-ranking request:
+
+```json
+{
+  "temperature": 27.5,
+  "rain": 0.0,
+  "stations": [
+    {
+      "station_no": "500101001",
+      "bikes_available": 2,
+      "spaces_available": 18
+    },
+    {
+      "station_no": "500101002",
+      "bikes_available": 18,
+      "spaces_available": 2
+    }
+  ]
+}
+```
+
+Risk-ranking response:
+
+```json
+{
+  "risks": [
+    {
+      "station_no": "500101001",
+      "current_bikes_available": 2,
+      "current_spaces_available": 18,
+      "predicted_bikes_next_hour": 1,
+      "predicted_spaces_next_hour": 19,
+      "risk_level": "stock_out",
+      "risk_score": 101,
+      "suggested_action": "rebalance_in"
+    }
+  ]
+}
+```
+
+`/stations/risk` reuses the LSTM inference path and converts predicted bikes and estimated empty docks into decision-support labels: `stock_out`, `full_load`, `low_supply`, `low_dock`, or `normal`.
 
 ## Historical Deployment
 
@@ -310,6 +353,7 @@ Current tests cover:
 - FastAPI health endpoint
 - `/stations` model-not-ready behavior
 - `/predict` request validation
+- `/stations/risk` batch ranking, request validation, and unknown station behavior
 - unknown station handling
 - mocked model prediction response
 - dbt seed fixtures, source/model tests, and staging/mart build
@@ -333,12 +377,12 @@ This project is most relevant to:
 - Data application engineering: analytics, feature engineering, model serving, dashboard support
 - Backend / AI application engineering: FastAPI, Pydantic validation, inference APIs, Docker Compose
 
-It does not claim to cover full-scale big-data platform work such as Spark, Kafka, dbt, Data Lake, Kubernetes, or complete MLOps.
+It does not claim to cover full-scale big-data platform work such as Spark, Kafka, Data Lake, Kubernetes, or complete MLOps. The dbt layer is a lightweight analytics scaffold, not a full enterprise warehouse implementation.
 
 ## Maintenance Roadmap
 
 1. Extract shared ETL logic into a reusable module.
-2. Add `/predict/batch` or `/stations/risk` for multi-station risk ranking.
+2. Connect `/stations/risk` back into the Streamlit dashboard for multi-station risk ranking.
 3. Convert notebook training into a reproducible training script.
 4. Add data-quality checks for schema, duplicates, and time gaps.
 5. Extend dbt marts with district-level and peak-hour analysis models.

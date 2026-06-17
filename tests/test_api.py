@@ -34,8 +34,11 @@ class FakeScaler:
 
 
 class FakeModel:
+    def __init__(self, value=7.2):
+        self.value = value
+
     def __call__(self, _input_tensor):
-        return torch.tensor([[7.2]])
+        return torch.tensor([[self.value]])
 
 
 def test_home_returns_service_metadata(client):
@@ -132,3 +135,151 @@ def test_predict_returns_prediction_with_mocked_model(client, monkeypatch):
         "station_no": "500101001",
         "predicted_bikes_next_hour": 7,
     }
+
+
+def test_station_risks_requires_ready_model(client):
+    response = client.post(
+        "/stations/risk",
+        json={
+            "temperature": 27.5,
+            "rain": 0,
+            "stations": [
+                {
+                    "station_no": "500101001",
+                    "bikes_available": 12,
+                    "spaces_available": 8,
+                }
+            ],
+        },
+    )
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == "Model is not ready"
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"temperature": 27.5, "rain": 0, "stations": []},
+        {
+            "temperature": 99,
+            "rain": 0,
+            "stations": [{"station_no": "500101001", "bikes_available": 12, "spaces_available": 8}],
+        },
+        {
+            "temperature": 27.5,
+            "rain": -1,
+            "stations": [{"station_no": "500101001", "bikes_available": 12, "spaces_available": 8}],
+        },
+        {
+            "temperature": 27.5,
+            "rain": 0,
+            "stations": [{"station_no": "500101001", "bikes_available": -1, "spaces_available": 8}],
+        },
+    ],
+)
+def test_station_risks_validates_request_payload(client, payload):
+    response = client.post("/stations/risk", json=payload)
+
+    assert response.status_code == 422
+
+
+def test_station_risks_rejects_unknown_station(client, monkeypatch):
+    monkeypatch.setattr(api_main, "model", FakeModel())
+    monkeypatch.setattr(api_main, "scaler", FakeScaler())
+    monkeypatch.setattr(api_main, "station_mapping", {"500101001": 0})
+
+    response = client.post(
+        "/stations/risk",
+        json={
+            "temperature": 27.5,
+            "rain": 0,
+            "stations": [
+                {
+                    "station_no": "unknown",
+                    "bikes_available": 12,
+                    "spaces_available": 8,
+                }
+            ],
+        },
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Station ID not supported by model"
+
+
+def test_station_risks_returns_ranked_decision_support(client, monkeypatch):
+    monkeypatch.setattr(api_main, "model", FakeModel(value=1.2))
+    monkeypatch.setattr(api_main, "scaler", FakeScaler())
+    monkeypatch.setattr(api_main, "station_mapping", {"500101001": 0, "500101002": 1})
+
+    response = client.post(
+        "/stations/risk",
+        json={
+            "temperature": 27.5,
+            "rain": 0,
+            "stations": [
+                {
+                    "station_no": "500101002",
+                    "bikes_available": 15,
+                    "spaces_available": 5,
+                },
+                {
+                    "station_no": "500101001",
+                    "bikes_available": 2,
+                    "spaces_available": 18,
+                },
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "risks": [
+            {
+                "station_no": "500101001",
+                "current_bikes_available": 2,
+                "current_spaces_available": 18,
+                "predicted_bikes_next_hour": 1,
+                "predicted_spaces_next_hour": 19,
+                "risk_level": "stock_out",
+                "risk_score": 101,
+                "suggested_action": "rebalance_in",
+            },
+            {
+                "station_no": "500101002",
+                "current_bikes_available": 15,
+                "current_spaces_available": 5,
+                "predicted_bikes_next_hour": 1,
+                "predicted_spaces_next_hour": 19,
+                "risk_level": "stock_out",
+                "risk_score": 101,
+                "suggested_action": "rebalance_in",
+            },
+        ]
+    }
+
+
+def test_station_risks_detects_full_load_risk(client, monkeypatch):
+    monkeypatch.setattr(api_main, "model", FakeModel(value=18.8))
+    monkeypatch.setattr(api_main, "scaler", FakeScaler())
+    monkeypatch.setattr(api_main, "station_mapping", {"500101001": 0})
+
+    response = client.post(
+        "/stations/risk",
+        json={
+            "temperature": 27.5,
+            "rain": 0,
+            "stations": [
+                {
+                    "station_no": "500101001",
+                    "bikes_available": 12,
+                    "spaces_available": 8,
+                }
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["risks"][0]["risk_level"] == "full_load"
+    assert response.json()["risks"][0]["suggested_action"] == "rebalance_out"

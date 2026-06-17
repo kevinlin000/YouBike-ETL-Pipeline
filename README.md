@@ -25,7 +25,7 @@
 | 資料建模 | 使用 `station_info` 維度表與 `station_status` 事實表分離靜態與動態資料 |
 | 統計分析 | 使用 CV、t 檢定、ANOVA、卡方檢定與迴歸分析定位缺車熱點 |
 | 預測建模 | 使用 Multi-Station LSTM 整合站點、天氣與歷史狀態特徵 |
-| 服務化 | 以 FastAPI 提供模型推論 API，Streamlit 提供互動式操作介面 |
+| 服務化 | 以 FastAPI 提供模型推論與站點風險排序 API，Streamlit 提供互動式操作介面 |
 | 部署證據 | 曾以 Docker Compose 部署於 GCP VM，並保留 Airflow、Docker、GCP 監控截圖 |
 | 工程化維護 | 以 pytest 覆蓋 ETL / API 基礎行為，並以 GitHub Actions 自動執行測試 |
 
@@ -151,6 +151,7 @@ FastAPI endpoint：
 | GET | `/` | 服務狀態 |
 | GET | `/stations` | 回傳模型支援的站點清單 |
 | POST | `/predict` | 預測指定站點一小時後的可借車數 |
+| POST | `/stations/risk` | 批次評估多站點缺車 / 滿站風險並排序 |
 
 範例 request：
 
@@ -171,6 +172,48 @@ FastAPI endpoint：
   "predicted_bikes_next_hour": 10
 }
 ```
+
+風險排序 request：
+
+```json
+{
+  "temperature": 27.5,
+  "rain": 0.0,
+  "stations": [
+    {
+      "station_no": "500101001",
+      "bikes_available": 2,
+      "spaces_available": 18
+    },
+    {
+      "station_no": "500101002",
+      "bikes_available": 18,
+      "spaces_available": 2
+    }
+  ]
+}
+```
+
+風險排序 response：
+
+```json
+{
+  "risks": [
+    {
+      "station_no": "500101001",
+      "current_bikes_available": 2,
+      "current_spaces_available": 18,
+      "predicted_bikes_next_hour": 1,
+      "predicted_spaces_next_hour": 19,
+      "risk_level": "stock_out",
+      "risk_score": 101,
+      "suggested_action": "rebalance_in"
+    }
+  ]
+}
+```
+
+`/stations/risk` 會共用 LSTM 推論流程，並根據推論後的可借車數與估計空位數標示 `stock_out`、`full_load`、`low_supply`、`low_dock` 或 `normal`。這讓模型輸出不只停在數字預測，而是轉成調度端可排序的 decision-support response。
 
 ## 部署與歷史展示
 
@@ -319,6 +362,7 @@ make dbt-build
 - FastAPI health endpoint
 - `/stations` model-not-ready 行為
 - `/predict` request validation
+- `/stations/risk` 批次風險排序、request validation 與 unknown station 行為
 - unknown station 錯誤處理
 - mocked model prediction response
 - dbt seed fixtures、source/model tests、staging/mart build
@@ -342,12 +386,12 @@ CI 設定位於 `.github/workflows/ci.yml`。
 - 數據應用工程：資料分析、特徵工程、模型服務化、Dashboard 支援
 - 後端 / AI 應用：FastAPI、Pydantic validation、模型推論 API、Docker Compose
 
-它不主張涵蓋完整大數據平台能力，例如 Spark、Kafka、dbt、Data Lake、Kubernetes 或完整 MLOps；若要投遞偏中高階資料平台職缺，仍需要其他作品或後續擴充。
+它不主張涵蓋完整大數據平台能力，例如 Spark、Kafka、Data Lake、Kubernetes 或完整 MLOps；dbt 目前是輕量 analytics scaffold，而不是完整企業資料倉儲落地。若要投遞偏中高階資料平台職缺，仍需要其他作品或後續擴充。
 
 ## 後續維護方向
 
 1. 抽出共用 ETL module，消除 DAG 與 standalone job 的重複邏輯。
-2. 加入 `/predict/batch` 或 `/stations/risk`，輸出多站點缺車風險排序。
+2. 將 `/stations/risk` 串回 Streamlit dashboard，讓前端能展示多站點風險排序。
 3. 將 notebook 訓練流程整理成可重現的 training script。
 4. 補充資料品質檢查，例如欄位 schema validation、重複資料檢查與時間斷點檢查。
 5. 擴充 dbt marts，加入行政區 / 尖峰時段分析模型。
