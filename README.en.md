@@ -1,103 +1,133 @@
-# Taipei YouBike 2.0 Prediction and Data Application
+# Taipei YouBike 2.0 Data Engineering and Mobility Analytics
 
-> AI backend / data application portfolio project: Airflow ETL, MySQL time-series storage, FastAPI model serving, Streamlit dashboard, and PyTorch LSTM forecasting.
+> A portfolio-scale data engineering and analytics project built on Taipei YouBike 2.0 open data, covering scheduled ingestion, relational data modeling, statistical analysis, LSTM training, and FastAPI model serving.
 
 [中文 README](README.md)
 
-## Project Positioning
+## Summary
 
-This project uses Taipei YouBike 2.0 open data to demonstrate an end-to-end data application. It ingests real-time station data, stores station metadata and status logs in MySQL, schedules ingestion through Airflow, serves LSTM predictions through FastAPI, and exposes an interactive Streamlit dashboard.
+This project originated from a probability and statistics research report and was later extended into a data engineering and AI application portfolio project. The goal is to analyze supply-demand imbalance in Taipei's YouBike 2.0 system and evaluate whether high-frequency station data improves operational forecasting.
 
-The goal is not to present this as a large commercial mobility product. The value of this repo is that it connects data ingestion, backend APIs, model inference, and containerized deployment into a portfolio-scale system that can be explained, maintained, and demonstrated.
+The project has three layers:
 
-It is useful for showing:
+1. **Data engineering**: Airflow ingests YouBike station status every 10 minutes and stores normalized records in MySQL.
+2. **Statistical analysis**: Descriptive statistics, t-tests, K-Means, ANOVA, chi-square testing, and regression are used to analyze station imbalance and regional behavior.
+3. **Application serving**: A PyTorch LSTM model is served through FastAPI, with a Streamlit interface for prediction demos.
 
-- Backend service design: FastAPI endpoints, Pydantic validation, startup-time model loading
-- AI application integration: wrapping a PyTorch LSTM model behind a REST API
-- Data engineering fundamentals: Airflow scheduling, ETL, MySQL schema design, time-series writes
-- Containerized deployment: Docker Compose services for Airflow, MySQL, API, and dashboard
-- Analytical storytelling: statistical testing, clustering, peak-hour imbalance, and station-level demand patterns
+This repository is a **portfolio showcase**, not an actively operated production service.
 
-## System Overview
+## Key Results
+
+| Area | Result |
+| --- | --- |
+| Data volume | Processed 4M+ YouBike station status records |
+| Ingestion | 10-minute micro-batch ingestion with Airflow |
+| Data model | Split static station metadata and dynamic status logs into dimension / fact tables |
+| Analysis | Used CV, t-tests, ANOVA, chi-square testing, and regression to identify imbalance patterns |
+| Forecasting | Built a Multi-Station LSTM with weather, station, and lag-style features |
+| Serving | Exposed model inference through FastAPI and a Streamlit UI |
+| Deployment evidence | Historical GCP VM deployment with Docker Compose, Airflow, MySQL, API, and dashboard services |
+
+## Problem Context
+
+The operational problem is not simply a lack of bicycles. In many cases, bikes and empty docks are unevenly distributed across stations and time periods.
+
+Common user pain points include:
+
+- No bikes available at origin stations
+- No empty docks at destination stations
+- Sharp peak-hour imbalance between high-demand and low-demand areas
+
+The analysis therefore focuses on variance, distribution shape, tail risk, and regional heterogeneity instead of city-wide averages alone.
+
+## Architecture
 
 ```mermaid
 flowchart LR
-    A[YouBike 2.0 Open Data API] --> B[Airflow DAG / ETL Job]
+    A[YouBike 2.0 Open Data API] --> B[Airflow DAG]
+    W[Open-Meteo Weather Data] --> D[Analysis / Feature Engineering]
     B --> C[(MySQL 8)]
-    C --> D[Analysis Notebooks]
-    D --> E[PyTorch LSTM Model]
-    E --> F[FastAPI Prediction API]
-    F --> G[Streamlit Dashboard]
-
-    B --> H[GCP Secret Manager]
+    C --> D
+    D --> E[Statistical Analysis]
+    D --> F[PyTorch LSTM Training]
+    F --> G[FastAPI Inference API]
+    G --> H[Streamlit Prediction UI]
+    B --> S[GCP Secret Manager]
 ```
 
-Core tables:
+## Data Model
 
-- `station_info`: station dimension table with station id, name, district, latitude, longitude, and capacity
-- `station_status`: station status fact table with available bikes, available return spaces, and record time
+### `station_info`
 
-## Project Evidence
+Station dimension table:
 
-This project was previously deployed on a GCP VM through Docker Compose and collected more than 4M YouBike station status records. Screenshots are kept as portfolio evidence, while VM IPs, credentials, and cloud project details are intentionally omitted.
+- `station_no`
+- `name_tw`
+- `district`
+- `lat`
+- `lng`
+- `total_spaces`
 
-### Airflow Scheduling
+### `station_status`
 
-![Airflow Success](docs/images/airflow_success.png)
+Time-series station status fact table:
 
-- Airflow triggered ingestion every 10 minutes
-- The ETL flow split station metadata from station status records
-- Status records were appended to `station_status`
+- `station_no`
+- `bikes_available`
+- `spaces_available`
+- `record_time`
 
-### Data Volume
+The schema uses `(station_no, record_time)` as a uniqueness constraint to prevent duplicate status records.
 
-![Data Volume](docs/images/data_volume.png)
+## Analytical Findings
 
-- More than 4M station status records were processed
-- The MySQL schema uses a station dimension table and a status fact table to avoid repeatedly storing static station metadata
+### 1. Average Availability Hides Peak-Hour Instability
 
-### Containers and Cloud Deployment
+Peak and off-peak periods may show similar average availability, but the peak-hour coefficient of variation was around `0.7815`, indicating much higher instability during commute windows.
 
-![Docker Stats](docs/images/docker_stats.png)
+**Engineering implication**: station-level monitoring and high-frequency ingestion are necessary; city-wide daily aggregates are insufficient.
 
-- Docker Compose managed Airflow webserver, scheduler, MySQL, FastAPI, and Streamlit
-- GCP Secret Manager was used for database password access in the deployment environment
-- The repository keeps only `.env.example`; real `.env` files are not committed
+### 2. Campus Stations Behave Differently
 
-### Basic Cloud Monitoring
+t-tests showed that the NTU Gongguan area had significantly lower operating levels than nearby comparison areas. This suggests campus stations should not be managed only through district-level averages.
 
-![GCP Metrics](docs/images/gcp_metrics.png)
+### 3. Land-Use Patterns Affect Station Behavior
 
-- GCP VM metrics showed CPU and network activity aligned with scheduled ETL jobs
-- Screenshots document that the deployment and scheduler ran in practice, not that the system is currently operated as a live service
+K-Means clustering was used to categorize station behavior, followed by ANOVA and Tukey post-hoc comparison. The analysis separated commercial, residential, and mixed-use patterns.
 
-## Analytical Highlights
+Operational interpretation:
 
-### 1. The Average Trap
+- Mixed-use areas tend to retain more bikes and need capacity-oriented planning.
+- Commercial areas have higher turnover and need faster redistribution.
+- Residential areas show stronger commute-driven rhythms.
 
-Peak and off-peak periods may show similar average availability, but peak-hour variance is much higher. The operational issue is therefore not only total supply, but also imbalance between stations.
+### 4. Tail Risk Matters More Than the Mean
 
-### 2. Campus Area Effect
+Chi-square testing and standardized residual analysis were used to identify severe stock-out hotspots. This better reflects real user experience than average availability alone.
 
-Stations around the NTU Gongguan area showed recurring stock-out or full-load patterns at specific times. This suggests that station context matters more than simple district-level averages.
+### 5. High-Frequency Data Improves Predictive Power
 
-### 3. Land-Use Pattern Differences
+Regression comparison showed that static location features alone had low explanatory power, while adding lag-style temporal features increased R-squared from roughly `0.02` to `0.92`.
 
-Residential, commercial, and mixed-use areas show different usage rhythms. The notebooks explore these differences through statistical analysis and clustering.
+**Engineering implication**: 10-minute ingestion is central to the predictive value of the system.
 
-### 4. Importance of Dynamic Features
+## Model Serving
 
-Station location alone is weak for predicting available bikes. Adding lag features significantly improves forecasting, which is why the project keeps both scheduled ingestion and time-series storage.
+The prediction service uses a Multi-Station LSTM with:
 
-## API and Dashboard
+- current bike availability
+- temperature
+- rainfall
+- rainfall category
+- station ID embedding
 
-The FastAPI service is implemented in `api/app/main.py`.
+FastAPI endpoints:
 
-Main endpoints:
-
-- `GET /`: service status
-- `GET /stations`: station ids supported by the model
-- `POST /predict`: predicts available bikes one hour later from station id, current bikes, temperature, and rain
+| Method | Path | Description |
+| --- | --- | --- |
+| GET | `/` | Service status |
+| GET | `/stations` | Supported station list |
+| POST | `/predict` | Predicts available bikes one hour later |
 
 Example request:
 
@@ -119,17 +149,40 @@ Example response:
 }
 ```
 
-The Streamlit dashboard in `dashboard/app.py` provides station selection, weather inputs, and prediction display.
+## Historical Deployment
+
+This project was previously deployed on a GCP VM with Docker Compose. The original Tableau dashboard and Streamlit cloud demo were created for course presentation purposes and may no longer be online. For that reason, this README does not publish old VM IPs or expired demo links.
+
+Evidence screenshots are retained for portfolio context:
+
+### Airflow Scheduling
+
+![Airflow Success](docs/images/airflow_success.png)
+
+### Data Volume
+
+![Data Volume](docs/images/data_volume.png)
+
+### Docker Services
+
+![Docker Stats](docs/images/docker_stats.png)
+
+### GCP Monitoring
+
+![GCP Metrics](docs/images/gcp_metrics.png)
 
 ## Tech Stack
 
-- Backend: FastAPI, Pydantic, Uvicorn
-- ML / AI: PyTorch LSTM, scikit-learn, joblib
-- Data Engineering: Airflow, Pandas, SQLAlchemy
-- Database: MySQL 8
-- Dashboard: Streamlit
-- Infrastructure: Docker, Docker Compose, GCP VM, GCP Secret Manager
-- Analysis: Jupyter Notebook, statistical testing, clustering, model comparison
+| Area | Technologies |
+| --- | --- |
+| Workflow | Apache Airflow |
+| Data Processing | Python, Pandas, SQLAlchemy |
+| Database | MySQL 8 |
+| Backend | FastAPI, Pydantic, Uvicorn |
+| ML | PyTorch, scikit-learn, joblib |
+| Dashboard | Streamlit, Tableau |
+| Infrastructure | Docker, Docker Compose, GCP VM, GCP Secret Manager |
+| Testing | pytest, FastAPI TestClient |
 
 ## Project Structure
 
@@ -137,17 +190,15 @@ The Streamlit dashboard in `dashboard/app.py` provides station selection, weathe
 YouBike-ETL-Pipeline/
 ├── api/
 │   ├── app/
-│   │   └── main.py                 # FastAPI model inference service
+│   │   └── main.py                 # FastAPI inference service
 │   └── model_files/                # LSTM weights, scaler, station mappings
 ├── dags/
 │   └── youbike_dag.py              # Airflow ETL DAG
 ├── dashboard/
 │   └── app.py                      # Streamlit prediction UI
-├── data/
-│   └── raw/                        # Raw files for analysis
 ├── docs/
 │   ├── adr/                        # Maintenance decisions
-│   └── images/                     # Portfolio evidence screenshots
+│   └── images/                     # Deployment and data-volume evidence
 ├── notebooks/
 │   ├── 01_youbike_analysis.ipynb
 │   ├── 02_weather_etl.ipynb
@@ -158,12 +209,13 @@ YouBike-ETL-Pipeline/
 ├── sql/
 │   └── init_schema.sql             # MySQL schema
 ├── tests/
-│   └── test_etl.py                 # ETL transform unit tests
+│   ├── test_api.py                 # FastAPI behavior tests
+│   └── test_etl.py                 # ETL transform tests
 ├── docker-compose.yaml
-├── Dockerfile                      # Airflow image
-├── Dockerfile.app                  # API / Dashboard image
-├── etl_job.py                      # Standalone ETL job
-├── Makefile                        # Local maintenance commands
+├── Dockerfile
+├── Dockerfile.app
+├── etl_job.py
+├── Makefile
 ├── requirements.txt
 ├── requirements-dev.txt
 ├── requirements-test.txt
@@ -207,74 +259,45 @@ make install-dev
 make test
 ```
 
-The current tests cover ETL transform logic and basic FastAPI behavior. They do not require MySQL or GCP access and do not load real model artifacts.
+The tests cover ETL transform logic and basic FastAPI behavior. They do not require MySQL or GCP access and do not load real model artifacts.
 
-`requirements-dev.txt` currently installs only the dependencies needed for local tests. For the full notebook / analysis environment, install `requirements.txt` separately.
+## Test Coverage
 
-Without `make`, run the underlying commands directly:
+Current tests cover:
 
-```bash
-docker-compose up -d --build
-python -m pip install -r requirements-test.txt
-python -m pytest tests/ -v
-```
-
-## Model Training
-
-The main training notebook is:
-
-```text
-notebooks/05_multistation_lstm.ipynb
-```
-
-Trained model and preprocessing assets are stored in:
-
-```text
-api/model_files/
-```
-
-FastAPI loads:
-
-- `youbike_lstm_multistation.pth`
-- `scaler.pkl`
-- `station_mapping.pkl`
-- `station_info_map.pkl`
+- ETL empty-input and missing-column handling
+- ETL successful transform behavior
+- FastAPI health endpoint
+- `/stations` model-not-ready behavior
+- `/predict` request validation
+- unknown station handling
+- mocked model prediction response
 
 ## Known Limitations
 
-This repository is a portfolio showcase, not an actively operated production service.
+- This repository is a portfolio showcase, not an actively operated production service.
+- The Tableau dashboard and old Streamlit cloud demo may no longer be online.
+- ETL logic is still partially duplicated between `etl_job.py` and `dags/youbike_dag.py`.
+- The current `/predict` demo constructs a short sequence from the current state; production forecasting should use real lag windows from the database.
+- Notebook-based training has not yet been converted into a fully reproducible training script.
 
-- ETL logic is currently duplicated between `etl_job.py` and `dags/youbike_dag.py`; it can be extracted into a shared Python module
-- `POST /predict` uses the current state to construct a short sequence for demo-time inference; production forecasting should use real lag windows from the database
-- Notebook-based training has not yet been converted into a fully reproducible training script
-- Deployment screenshots are historical evidence; public documentation intentionally excludes VM IPs and cloud resource details
+## Role Relevance
 
-## Interview Pitch
+This project is most relevant to:
 
-One-sentence version:
+- Data engineering: ETL, Airflow, MySQL schema design, batch ingestion, data-quality testing
+- Data application engineering: analytics, feature engineering, model serving, dashboard support
+- Backend / AI application engineering: FastAPI, Pydantic validation, inference APIs, Docker Compose
 
-> I built a YouBike prediction data application that connects Airflow ETL, MySQL time-series storage, LSTM training, FastAPI model inference, and a Streamlit dashboard, processing 4M+ station status records.
-
-Backend-focused version:
-
-> This project shows how I wrap a model behind an API, handle request validation, load model resources at startup, manage Docker Compose service networking, and connect the API to a dashboard.
-
-AI-application-focused version:
-
-> This project goes beyond notebooks by serving an LSTM forecasting model through FastAPI and exposing it through an interactive dashboard.
-
-Data-engineering-focused version:
-
-> This project uses Airflow to periodically ingest YouBike real-time data into a MySQL dimension/fact schema, then uses the accumulated data for analysis and model training.
+It does not claim to cover full-scale big-data platform work such as Spark, Kafka, dbt, Data Lake, Kubernetes, or complete MLOps.
 
 ## Maintenance Roadmap
 
-Short-term priorities:
-
-1. Extract ETL transform/load logic into a shared Python module so the Airflow DAG only handles orchestration
-2. Extend FastAPI endpoint tests with additional inference edge cases
-3. Extend local verification with Docker Compose health checks
-4. Add a batch risk endpoint such as `/stations/risk` to make the project stronger for AI application roles
+1. Extract shared ETL logic into a reusable module.
+2. Add `/predict/batch` or `/stations/risk` for multi-station risk ranking.
+3. Convert notebook training into a reproducible training script.
+4. Add data-quality checks for schema, duplicates, and time gaps.
+5. Add CI to run tests automatically on push / PR.
 
 ## Author
 

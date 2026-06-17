@@ -1,101 +1,142 @@
-# 台北 YouBike 2.0 預測與資料應用系統
+# 台北 YouBike 2.0 資料工程與交通效能分析
 
-> AI 後端 / 資料應用作品集：Airflow ETL、MySQL 時序資料、FastAPI 模型服務、Streamlit 操作介面、PyTorch LSTM 預測。
+> 以台北市 YouBike 2.0 開放資料為基礎，建置一套涵蓋資料擷取、排程編排、關聯式資料建模、統計分析、模型訓練與 API 服務化的資料應用專案。
 
 [English README](README.en.md)
 
-## 專案定位
+## 專案摘要
 
-這是一個以台北市 YouBike 2.0 開放資料為主題的資料應用作品。專案從即時站點資料擷取開始，將站點基本資料與即時狀態寫入 MySQL，再透過 Airflow 排程維持資料流，最後以 FastAPI 提供 LSTM 模型推論 API，並用 Streamlit 做出可操作的預測介面。
+本專案源自「機率與統計」課程研究，後續延伸為資料工程與 AI 應用作品。研究目標是分析台北市 YouBike 2.0 系統在尖峰時段的供需失衡問題，並驗證高頻資料擷取對即時預測與調度決策的價值。
 
-這個 repo 的重點不是把 YouBike 營運問題包裝成大型商業產品，而是展示我能把資料流、後端 API、模型推論與容器化部署串成一個可說明、可維護、可展示的系統。
+專案實作包含三個層次：
 
-適合用來補充以下能力：
+1. **資料工程層**：以 Airflow 每 10 分鐘擷取 YouBike 即時站點資料，將站點靜態資訊與即時狀態寫入 MySQL。
+2. **統計分析層**：使用描述統計、t 檢定、K-Means、ANOVA、卡方檢定與迴歸模型，分析站點失衡、土地使用型態與尖峰波動。
+3. **應用服務層**：將 PyTorch LSTM 模型封裝為 FastAPI 推論服務，並以 Streamlit 建立互動式預測介面。
 
-- 後端服務設計：FastAPI endpoint、Pydantic validation、模型資源啟動載入
-- AI 應用整合：PyTorch LSTM 模型封裝成 REST API
-- 資料工程基礎：Airflow 排程、ETL、MySQL schema、時間序列資料寫入
-- 容器化部署：Docker Compose 管理 Airflow、MySQL、API、Dashboard
-- 資料分析敘事：統計檢定、分群、尖離峰與站點失衡分析
+此 repo 目前定位為 **portfolio showcase**，用於展示資料管線設計、資料建模、統計分析與模型服務化能力；不是目前仍在線上營運的 production service。
 
-## 系統總覽
+## 核心成果
+
+| 面向 | 成果 |
+| --- | --- |
+| 資料規模 | 累積處理超過 4M 筆 YouBike 站點狀態紀錄 |
+| 擷取頻率 | 以 Airflow micro-batch 每 10 分鐘擷取一次即時資料 |
+| 資料建模 | 使用 `station_info` 維度表與 `station_status` 事實表分離靜態與動態資料 |
+| 統計分析 | 使用 CV、t 檢定、ANOVA、卡方檢定與迴歸分析定位缺車熱點 |
+| 預測建模 | 使用 Multi-Station LSTM 整合站點、天氣與歷史狀態特徵 |
+| 服務化 | 以 FastAPI 提供模型推論 API，Streamlit 提供互動式操作介面 |
+| 部署證據 | 曾以 Docker Compose 部署於 GCP VM，並保留 Airflow、Docker、GCP 監控截圖 |
+
+## 問題背景
+
+YouBike 的核心營運問題不只是「車輛總量不足」，而是不同時間、不同區域、不同站點之間的供需錯置。使用者常見痛點包含：
+
+- 到站後無車可借
+- 抵達目的地後無位可還
+- 尖峰時段部分站點快速耗盡，部分站點卻仍有餘裕
+
+因此，本專案不是只看全市平均使用率，而是從 **變異、分佈、尾端風險與區域異質性** 出發，分析哪些站點或區域需要更高頻的調度策略。
+
+## 系統架構
 
 ```mermaid
 flowchart LR
-    A[YouBike 2.0 Open Data API] --> B[Airflow DAG / ETL Job]
+    A[YouBike 2.0 Open Data API] --> B[Airflow DAG]
+    W[Open-Meteo Weather Data] --> D[Analysis / Feature Engineering]
     B --> C[(MySQL 8)]
-    C --> D[Analysis Notebooks]
-    D --> E[PyTorch LSTM Model]
-    E --> F[FastAPI Prediction API]
-    F --> G[Streamlit Dashboard]
-
-    B --> H[GCP Secret Manager]
+    C --> D
+    D --> E[Statistical Analysis]
+    D --> F[PyTorch LSTM Training]
+    F --> G[FastAPI Inference API]
+    G --> H[Streamlit Prediction UI]
+    B --> S[GCP Secret Manager]
 ```
 
-核心資料表：
+### 資料流程
 
-- `station_info`：站點維度表，保存站點編號、名稱、行政區、經緯度與總車位數
-- `station_status`：站點狀態事實表，保存每次擷取時的可借車數、可還車位與記錄時間
+1. Airflow DAG 定期呼叫 YouBike 2.0 即時資料 API。
+2. ETL 將站點靜態資料與即時狀態資料拆分。
+3. MySQL 儲存正規化後的站點維度表與狀態事實表。
+4. Notebook 使用歷史資料進行統計分析、特徵工程與模型訓練。
+5. FastAPI 在啟動時載入模型權重與 scaler，對外提供預測 endpoint。
+6. Streamlit dashboard 呼叫 API，展示站點預測結果與調度建議。
 
-## 專案成果
+## 資料模型
 
-本專案曾以 GCP VM + Docker Compose 部署，並累積超過 4M 筆 YouBike 站點狀態資料。README 中保留截圖作為 portfolio evidence，但不公開 VM IP、帳號、密碼或雲端專案細節。
+### `station_info`
 
-### Airflow 排程
+站點維度表，保存低變動資料：
 
-![Airflow Success](docs/images/airflow_success.png)
+- `station_no`
+- `name_tw`
+- `district`
+- `lat`
+- `lng`
+- `total_spaces`
 
-- Airflow DAG 每 10 分鐘擷取一次 YouBike 2.0 即時資料
-- ETL 會拆分站點基本資料與站點狀態資料
-- 站點狀態以 append-only 方式寫入 `station_status`
+### `station_status`
 
-### 資料量證據
+站點狀態事實表，保存高頻時間序列資料：
 
-![Data Volume](docs/images/data_volume.png)
+- `station_no`
+- `bikes_available`
+- `spaces_available`
+- `record_time`
 
-- 累積處理超過 4M 筆站點狀態資料
-- MySQL schema 使用 station dimension + status fact table，避免站點基本資料重複儲存
+Schema 以 `(station_no, record_time)` 作為唯一鍵，避免同一站點同一時間重複寫入。
 
-### 容器與雲端部署
+## 分析方法與發現
 
-![Docker Stats](docs/images/docker_stats.png)
+### 1. 平均值陷阱：尖峰問題來自高變異
 
-- Docker Compose 管理 Airflow webserver、scheduler、MySQL、FastAPI、Streamlit
-- GCP Secret Manager 用於部署環境中的資料庫密碼讀取
-- 本 repo 僅保留 `.env.example`，不提交實際 `.env`
+單看平均滿車率會低估問題。報告中比較尖峰與離峰時段後發現，尖峰時段的變異係數（CV）約為 `0.7815`，顯著高於離峰時段。這代表尖峰時刻的問題不是全市平均水位，而是站點間分佈高度不均。
 
-### 基礎雲端監控
+**工程意義**：需要高頻資料擷取與站點層級監控，不能只用每日或全市平均資料做決策。
 
-![GCP Metrics](docs/images/gcp_metrics.png)
+### 2. 校園區域效應：臺大公館缺車風險異常
 
-- 曾在 GCP VM 上觀察 ETL 排程造成的 CPU 與網路流量變化
-- 截圖用於說明部署與排程曾實際運作，不代表目前仍持續營運
+透過單一樣本 t 檢定與兩獨立樣本 t 檢定，報告將臺大公館區域與鄰近大安區進行比較，發現校園周邊站點的水位顯著偏低。這代表校園區域具有獨立於一般行政區的需求型態。
 
-## 分析重點
+**決策意義**：校園站點不適合只依行政區平均調度，應建立獨立補給策略。
 
-### 1. 平均值陷阱
+### 3. 土地使用型態：不同區域來自不同分佈
 
-尖峰與離峰時段的平均可用率可能接近，但尖峰時段的波動更高。這代表問題不只是總供給不足，而是不同站點之間的供需失衡。
+專案先以 K-Means 將站點行為分成商業型、住宅型與混合型，再使用 ANOVA 與 Tukey 事後比較檢驗不同區域型態的營運差異。
 
-### 2. 校園區域效應
+觀察到的策略方向：
 
-台大公館周邊站點在特定時段容易出現缺車或滿站問題，需求型態與一般商業區不同。這讓模型與調度策略需要考慮站點所在區域，而不是只看行政區平均值。
+- 混合區（如萬華）：偏高滯留，適合改善空間容量
+- 商業區（如信義）：偏高週轉，適合提高調度頻率
+- 住宅區（如文山）：通勤波形明顯，適合依尖峰時段調整補車
 
-### 3. 土地使用型態差異
+### 4. 缺車風險定位：用尾端事件取代平均指標
 
-不同區域，例如住宅區、商業區、混合使用區，會呈現不同的借還車節奏。Notebook 中以統計分析與分群方式探索這些差異。
+報告使用卡方檢定與標準化殘差分析定位嚴重缺車熱點。這類方法能補足平均值無法描述的「尾端風險」，更貼近使用者實際遇到的「借不到車」情境。
 
-### 4. 動態特徵的重要性
+### 5. 高頻資料的預測價值
 
-只用站點位置很難預測車輛數，加入 lag features 後模型表現明顯改善。這也是本專案保留即時 ETL 與時間序列資料庫的原因。
+迴歸模型比較顯示，只使用靜態地點特徵時，模型解釋力很低；加入時間滯後特徵（lag feature）後，解釋力大幅提升，報告中 R-squared 從約 `0.02` 提升到約 `0.92`。
 
-## API 與 Dashboard
+**工程意義**：每 10 分鐘擷取一次資料不是裝飾，而是讓預測模型能利用時間序列自相關性的關鍵。
 
-FastAPI 服務位於 `api/app/main.py`，主要 endpoint：
+## 模型與 API
 
-- `GET /`：服務狀態
-- `GET /stations`：模型支援的站點清單
-- `POST /predict`：輸入站點、目前車輛數、氣溫、降雨量，回傳一小時後預測車輛數
+模型採用 Multi-Station LSTM，輸入特徵包含：
+
+- 目前可借車數
+- 氣溫
+- 降雨量
+- 降雨分級 `Rain_Cat`
+- 站點 ID embedding
+
+FastAPI endpoint：
+
+| Method | Path | 說明 |
+| --- | --- | --- |
+| GET | `/` | 服務狀態 |
+| GET | `/stations` | 回傳模型支援的站點清單 |
+| POST | `/predict` | 預測指定站點一小時後的可借車數 |
 
 範例 request：
 
@@ -117,17 +158,40 @@ FastAPI 服務位於 `api/app/main.py`，主要 endpoint：
 }
 ```
 
-Streamlit dashboard 位於 `dashboard/app.py`，提供站點選擇、天氣參數輸入與預測結果展示。
+## 部署與歷史展示
+
+本專案曾部署於 GCP VM，透過 Docker Compose 管理 Airflow、MySQL、FastAPI 與 Streamlit。原本的 Tableau dashboard 與 Streamlit 預測網站屬於課程展示用雲端 demo，目前不保證仍在線上，因此 README 不公開舊 VM IP 或失效連結。
+
+保留以下截圖作為歷史部署與資料規模證據：
+
+### Airflow 排程
+
+![Airflow Success](docs/images/airflow_success.png)
+
+### 資料量
+
+![Data Volume](docs/images/data_volume.png)
+
+### Docker Compose 服務
+
+![Docker Stats](docs/images/docker_stats.png)
+
+### GCP 監控
+
+![GCP Metrics](docs/images/gcp_metrics.png)
 
 ## 技術棧
 
-- Backend：FastAPI、Pydantic、Uvicorn
-- ML / AI：PyTorch LSTM、scikit-learn、joblib
-- Data Engineering：Airflow、Pandas、SQLAlchemy
-- Database：MySQL 8
-- Dashboard：Streamlit
-- Infra：Docker、Docker Compose、GCP VM、GCP Secret Manager
-- Analysis：Jupyter Notebook、statistical testing、clustering、model comparison
+| 類別 | 技術 |
+| --- | --- |
+| Workflow | Apache Airflow |
+| Data Processing | Python, Pandas, SQLAlchemy |
+| Database | MySQL 8 |
+| Backend | FastAPI, Pydantic, Uvicorn |
+| ML | PyTorch, scikit-learn, joblib |
+| Dashboard | Streamlit, Tableau |
+| Infrastructure | Docker, Docker Compose, GCP VM, GCP Secret Manager |
+| Testing | pytest, FastAPI TestClient |
 
 ## 專案結構
 
@@ -141,11 +205,9 @@ YouBike-ETL-Pipeline/
 │   └── youbike_dag.py              # Airflow ETL DAG
 ├── dashboard/
 │   └── app.py                      # Streamlit 預測介面
-├── data/
-│   └── raw/                        # 分析用原始資料
 ├── docs/
 │   ├── adr/                        # 維護決策紀錄
-│   └── images/                     # portfolio evidence 截圖
+│   └── images/                     # 部署與資料規模截圖
 ├── notebooks/
 │   ├── 01_youbike_analysis.ipynb
 │   ├── 02_weather_etl.ipynb
@@ -156,12 +218,13 @@ YouBike-ETL-Pipeline/
 ├── sql/
 │   └── init_schema.sql             # MySQL schema
 ├── tests/
-│   └── test_etl.py                 # ETL transform 單元測試
+│   ├── test_api.py                 # FastAPI 行為測試
+│   └── test_etl.py                 # ETL transform 測試
 ├── docker-compose.yaml
-├── Dockerfile                      # Airflow image
-├── Dockerfile.app                  # API / Dashboard image
-├── etl_job.py                      # 可獨立執行的 ETL job
-├── Makefile                        # 本機維護指令
+├── Dockerfile
+├── Dockerfile.app
+├── etl_job.py
+├── Makefile
 ├── requirements.txt
 ├── requirements-dev.txt
 ├── requirements-test.txt
@@ -193,10 +256,10 @@ make up
 
 預設服務：
 
-- Airflow UI：http://localhost:8080
-- FastAPI docs：http://localhost:8000/docs
-- Streamlit dashboard：http://localhost:8501
-- MySQL：localhost:3306
+- Airflow UI: http://localhost:8080
+- FastAPI docs: http://localhost:8000/docs
+- Streamlit dashboard: http://localhost:8501
+- MySQL: localhost:3306
 
 ### 3. 執行測試
 
@@ -205,74 +268,45 @@ make install-dev
 make test
 ```
 
-目前測試涵蓋 ETL transform 邏輯與 FastAPI 基礎行為，不需要連線到 MySQL 或 GCP，也不會載入真實模型檔。
+測試涵蓋 ETL transform 與 FastAPI 基礎行為，不需要連線到 MySQL 或 GCP，也不會載入真實模型檔。
 
-`requirements-dev.txt` 目前只安裝本機測試所需依賴；完整 notebook / 分析環境可另外安裝 `requirements.txt`。
+## 測試狀態
 
-若不使用 `make`，也可以直接執行原始指令：
+目前測試包含：
 
-```bash
-docker-compose up -d --build
-python -m pip install -r requirements-test.txt
-python -m pytest tests/ -v
-```
-
-## 模型訓練
-
-主要訓練流程位於：
-
-```text
-notebooks/05_multistation_lstm.ipynb
-```
-
-訓練完成後，模型與前處理資源會放在：
-
-```text
-api/model_files/
-```
-
-FastAPI 啟動時會載入：
-
-- `youbike_lstm_multistation.pth`
-- `scaler.pkl`
-- `station_mapping.pkl`
-- `station_info_map.pkl`
+- ETL 空資料與缺欄位錯誤處理
+- ETL 正常轉換結果
+- FastAPI health endpoint
+- `/stations` model-not-ready 行為
+- `/predict` request validation
+- unknown station 錯誤處理
+- mocked model prediction response
 
 ## 已知限制
 
-這個專案是 portfolio showcase，不是目前仍在營運的 production service。
+- 本專案是作品展示，不是目前持續營運的 production service。
+- Tableau dashboard 與舊 Streamlit 雲端 demo 可能已失效，README 不依賴這些連結。
+- `etl_job.py` 與 `dags/youbike_dag.py` 仍有部分 ETL 邏輯重複，後續可抽成共用 module。
+- `/predict` 的即時 demo 會用目前狀態組成短序列；若要做更嚴謹的 production forecasting，應改由資料庫查詢真實 lag window。
+- Notebook 訓練流程尚未完全轉成可重現的 training script。
 
-- ETL 邏輯目前在 `etl_job.py` 與 `dags/youbike_dag.py` 有重複，後續可抽成共用模組
-- `POST /predict` 在即時 demo 中使用目前狀態組成短序列，適合展示模型 serving 流程；若要做嚴謹 forecasting，應改用資料庫中的真實 lag window
-- Notebook 訓練流程尚未完全 pipeline 化，若要長期維護可補上可重現的 training script
-- 部署截圖是歷史證據，公開文件不提供 VM IP 或雲端資源細節
+## 與職缺能力的對應
 
-## 面試時可以怎麼介紹
+這個專案最適合對應以下職務能力：
 
-一句話版本：
+- 資料工程：ETL、Airflow、MySQL schema、批次資料擷取、資料品質測試
+- 數據應用工程：資料分析、特徵工程、模型服務化、Dashboard 支援
+- 後端 / AI 應用：FastAPI、Pydantic validation、模型推論 API、Docker Compose
 
-> 我做了一個 YouBike 預測資料應用，從 Airflow ETL、MySQL 時序資料、LSTM 模型訓練，到 FastAPI 推論服務與 Streamlit dashboard，累積處理過 4M+ 筆站點狀態資料。
-
-偏後端版本：
-
-> 這個專案展示我如何把模型封裝成 API，處理 request validation、模型啟動載入、Docker Compose 服務網路，以及 API 與 dashboard 的串接。
-
-偏 AI 應用版本：
-
-> 這個專案不是只停在 notebook，而是把 LSTM 預測模型接到 FastAPI，讓前端 dashboard 可以呼叫模型推論，形成可互動的 AI application prototype。
-
-偏資料工程版本：
-
-> 這個專案用 Airflow 定期擷取 YouBike 即時資料，寫入 MySQL dimension/fact schema，並用累積資料支援後續統計分析與模型訓練。
+它不主張涵蓋完整大數據平台能力，例如 Spark、Kafka、dbt、Data Lake、Kubernetes 或完整 MLOps；若要投遞偏中高階資料平台職缺，仍需要其他作品或後續擴充。
 
 ## 後續維護方向
 
-短期優先：
-
-1. 將 ETL transform/load 抽成共用 Python module，讓 Airflow DAG 只負責 orchestration
-2. 擴充 FastAPI endpoint tests，加入更多推論邊界條件
-3. 擴充本機驗證流程，例如 docker compose health check
-4. 補一個 batch risk endpoint，例如 `/stations/risk`，讓作品更貼近 AI 應用工程師職缺
+1. 抽出共用 ETL module，消除 DAG 與 standalone job 的重複邏輯。
+2. 加入 `/predict/batch` 或 `/stations/risk`，輸出多站點缺車風險排序。
+3. 將 notebook 訓練流程整理成可重現的 training script。
+4. 補充資料品質檢查，例如欄位 schema validation、重複資料檢查與時間斷點檢查。
+5. 補上 CI workflow，讓測試能在 push / PR 時自動執行。
 
 ## 作者
 
