@@ -1,216 +1,279 @@
-# Taipei YouBike 2.0 AIoT Traffic Prediction System
-### Cloud-Native Data Engineering | Multi-Station LSTM | Statistical Analysis
+# 台北 YouBike 2.0 預測與資料應用系統
 
-## Project Overview
-This project is an **Enterprise-Grade End-to-End Data Engineering & Analytics solution** designed to address urban mobility challenges in Taipei City. By leveraging a **Cloud-Native architecture**, the system processes over **4,000,000+ real-time records** to optimize YouBike 2.0 station balancing.
+> AI 後端 / 資料應用作品集：Airflow ETL、MySQL 時序資料、FastAPI 模型服務、Streamlit 操作介面、PyTorch LSTM 預測。
 
-It uniquely bridges the gap between **Modern Data Engineering** (GCP, Airflow, Docker) and **Rigorous Statistical Analysis** (Hypothesis Testing, ANOVA), aligning directly with UN SDGs.
+[English README](README.en.md)
 
-### SDG Alignment
-* **SDG 11 (Sustainable Cities):** Optimizing public transport availability to reduce private vehicle dependency.
-* **SDG 13 (Climate Action):** Quantifying the impact of extreme weather events (e.g., heavy rainfall) on green transportation usage.
+## 專案定位
 
-## Key Analytical Insights
-We conducted comprehensive statistical testing (T-Test, ANOVA, Chi-Square) on the dataset. Detailed analysis reveals the following critical insights:
+這是一個以台北市 YouBike 2.0 開放資料為主題的資料應用作品。專案從即時站點資料擷取開始，將站點基本資料與即時狀態寫入 MySQL，再透過 Airflow 排程維持資料流，最後以 FastAPI 提供 LSTM 模型推論 API，並用 Streamlit 做出可操作的預測介面。
 
-### 1. The "Average" Trap
-* **Insight:** While Peak and Off-Peak hours share similar average usage (~36%), the **Coefficient of Variation (CV)** spikes to **0.78** during peak hours.
-* **Conclusion:** The system faces extreme instability (high entropy) during rush hours, where "Stock-out" and "Full-load" events occur simultaneously. The problem is allocation, not total supply.
+這個 repo 的重點不是把 YouBike 營運問題包裝成大型商業產品，而是展示我能把資料流、後端 API、模型推論與容器化部署串成一個可說明、可維護、可展示的系統。
 
-### 2. The Campus "Black Hole" Effect
-* **Method:** Independent Samples T-Test & Forest Plot.
-* **Finding:** The **NTU Gongguan Campus** area shows a persistent operational deficit compared to the nearby Commercial District (Da'an), with a **38.5% Stock-out Rate**.
-* **Action:** A dedicated "Campus Shuttle" replenishment strategy is required, independent of district boundaries.
+適合用來補充以下能力：
 
-### 3. Land Use Zoning Effect
-* **Method:** K-Means Clustering & One-way ANOVA.
-* **Finding:** Operations follow a distinct hierarchy: **Mixed Use (Wanhua) > Commercial (Xinyi) > Residential (Wenshan)**.
-* **Implication:** Mixed Zones suffer from high retention (need space strategy), while Commercial Zones suffer from high turnover (need speed strategy).
+- 後端服務設計：FastAPI endpoint、Pydantic validation、模型資源啟動載入
+- AI 應用整合：PyTorch LSTM 模型封裝成 REST API
+- 資料工程基礎：Airflow 排程、ETL、MySQL schema、時間序列資料寫入
+- 容器化部署：Docker Compose 管理 Airflow、MySQL、API、Dashboard
+- 資料分析敘事：統計檢定、分群、尖離峰與站點失衡分析
 
-### 4. Model Evolution
-* **M1 Static Model (R-squared = 0.02):** Location alone cannot predict bike availability.
-* **M3 Dynamic Model (R-squared = 0.92):** Introducing "Lag Features" (High-frequency crawling data) proves that the system has strong state persistence. **Real-time data ingestion is business-critical.**
+## 系統總覽
 
-## System Architecture
-The system is deployed on **Google Cloud Platform (GCP)** using a microservices pattern orchestrated by `docker-compose`.
+```mermaid
+flowchart LR
+    A[YouBike 2.0 Open Data API] --> B[Airflow DAG / ETL Job]
+    B --> C[(MySQL 8)]
+    C --> D[Analysis Notebooks]
+    D --> E[PyTorch LSTM Model]
+    E --> F[FastAPI Prediction API]
+    F --> G[Streamlit Dashboard]
 
-### 1. Data Ingestion Layer (The ETL Pipeline)
-* **Orchestration:** Apache Airflow runs scheduled DAGs (Crontab: Every 10 min) to trigger data ingestion.
-* **Security:** **GCP Secret Manager** is integrated to securely retrieve database credentials (`mysql_password`) at runtime. **No sensitive keys are hardcoded.**
-* **Resilience:** Implements retry logic and error handling for API connection timeouts.
+    B --> H[GCP Secret Manager]
+```
 
-### 2. Storage Layer (The Data Warehouse)
-* **Database:** **MySQL 8.0** (Dockerized).
-* **Schema:** Separates Dimension Tables (`station_info`) from Fact Tables (`station_status`) to support 4M+ rows.
+核心資料表：
 
-### 3. Analytics & Serving Layer
-* **Model Training:** **PyTorch LSTM** network trained on multi-station sequences.
-* **API Service:** **FastAPI** serves prediction inference via REST endpoints.
-* **Frontend:** **Streamlit** provides an interactive dashboard for real-time visualization.
+- `station_info`：站點維度表，保存站點編號、名稱、行政區、經緯度與總車位數
+- `station_status`：站點狀態事實表，保存每次擷取時的可借車數、可還車位與記錄時間
 
-## Database Schema Design (MySQL)
-The database is designed with a normalized relational schema to optimize storage efficiency.
+## 專案成果
 
-* **`station_info` (Dimension Table):**
-    * Stores static data: `station_no` (PK), `lat`, `lng`, `district`.
-    * Relationship: One-to-Many (`1..*`) with status logs.
+本專案曾以 GCP VM + Docker Compose 部署，並累積超過 4M 筆 YouBike 站點狀態資料。README 中保留截圖作為 portfolio evidence，但不公開 VM IP、帳號、密碼或雲端專案細節。
 
-* **`station_status` (Fact Table):**
-    * Stores time-series metrics: `bikes_available`, `spaces_available`, `record_time`.
-    * High-frequency ingestion (every 10 minutes).
+### Airflow 排程
 
-## Tech Stack
-* **Cloud & DevOps:** Google Cloud Platform (VM), Docker, Docker Compose, **GCP Secret Manager**.
-* **Data Engineering:** Apache Airflow, Python (Pandas), MySQL, SQLAlchemy.
-* **Machine Learning:** **PyTorch (LSTM)**, Scikit-Learn (MinMaxScaler).
-* **Web Services:** FastAPI (Backend), Streamlit (Frontend).
-* **BI Tools:** Tableau Public.
+![Airflow Success](docs/images/airflow_success.png)
 
-## Key Features
+- Airflow DAG 每 10 分鐘擷取一次 YouBike 2.0 即時資料
+- ETL 會拆分站點基本資料與站點狀態資料
+- 站點狀態以 append-only 方式寫入 `station_status`
 
-### 1. Enterprise-Grade Security
-Unlike typical student projects, this pipeline implements **GCP Secret Manager** to handle credentials.
-* **Workflow:** Airflow DAG -> Request Secret (`mysql_password`) -> GCP IAM Authentication -> Return Payload -> Connect to DB.
-* *Benefit:* Prevents credential leakage in version control (Git).
+### 資料量證據
 
-### 2. Robust ETL Design
-The DAG splits incoming JSON into two streams:
-* **Station Info:** Only writes new stations (Static metadata).
-* **Station Status:** Appends time-series log data every 10 minutes.
+![Data Volume](docs/images/data_volume.png)
 
-### 3. Full-Stack Data App
-The project includes a user-facing application layer defined in `docker-compose.yaml`. The Dashboard container communicates with the API container via the internal Docker network, ensuring isolation and performance.
+- 累積處理超過 4M 筆站點狀態資料
+- MySQL schema 使用 station dimension + status fact table，避免站點基本資料重複儲存
 
-## Project Structure
+### 容器與雲端部署
+
+![Docker Stats](docs/images/docker_stats.png)
+
+- Docker Compose 管理 Airflow webserver、scheduler、MySQL、FastAPI、Streamlit
+- GCP Secret Manager 用於部署環境中的資料庫密碼讀取
+- 本 repo 僅保留 `.env.example`，不提交實際 `.env`
+
+### 基礎雲端監控
+
+![GCP Metrics](docs/images/gcp_metrics.png)
+
+- 曾在 GCP VM 上觀察 ETL 排程造成的 CPU 與網路流量變化
+- 截圖用於說明部署與排程曾實際運作，不代表目前仍持續營運
+
+## 分析重點
+
+### 1. 平均值陷阱
+
+尖峰與離峰時段的平均可用率可能接近，但尖峰時段的波動更高。這代表問題不只是總供給不足，而是不同站點之間的供需失衡。
+
+### 2. 校園區域效應
+
+台大公館周邊站點在特定時段容易出現缺車或滿站問題，需求型態與一般商業區不同。這讓模型與調度策略需要考慮站點所在區域，而不是只看行政區平均值。
+
+### 3. 土地使用型態差異
+
+不同區域，例如住宅區、商業區、混合使用區，會呈現不同的借還車節奏。Notebook 中以統計分析與分群方式探索這些差異。
+
+### 4. 動態特徵的重要性
+
+只用站點位置很難預測車輛數，加入 lag features 後模型表現明顯改善。這也是本專案保留即時 ETL 與時間序列資料庫的原因。
+
+## API 與 Dashboard
+
+FastAPI 服務位於 `api/app/main.py`，主要 endpoint：
+
+- `GET /`：服務狀態
+- `GET /stations`：模型支援的站點清單
+- `POST /predict`：輸入站點、目前車輛數、氣溫、降雨量，回傳一小時後預測車輛數
+
+範例 request：
+
+```json
+{
+  "station_no": "500101001",
+  "bikes_available": 12,
+  "temperature": 27.5,
+  "rain": 0.0
+}
+```
+
+範例 response：
+
+```json
+{
+  "station_no": "500101001",
+  "predicted_bikes_next_hour": 10
+}
+```
+
+Streamlit dashboard 位於 `dashboard/app.py`，提供站點選擇、天氣參數輸入與預測結果展示。
+
+## 技術棧
+
+- Backend：FastAPI、Pydantic、Uvicorn
+- ML / AI：PyTorch LSTM、scikit-learn、joblib
+- Data Engineering：Airflow、Pandas、SQLAlchemy
+- Database：MySQL 8
+- Dashboard：Streamlit
+- Infra：Docker、Docker Compose、GCP VM、GCP Secret Manager
+- Analysis：Jupyter Notebook、statistical testing、clustering、model comparison
+
+## 專案結構
+
 ```text
 YouBike-ETL-Pipeline/
 ├── api/
 │   ├── app/
-│   │   ├── main.py            # FastAPI Entrypoint
-│   │   └── model_files/       # LSTM Models (.pth) & Scalers
-│   └── Dockerfile.app         # Unified App Container
+│   │   └── main.py                 # FastAPI 模型推論服務
+│   └── model_files/                # LSTM 權重、scaler、站點 mapping
 ├── dags/
-│   └── youbike_dag.py         # Airflow DAG with GCP Secret Manager
+│   └── youbike_dag.py              # Airflow ETL DAG
 ├── dashboard/
-│   └── app.py                 # Streamlit Visualization App
+│   └── app.py                      # Streamlit 預測介面
 ├── data/
-│   ├── raw/                   # Raw CSV Data
-│   └── processed/             # Cleaned Data for ML
-├── sql/
-│   └── init_schema.sql        # MySQL 表結構初始化
-├── tests/
-│   └── test_etl.py            # ETL 單元測試
-├── docker-compose.yaml        # Microservices Definition
-├── Dockerfile                 # Custom Airflow Image
-├── .env.example               # 環境變數範例（複製為 .env 使用）
+│   └── raw/                        # 分析用原始資料
+├── docs/
+│   ├── adr/                        # 維護決策紀錄
+│   └── images/                     # portfolio evidence 截圖
 ├── notebooks/
 │   ├── 01_youbike_analysis.ipynb
 │   ├── 02_weather_etl.ipynb
-│   └── 05_multistation_lstm.ipynb  # Main Deep Learning Training
-├── requirements.txt           # Python dependencies
-└── requirements-dev.txt       # 開發/測試用（含 pytest）
+│   ├── 03_data_merge.ipynb
+│   ├── 04_lstm_prediction.ipynb
+│   ├── 05_multistation_lstm.ipynb
+│   └── 06_tableau_master_dataset.ipynb
+├── sql/
+│   └── init_schema.sql             # MySQL schema
+├── tests/
+│   └── test_etl.py                 # ETL transform 單元測試
+├── docker-compose.yaml
+├── Dockerfile                      # Airflow image
+├── Dockerfile.app                  # API / Dashboard image
+├── etl_job.py                      # 可獨立執行的 ETL job
+├── Makefile                        # 本機維護指令
+├── requirements.txt
+├── requirements-dev.txt
+├── requirements-test.txt
+└── requirements_app.txt
 ```
-<br>
 
-##  Production Infrastructure & Performance Evidence
-This project is deployed on **Google Cloud Platform (GCP)** `e2-standard-4` instance. Below are the evidences verifying the system's stability, data scale, and security standards.
+## 本機執行
 
-### 1. System Stability & Architecture
-**Containerized Microservices:**
-The system runs on a Dockerized architecture managing 5 core services (Webserver, Scheduler, Worker, DB, API).
-![Docker Stats](docs/images/docker_stats.png)
-* **Long-Term Stability:** Verified **5 weeks of continuous uptime** without crash.
-* **Resource Control:** Each container has strict memory/CPU limits configured in `docker-compose`.
+### 1. 建立環境變數
 
-**Workflow Automation:**
-![Airflow Success](docs/images/airflow_success.png)
-* **Reliability:** Achieved **365 consecutive successful DAG runs** (Total Success: 365), executing ETL jobs every 10 minutes.
-
-### 2. High-Volume Data Processing
-**Data Ingestion Capability:**
-![Data Volume](docs/images/data_volume.png)
-* **Scale:** Successfully processed and stored over **4.37 million records** (4,377,103 rows) of YouBike station status data, demonstrating capability to handle large-scale time-series datasets.
-
-### 3. Cloud Observability
-**Infrastructure Monitoring:**
-![GCP Metrics](docs/images/gcp_metrics.png)
-* **Real-time Metrics:** CPU and Network I/O spikes correlate perfectly with Airflow scheduled tasks, verifying active system operations on the cloud.
-
-### 4. Security & Compliance (DevSecOps)
-We implement a **Defense-in-Depth** strategy suitable for enterprise standards:
-
-**A. Network Security (Firewall):**
-![Firewall Rules](docs/images/firewall_rules.png)
-* **Traffic Control:** Strict ingress/egress rules allow traffic only on specific ports (e.g., 8080 for Web UI) from trusted IP ranges.
-
-**B. Application Security (Secrets Management):**
-![Secret Manager](docs/images/secret_manager.png)
-* **Zero Trust:** No hardcoded credentials in source code. All sensitive keys (Database Passwords, API Keys) are injected via **GCP Secret Manager** at runtime.
-
-##  How to Run
-
-### Prerequisite
-1.  GCP Compute Engine (e2-medium or higher).
-2.  GCP Service Account with `Secret Manager Secret Accessor` role.
-3.  Docker & Docker Compose installed.
-
-### 1. Environment Variables
-複製範例檔並填入實際值（勿將 `.env` 提交至版控）：
 ```bash
 cp .env.example .env
-# 編輯 .env，至少設定 MYSQL_ROOT_PASSWORD 與 MYSQL_PASSWORD
 ```
-`docker-compose` 會讀取 `.env` 作為 MySQL 與 ETL 的連線與密碼來源；若未設定 `DB_PASSWORD`，ETL 會改從 GCP Secret Manager 讀取。
 
-### 2. Deploy on GCP
+至少需要設定：
+
+```env
+MYSQL_ROOT_PASSWORD=your_root_password_here
+MYSQL_DATABASE=youbike_db
+MYSQL_USER=youbike
+MYSQL_PASSWORD=your_app_password_here
+```
+
+### 2. 啟動服務
+
 ```bash
-# Clone the repository
-git clone [Repo_URL]
-cd YouBike-ETL-Pipeline
+make up
+```
 
-# Build and Start Services
+預設服務：
+
+- Airflow UI：http://localhost:8080
+- FastAPI docs：http://localhost:8000/docs
+- Streamlit dashboard：http://localhost:8501
+- MySQL：localhost:3306
+
+### 3. 執行測試
+
+```bash
+make install-dev
+make test
+```
+
+目前測試涵蓋 ETL transform 邏輯與 FastAPI 基礎行為，不需要連線到 MySQL 或 GCP，也不會載入真實模型檔。
+
+`requirements-dev.txt` 目前只安裝本機測試所需依賴；完整 notebook / 分析環境可另外安裝 `requirements.txt`。
+
+若不使用 `make`，也可以直接執行原始指令：
+
+```bash
 docker-compose up -d --build
-```
-### 3. Configure Secrets
-Ensure the secret mysql_password is created in GCP Secret Manager in the project youbike-airflow-server.
-
-###  4. Access the Production Endpoints
-The system services are accessible via the VM 
-
-External IP:
-Airflow UI: http://34.105.181.XX:8080
-
-FastAPI Docs: http://34.105.181.XX:8000/docs
-
-Dashboard: http://34.105.181.XX:8501
-
-(Note: Replace .XX with the specific IP address)
-
-### 5. Model Retraining
-To update the LSTM model with the latest collected data:
-
-1. Navigate to notebooks/.
-Open 05_multistation_lstm.ipynb.
-
-2. Run all cells to query MySQL, preprocess data, and retrain the PyTorch model.
-
-3. The new weights will be saved to api/app/model_files/.
-
-### 6. (conditional) Run Analysis Locally
-Export data from MySQL or use the provided CSVs in data/raw/.
-Set up the Conda environment:
-```Bash
-conda create -n youbike_ai python=3.10
-conda activate youbike_ai
-pip install -r requirements.txt
-```
-Execute `notebooks/05_multistation_lstm.ipynb` to train the model.
-
-### 7. 執行測試
-ETL 單元測試（僅測試 transform 邏輯，不需 DB 或 GCP）：
-```bash
-pip install -r requirements-dev.txt   # 或 pip install pytest
+python -m pip install -r requirements-test.txt
 python -m pytest tests/ -v
 ```
 
-Created by [Kevin Lin] | 2025
+## 模型訓練
+
+主要訓練流程位於：
+
+```text
+notebooks/05_multistation_lstm.ipynb
+```
+
+訓練完成後，模型與前處理資源會放在：
+
+```text
+api/model_files/
+```
+
+FastAPI 啟動時會載入：
+
+- `youbike_lstm_multistation.pth`
+- `scaler.pkl`
+- `station_mapping.pkl`
+- `station_info_map.pkl`
+
+## 已知限制
+
+這個專案是 portfolio showcase，不是目前仍在營運的 production service。
+
+- ETL 邏輯目前在 `etl_job.py` 與 `dags/youbike_dag.py` 有重複，後續可抽成共用模組
+- `POST /predict` 在即時 demo 中使用目前狀態組成短序列，適合展示模型 serving 流程；若要做嚴謹 forecasting，應改用資料庫中的真實 lag window
+- Notebook 訓練流程尚未完全 pipeline 化，若要長期維護可補上可重現的 training script
+- 部署截圖是歷史證據，公開文件不提供 VM IP 或雲端資源細節
+
+## 面試時可以怎麼介紹
+
+一句話版本：
+
+> 我做了一個 YouBike 預測資料應用，從 Airflow ETL、MySQL 時序資料、LSTM 模型訓練，到 FastAPI 推論服務與 Streamlit dashboard，累積處理過 4M+ 筆站點狀態資料。
+
+偏後端版本：
+
+> 這個專案展示我如何把模型封裝成 API，處理 request validation、模型啟動載入、Docker Compose 服務網路，以及 API 與 dashboard 的串接。
+
+偏 AI 應用版本：
+
+> 這個專案不是只停在 notebook，而是把 LSTM 預測模型接到 FastAPI，讓前端 dashboard 可以呼叫模型推論，形成可互動的 AI application prototype。
+
+偏資料工程版本：
+
+> 這個專案用 Airflow 定期擷取 YouBike 即時資料，寫入 MySQL dimension/fact schema，並用累積資料支援後續統計分析與模型訓練。
+
+## 後續維護方向
+
+短期優先：
+
+1. 將 ETL transform/load 抽成共用 Python module，讓 Airflow DAG 只負責 orchestration
+2. 擴充 FastAPI endpoint tests，加入更多推論邊界條件
+3. 擴充本機驗證流程，例如 docker compose health check
+4. 補一個 batch risk endpoint，例如 `/stations/risk`，讓作品更貼近 AI 應用工程師職缺
+
+## 作者
+
+Kevin Lin, 2025

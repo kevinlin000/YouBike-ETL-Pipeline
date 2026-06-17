@@ -1,0 +1,13 @@
+# Minimal dependencies for local ETL and API tests.
+# These tests do not connect to MySQL or GCP and do not load real model artifacts.
+fastapi>=0.100.0
+httpx>=0.24.0
+joblib>=1.0.0
+numpy>=1.24.0
+pandas>=2.0.0
+requests>=2.0.0
+SQLAlchemy>=2.0.0
+PyMySQL>=1.0.0
+google-cloud-secret-manager>=2.0.0
+pytest>=7.0.0
+torch>=2.0.0
