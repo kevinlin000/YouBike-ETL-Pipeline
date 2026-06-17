@@ -12,7 +12,7 @@
 
 1. **資料工程層**：以 Airflow 每 10 分鐘擷取 YouBike 即時站點資料，將站點靜態資訊與即時狀態寫入 MySQL。
 2. **統計分析層**：使用描述統計、t 檢定、K-Means、ANOVA、卡方檢定與迴歸模型，分析站點失衡、土地使用型態與尖峰波動。
-3. **應用服務層**：將 PyTorch LSTM 模型封裝為 FastAPI 推論服務，並以 Streamlit 建立互動式預測介面。
+3. **應用服務層**：將 PyTorch LSTM 模型封裝為 FastAPI 推論服務，並以 Streamlit 建立單站預測與多站風險排序介面。
 
 此 repo 目前定位為 **portfolio showcase**，用於展示資料管線設計、資料建模、統計分析與模型服務化能力；不是目前仍在線上營運的 production service。
 
@@ -25,7 +25,7 @@
 | 資料建模 | 使用 `station_info` 維度表與 `station_status` 事實表分離靜態與動態資料 |
 | 統計分析 | 使用 CV、t 檢定、ANOVA、卡方檢定與迴歸分析定位缺車熱點 |
 | 預測建模 | 使用 Multi-Station LSTM 整合站點、天氣與歷史狀態特徵 |
-| 服務化 | 以 FastAPI 提供模型推論與站點風險排序 API，Streamlit 提供互動式操作介面 |
+| 服務化 | 以 FastAPI 提供模型推論與站點風險排序 API，Streamlit 提供單站預測與多站調度輔助介面 |
 | 部署證據 | 曾以 Docker Compose 部署於 GCP VM，並保留 Airflow、Docker、GCP 監控截圖 |
 | 工程化維護 | 以 pytest 覆蓋 ETL / API 基礎行為，並以 GitHub Actions 自動執行測試 |
 
@@ -215,6 +215,11 @@ FastAPI endpoint：
 
 `/stations/risk` 會共用 LSTM 推論流程，並根據推論後的可借車數與估計空位數標示 `stock_out`、`full_load`、`low_supply`、`low_dock` 或 `normal`。這讓模型輸出不只停在數字預測，而是轉成調度端可排序的 decision-support response。
 
+Streamlit dashboard 目前分成兩個頁籤：
+
+- 單站預測：選擇站點、輸入目前車輛數與天氣條件，呼叫 `/predict` 取得一小時後預測。
+- 多站風險排序：以可編輯表格輸入多個站點的目前車輛與空位，呼叫 `/stations/risk` 取得風險排序與建議動作。
+
 ## 部署與歷史展示
 
 本專案曾部署於 GCP VM，透過 Docker Compose 管理 Airflow、MySQL、FastAPI 與 Streamlit。原本的 Tableau dashboard 與 Streamlit 預測網站屬於課程展示用雲端 demo，目前不保證仍在線上，因此 README 不公開舊 VM IP 或失效連結。
@@ -363,6 +368,7 @@ make dbt-build
 - `/stations` model-not-ready 行為
 - `/predict` request validation
 - `/stations/risk` 批次風險排序、request validation 與 unknown station 行為
+- dashboard API client payload、錯誤處理與顯示 label mapping
 - unknown station 錯誤處理
 - mocked model prediction response
 - dbt seed fixtures、source/model tests、staging/mart build
@@ -391,10 +397,10 @@ CI 設定位於 `.github/workflows/ci.yml`。
 ## 後續維護方向
 
 1. 抽出共用 ETL module，消除 DAG 與 standalone job 的重複邏輯。
-2. 將 `/stations/risk` 串回 Streamlit dashboard，讓前端能展示多站點風險排序。
-3. 將 notebook 訓練流程整理成可重現的 training script。
-4. 補充資料品質檢查，例如欄位 schema validation、重複資料檢查與時間斷點檢查。
-5. 擴充 dbt marts，加入行政區 / 尖峰時段分析模型。
+2. 將 notebook 訓練流程整理成可重現的 training script。
+3. 補充資料品質檢查，例如欄位 schema validation、重複資料檢查與時間斷點檢查。
+4. 擴充 dbt marts，加入行政區 / 尖峰時段分析模型。
+5. 加入 dashboard demo/mock mode，讓面試展示不依賴真實模型檔與服務狀態。
 
 ## 作者
 

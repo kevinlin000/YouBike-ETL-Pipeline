@@ -12,7 +12,7 @@ The project has three layers:
 
 1. **Data engineering**: Airflow ingests YouBike station status every 10 minutes and stores normalized records in MySQL.
 2. **Statistical analysis**: Descriptive statistics, t-tests, K-Means, ANOVA, chi-square testing, and regression are used to analyze station imbalance and regional behavior.
-3. **Application serving**: A PyTorch LSTM model is served through FastAPI, with a Streamlit interface for prediction demos.
+3. **Application serving**: A PyTorch LSTM model is served through FastAPI, with a Streamlit interface for single-station prediction and multi-station risk ranking.
 
 This repository is a **portfolio showcase**, not an actively operated production service.
 
@@ -25,7 +25,7 @@ This repository is a **portfolio showcase**, not an actively operated production
 | Data model | Split static station metadata and dynamic status logs into dimension / fact tables |
 | Analysis | Used CV, t-tests, ANOVA, chi-square testing, and regression to identify imbalance patterns |
 | Forecasting | Built a Multi-Station LSTM with weather, station, and lag-style features |
-| Serving | Exposed model inference and station risk ranking through FastAPI, with a Streamlit UI |
+| Serving | Exposed model inference and station risk ranking through FastAPI, with a Streamlit UI for prediction and redistribution support |
 | Deployment evidence | Historical GCP VM deployment with Docker Compose, Airflow, MySQL, API, and dashboard services |
 | Engineering hygiene | pytest coverage for ETL / API behavior and GitHub Actions CI |
 
@@ -206,6 +206,11 @@ Risk-ranking response:
 
 `/stations/risk` reuses the LSTM inference path and converts predicted bikes and estimated empty docks into decision-support labels: `stock_out`, `full_load`, `low_supply`, `low_dock`, or `normal`.
 
+The Streamlit dashboard now has two tabs:
+
+- Single-station prediction: select one station, enter current availability and weather, then call `/predict`.
+- Multi-station risk ranking: edit current bike / dock availability for multiple stations, then call `/stations/risk` to produce ranked operational actions.
+
 ## Historical Deployment
 
 This project was previously deployed on a GCP VM with Docker Compose. The original Tableau dashboard and Streamlit cloud demo were created for course presentation purposes and may no longer be online. For that reason, this README does not publish old VM IPs or expired demo links.
@@ -354,6 +359,7 @@ Current tests cover:
 - `/stations` model-not-ready behavior
 - `/predict` request validation
 - `/stations/risk` batch ranking, request validation, and unknown station behavior
+- dashboard API client payloads, error handling, and display label mapping
 - unknown station handling
 - mocked model prediction response
 - dbt seed fixtures, source/model tests, and staging/mart build
@@ -382,10 +388,10 @@ It does not claim to cover full-scale big-data platform work such as Spark, Kafk
 ## Maintenance Roadmap
 
 1. Extract shared ETL logic into a reusable module.
-2. Connect `/stations/risk` back into the Streamlit dashboard for multi-station risk ranking.
-3. Convert notebook training into a reproducible training script.
-4. Add data-quality checks for schema, duplicates, and time gaps.
-5. Extend dbt marts with district-level and peak-hour analysis models.
+2. Convert notebook training into a reproducible training script.
+3. Add data-quality checks for schema, duplicates, and time gaps.
+4. Extend dbt marts with district-level and peak-hour analysis models.
+5. Add a dashboard demo/mock mode so interviews do not depend on real model artifacts or live services.
 
 ## Author
 
