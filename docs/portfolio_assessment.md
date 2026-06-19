@@ -12,7 +12,7 @@ This repository is best positioned as a maintained data engineering portfolio pr
 - `docs/interview_talk_track.md` provides a concise interview script, demo flow, and claim boundaries.
 - `docs/project_story.md` provides a report-style storyline that connects the operational problem, data pipeline, statistical evidence, LSTM prototype, API, dashboard, limitations, and next steps.
 - `docs/ml_modeling_audit.md` clarifies the ML notebook lineage, served LSTM artifacts, evaluation gaps, and interview-safe claims.
-- `docs/lstm_evaluation_report.md` records a local checkpoint-data training run and documents that the current LSTM beats rolling mean and same-time previous-day baselines, but not the strongest current-value baseline on the test split.
+- `docs/lstm_evaluation_report.md` records local checkpoint-data training runs and documents that the current LSTM does not beat the strongest baseline on either next-observation or approximate one-hour forecasting.
 - `docs/adr/0002-dashboard-demo-mode.md` records why demo mode is deterministic and what it should not be used to claim.
 - `docs/images/dashboard_demo_walkthrough.gif` provides a compact visual walkthrough for README scanning.
 - `dags/youbike_transform.py` centralizes transform behavior used by both the standalone ETL job and the Airflow DAG.
@@ -22,10 +22,10 @@ This repository is best positioned as a maintained data engineering portfolio pr
 
 ## Highest-Value Improvements
 
-1. Decide the operational forecast target.
+1. Improve model features before more LSTM tuning.
    - Value: strengthens ML engineering credibility.
-   - Scope: keep API horizon metadata explicit, decide whether the target should remain next observation or become next hour / a dispatch-specific window, then re-evaluate the existing baseline suite before tuning or replacing served artifacts.
-   - Risk: medium. It depends on preserving the processed dataset lineage and matching the model target to real operations.
+   - Scope: keep the current evaluation report as the boundary, then add aligned weather history, richer lag features, and simpler tabular/time-series baselines before replacing served artifacts.
+   - Risk: medium. It depends on preserving the processed dataset lineage and matching features to real operations.
 
 2. Add weather-history alignment to inference.
    - Value: closes the gap between notebook training and served inference.
@@ -64,4 +64,4 @@ Also be explicit that the regression R-squared improvement is not the LSTM evalu
 
 ## Recommendation
 
-For the next engineering iteration, decide the operational forecast target if the goal is to improve the ML engineering story. The API now exposes forecast-horizon metadata, and the documented local run shows the current LSTM beats weaker baselines but not the strongest current-value baseline. Model-accuracy claims should remain conservative. If the goal is recruiter-facing polish, add a static architecture diagram or short deployment walkthrough.
+For the next engineering iteration, improve model features if the goal is to strengthen the ML engineering story. The API now exposes forecast-horizon metadata, and documented local runs show the current LSTM does not beat the strongest baseline on tested horizons. Model-accuracy claims should remain conservative. If the goal is recruiter-facing polish, add a static architecture diagram or short deployment walkthrough.

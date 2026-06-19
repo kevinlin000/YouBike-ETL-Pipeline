@@ -138,7 +138,7 @@ The prediction service uses a Multi-Station LSTM prototype with:
 - rainfall category
 - station ID embedding
 
-The defensible claim is that the project contains an LSTM prototype and a FastAPI model-serving path. The notebooks record training loss and artifact generation, while `scripts/train_multistation_lstm.py` turns the multi-station training flow into a reproducible CLI that writes model weights, scaler, station mappings, and `model_metadata.json`. The metadata includes LSTM metrics, current-value, rolling-mean, and same-time previous-day baselines, plus MAE/RMSE deltas against each baseline. A local checkpoint-data evaluation is documented in [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md): the current LSTM beat rolling mean and same-time previous-day on the test split, but did not beat the strongest current-value baseline, so it should be positioned as a model-serving prototype rather than a proven accuracy improvement. See [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md) for the full modeling audit.
+The defensible claim is that the project contains an LSTM prototype and a FastAPI model-serving path. The notebooks record training loss and artifact generation, while `scripts/train_multistation_lstm.py` turns the multi-station training flow into a reproducible CLI that writes model weights, scaler, station mappings, and `model_metadata.json`. The metadata includes LSTM metrics, current-value, rolling-mean, and same-time previous-day baselines, plus MAE/RMSE deltas against each baseline. Local checkpoint-data evaluations are documented in [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md): for the next-observation target, the LSTM beat rolling mean and same-time previous-day but not the strongest current-value baseline; for an approximate one-hour target (`horizon_steps=6`), it still did not beat current value or rolling mean. It should therefore be positioned as a model-serving prototype rather than a proven accuracy improvement. See [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md) for the full modeling audit.
 
 ```bash
 make train-lstm
@@ -420,7 +420,7 @@ CI configuration lives in `.github/workflows/ci.yml`.
 - The ETL validation gate defaults to strict mode; use `ETL_VALIDATION_MODE=warn` if transient API anomalies should be logged without interrupting the run.
 - The dbt analytics layer currently uses seed fixtures for model validation; full analysis requires connecting to the real MySQL warehouse.
 - `/predict` accepts manual `recent_observations` and can query the latest three bike counts from MySQL `station_status` when DB credentials are configured; the automatic lookup still reuses the request temperature / rain because the warehouse does not currently store weather history. The API keeps `next_hour` response keys for compatibility, but the actual horizon should be read from response metadata.
-- The LSTM training flow now has a script, a baseline suite, and small tests; one local checkpoint-data evaluation shows the current LSTM beats rolling mean and same-time previous-day but does not beat the current-value baseline. Because the full processed training CSV is not committed, fresh clones cannot directly reproduce the full-data evaluation.
+- The LSTM training flow now has a script, a baseline suite, and small tests; local checkpoint-data evaluations show the current LSTM does not beat the strongest baseline for either the next-observation or approximate one-hour horizon. Because the full processed training CSV is not committed, fresh clones cannot directly reproduce the full-data evaluation.
 - Dashboard demo mode is a deterministic mock for interviews, not a real model-performance result.
 
 ## Role Relevance
@@ -437,8 +437,8 @@ It does not claim to cover full-scale big-data platform work such as Spark, Kafk
 
 A fuller portfolio assessment and prioritization note is available in [`docs/portfolio_assessment.md`](docs/portfolio_assessment.md), the interview script is in [`docs/interview_talk_track.md`](docs/interview_talk_track.md), the report storyline is in [`docs/project_story.md`](docs/project_story.md), the ML modeling boundary is documented in [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md), and the local LSTM evaluation is in [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md).
 
-1. Decide whether operational dispatch requires changing the target from next observation to next hour or another time window.
-2. Re-evaluate the baseline suite against the chosen horizon before tuning the LSTM further or simplifying the model.
+1. Add aligned weather history and richer lag features before tuning the LSTM further.
+2. Replace served artifacts only after a candidate model beats the baseline suite on the target horizon's test split.
 3. Add a short deployment walkthrough recording if more portfolio material is needed.
 
 ## Author

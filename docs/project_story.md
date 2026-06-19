@@ -45,11 +45,11 @@ This is a useful engineering improvement because the request contract now matche
 
 Use this version when you need to explain the project quickly:
 
-> I started from a station-level imbalance problem: users care about whether their origin station has bikes and whether their destination has docks. I built an Airflow and MySQL pipeline to capture station status every 10 minutes, then used statistical analysis to show that recent station state is a strong signal. The LSTM part is a prototype that turns those lag features, weather inputs, and station identity into a forecast. The strongest engineering part is the serving workflow: model artifacts are loaded by FastAPI, requests are validated, Streamlit converts predictions into stock-out and full-load risk ranking, and the API now exposes forecast-horizon metadata instead of relying only on legacy `next_hour` field names. I would not claim the LSTM is production-grade yet; a documented local evaluation shows the current LSTM beats rolling mean and same-time previous-day baselines, but not the strongest current-value baseline.
+> I started from a station-level imbalance problem: users care about whether their origin station has bikes and whether their destination has docks. I built an Airflow and MySQL pipeline to capture station status every 10 minutes, then used statistical analysis to show that recent station state is a strong signal. The LSTM part is a prototype that turns those lag features, weather inputs, and station identity into a forecast. The strongest engineering part is the serving workflow: model artifacts are loaded by FastAPI, requests are validated, Streamlit converts predictions into stock-out and full-load risk ranking, and the API now exposes forecast-horizon metadata instead of relying only on legacy `next_hour` field names. I would not claim the LSTM is production-grade yet; documented local evaluations show the current LSTM does not beat the strongest baseline on either next-observation or approximate one-hour forecasting.
 
 Chinese version:
 
-> 這個專案一開始是在處理站點層級的供需失衡：使用者在意的是出發站有沒有車、目的地有沒有位，而不是全市平均還剩多少車。所以我用 Airflow 和 MySQL 每 10 分鐘收集站點狀態，再用統計分析確認近期站點狀態有預測訊號。LSTM 這段是 prototype，用 lag features、天氣和站點 embedding 做預測；比較值得強調的是後面的服務化流程，FastAPI 載入模型 artifact、驗證 request，Streamlit 再把預測轉成缺車或滿站風險排序，而且 API 現在會回傳 forecast-horizon metadata，不只依賴早期 demo 留下的 `next_hour` 欄位名稱。我不會把它說成 production-grade ML；現在本地評估顯示 LSTM 有打敗 rolling mean 和 same-time previous-day，但沒有打敗最強的 current-value baseline。
+> 這個專案一開始是在處理站點層級的供需失衡：使用者在意的是出發站有沒有車、目的地有沒有位，而不是全市平均還剩多少車。所以我用 Airflow 和 MySQL 每 10 分鐘收集站點狀態，再用統計分析確認近期站點狀態有預測訊號。LSTM 這段是 prototype，用 lag features、天氣和站點 embedding 做預測；比較值得強調的是後面的服務化流程，FastAPI 載入模型 artifact、驗證 request，Streamlit 再把預測轉成缺車或滿站風險排序，而且 API 現在會回傳 forecast-horizon metadata，不只依賴早期 demo 留下的 `next_hour` 欄位名稱。我不會把它說成 production-grade ML；現在本地評估顯示 LSTM 在下一筆 observation 和近似一小時 horizon 都沒有打敗最強 baseline。
 
 ## Report Structure To Use
 
@@ -63,13 +63,13 @@ If this project needs to be presented as a written report, use this order:
 6. Serving: FastAPI request contract, artifact loading, and warehouse lag-window lookup.
 7. Dashboard: demo mode, single-station prediction, and multi-station risk ranking.
 8. Limitations: not production service, not complete LSTM evaluation, weather history not yet aligned.
-9. Next step: decide whether the operational target should be next observation, next hour, or another dispatch window before making model-accuracy claims.
+9. Next step: add aligned weather history and richer lag features before making model-accuracy claims.
 
 ## Open Gaps
 
 | Gap | Why it matters | Best next action |
 | --- | --- | --- |
-| Current artifacts are evaluated as next-observation forecasting | This is honest, but it may not match a real dispatch decision window. | Decide the operational horizon, re-evaluate the baseline suite, then tune or simplify the model only if needed. |
+| LSTM does not beat the strongest baseline in local next-observation or approximate one-hour runs | The model is useful for serving demonstration, but not yet as an accuracy claim. | Add aligned weather history, richer lag features, and simpler baselines before tuning or replacing the model. |
 | Weather history is not in warehouse lookup | Automatic inference only fetches bike-count history, not aligned weather history. | Add a weather observation table or a documented feature-store-style join before claiming production forecasting. |
 | Dashboard demo is mocked | It is useful for interviews but not model evidence. | Keep demo mode clearly labeled and link it to the real API contract. |
 | dbt layer is lightweight | It validates analytics shape but is not a complete warehouse product. | Expand marts only if targeting analytics engineering roles. |

@@ -18,7 +18,7 @@ The analysis layer uses descriptive statistics, t-tests, ANOVA, clustering, chi-
 
 The application layer wraps the LSTM inference path with FastAPI. The dashboard turns raw predictions into a decision-support workflow: a user can inspect a single station or rank multiple stations by stock-out and full-load risk. For interviews, demo mode uses deterministic mock data to show the product flow safely. It should be described as a workflow demo, not as model-performance evidence.
 
-When discussing the machine-learning portion, be precise: the regression R-squared improvement shows that recent station state has predictive signal, while the LSTM is a served prototype. A documented local evaluation shows the current LSTM beats rolling mean and same-time previous-day baselines, but not the strongest current-value baseline on the test split, so it should not be called production forecasting.
+When discussing the machine-learning portion, be precise: the regression R-squared improvement shows that recent station state has predictive signal, while the LSTM is a served prototype. Local evaluations show the current LSTM does not beat the strongest baseline for either next-observation or approximate one-hour forecasting, so it should not be called production forecasting.
 
 ## Demo Flow
 
@@ -62,11 +62,11 @@ Station metadata changes slowly, while availability changes frequently. Separati
 
 The analysis suggested that recent station availability carries predictive signal. The LSTM extends that idea into a PyTorch sequence-model prototype with station embeddings and weather features. The strongest thing to emphasize is the model-serving workflow: notebook artifacts are packaged, loaded by FastAPI, validated through API contracts, and translated by the dashboard into operational risk labels.
 
-The careful limitation is that this is not yet a rigorously evaluated forecasting system. The repo now includes a reproducible training script with time-based train / validation / test splitting, metadata output, and a baseline suite. The documented local run shows the current LSTM beats rolling mean and same-time previous-day baselines, but not the current-value baseline on the test split, which is why I position it as a model-serving prototype rather than a model-accuracy claim.
+The careful limitation is that this is not yet a rigorously evaluated forecasting system. The repo now includes a reproducible training script with time-based train / validation / test splitting, metadata output, and a baseline suite. The documented local runs show the current LSTM does not beat the strongest baseline on the tested horizons, which is why I position it as a model-serving prototype rather than a model-accuracy claim.
 
 ### What would you improve next?
 
-For ML engineering quality, I would decide whether the operational target should be next observation, next hour, or a dispatch-specific window, re-evaluate the baseline suite against that horizon, and then tune or simplify the LSTM based on the result. The API now exposes forecast-horizon metadata and already accepts a 3-row recent-observation window, but it still needs weather-history alignment. For analytics engineering roles, I would expand the dbt marts and connect the warehouse-backed metrics to the dashboard. The shared transform module and pre-load validation gate are already in place, so the next step depends on which job family I want to target.
+For ML engineering quality, I would add aligned weather history, richer lag features, and simpler tabular/time-series baselines before tuning the LSTM further. The API now exposes forecast-horizon metadata and already accepts a 3-row recent-observation window, but it still needs weather-history alignment. For analytics engineering roles, I would expand the dbt marts and connect the warehouse-backed metrics to the dashboard. The shared transform module and pre-load validation gate are already in place, so the next step depends on which job family I want to target.
 
 ### What is the biggest limitation?
 
