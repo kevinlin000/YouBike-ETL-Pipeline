@@ -289,7 +289,7 @@ def render_dashboard_header(demo_mode: bool) -> None:
             <div>
                 <p class="eyebrow">YouBike 2.0 decision support</p>
                 <h1>YouBike 2.0 預測與調度輔助</h1>
-                <p>台北市站點一小時可借車預測，搭配多站缺車與滿站風險排序，將模型輸出轉成面試展示可操作的調度流程。</p>
+                <p>台北市站點模型時窗可借車預測，搭配多站缺車與滿站風險排序，將模型輸出轉成面試展示可操作的調度流程。</p>
             </div>
             <div class="run-state">
                 <span>{escape(mode_label)}</span>
@@ -333,9 +333,9 @@ def render_single_prediction(
     rain: float,
     demo_mode: bool,
 ) -> None:
-    st.subheader("單站一小時預測")
+    st.subheader("單站模型時窗預測")
     st.markdown(
-        '<p class="section-note">輸入目前水位與天氣條件，快速檢查指定站點下一小時供需狀態。</p>',
+        '<p class="section-note">輸入目前水位與天氣條件，快速檢查指定站點在模型預測時窗內的供需狀態。</p>',
         unsafe_allow_html=True,
     )
 
@@ -368,7 +368,7 @@ def render_single_prediction(
         st.success("預測完成")
 
         p1, p2, p3 = st.columns(3)
-        p1.metric("一小時後預測車輛", f"{prediction} 台", delta=delta)
+        p1.metric("模型時窗預測車輛", f"{prediction} 台", delta=delta)
         p2.metric("氣溫", f"{temperature:.1f}°C")
         p3.metric("降雨", f"{rain:.1f} mm")
 

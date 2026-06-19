@@ -81,6 +81,8 @@ The reported R-squared improvement from roughly `0.02` to `0.92` belongs to the 
 
 The training notebook creates real sliding windows from historical rows. The FastAPI `/predict` path accepts optional `recent_observations`, so callers can provide the same 3-row lag-window shape used by the training flow. When request history is omitted and DB credentials are available, the API attempts to load the latest three `bikes_available` rows from MySQL `station_status`.
 
+The API still keeps legacy `predicted_bikes_next_hour` and `predicted_spaces_next_hour` response keys for compatibility with the original dashboard demo. New responses include `forecast_horizon` metadata so callers can distinguish legacy field names from the model's actual evaluated horizon. The documented local evaluation uses `horizon_steps=1`, meaning the next observation rather than a guaranteed one-hour forecast.
+
 This closes the biggest serving-shape gap, but it is still not complete production forecasting. The current warehouse table does not store weather history, so the automatic lookup uses historical bike counts with the request's current temperature and rain values. A production-grade endpoint should query both recent station observations and aligned weather features before running inference.
 
 ## Interview-Safe Explanation
@@ -104,7 +106,7 @@ Also avoid:
 ## Recommended Upgrade Path
 
 1. Keep [`docs/lstm_evaluation_report.md`](lstm_evaluation_report.md) as the current model-evaluation boundary.
-2. Verify whether the target should be next observation, next hour, or another operational horizon.
+2. Decide whether the target should remain next observation or be retrained for next hour or another operational horizon.
 3. Re-evaluate the baseline suite against the selected horizon.
 4. Add weather-history alignment to the warehouse-backed inference path.
 5. Replace served artifacts only after a new model beats the baseline suite on the test split.

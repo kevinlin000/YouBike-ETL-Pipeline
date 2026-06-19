@@ -25,7 +25,7 @@ When discussing the machine-learning portion, be precise: the regression R-squar
 1. Run `make dashboard-demo`.
 2. Open the Streamlit URL, normally `http://localhost:8501`.
 3. Point out the sidebar demo-mode state. Say that the dashboard is not depending on FastAPI, model files, or Docker Compose in this mode.
-4. On the single-station tab, run one prediction and explain that the UI converts current station state plus weather inputs into a one-hour availability estimate.
+4. On the single-station tab, run one prediction and explain that the UI converts current station state plus weather inputs into a model-horizon availability estimate. Be explicit that the legacy API field name says `next_hour`, while the documented evaluation horizon is one next observation.
 5. On the multi-station tab, run risk ranking and focus on the priority cards. Explain that this is the operational translation layer: predictions become ranked actions such as replenishing bikes or moving bikes out.
 6. Close with the architecture: Airflow and MySQL build the data foundation, notebooks establish analytical evidence, FastAPI serves inference, and Streamlit demonstrates the decision workflow.
 
@@ -66,7 +66,7 @@ The careful limitation is that this is not yet a rigorously evaluated forecastin
 
 ### What would you improve next?
 
-For ML engineering quality, I would clarify whether the operational target is next observation or next hour, re-evaluate the baseline suite against that horizon, and then tune or simplify the LSTM based on the result. The API already accepts a 3-row recent-observation window and can fetch recent bike counts from `station_status` when DB credentials are configured, but it still needs weather-history alignment. For analytics engineering roles, I would expand the dbt marts and connect the warehouse-backed metrics to the dashboard. The shared transform module and pre-load validation gate are already in place, so the next step depends on which job family I want to target.
+For ML engineering quality, I would decide whether the operational target should be next observation, next hour, or a dispatch-specific window, re-evaluate the baseline suite against that horizon, and then tune or simplify the LSTM based on the result. The API now exposes forecast-horizon metadata and already accepts a 3-row recent-observation window, but it still needs weather-history alignment. For analytics engineering roles, I would expand the dbt marts and connect the warehouse-backed metrics to the dashboard. The shared transform module and pre-load validation gate are already in place, so the next step depends on which job family I want to target.
 
 ### What is the biggest limitation?
 

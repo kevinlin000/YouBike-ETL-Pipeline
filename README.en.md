@@ -152,10 +152,12 @@ FastAPI endpoints:
 | --- | --- | --- |
 | GET | `/` | Service status |
 | GET | `/stations` | Supported station list |
-| POST | `/predict` | Predicts available bikes one hour later |
+| POST | `/predict` | Predicts available bikes for the model horizon |
 | POST | `/stations/risk` | Ranks multi-station stock-out / full-load risk |
 
 `/predict` and `/stations/risk` accept optional `recent_observations`, a 3-row recent-history window for LSTM inference. When it is omitted and database credentials are available, the API attempts to load the latest three `bikes_available` rows from MySQL `station_status`. If the lookup cannot return three rows, or DB credentials are not configured, the API keeps the demo-compatible fallback and repeats the current state into a short sequence.
+
+Note: the API keeps the legacy `predicted_bikes_next_hour` / `predicted_spaces_next_hour` response keys for compatibility with the original demo. Interpret the actual horizon through `forecast_horizon` and `forecast_horizon_description`. The current local evaluation uses `horizon_steps=1`, meaning the next observation rather than a proven one-hour forecast.
 
 Example request:
 
@@ -178,7 +180,9 @@ Example response:
 ```json
 {
   "station_no": "500101001",
-  "predicted_bikes_next_hour": 10
+  "predicted_bikes_next_hour": 10,
+  "forecast_horizon": "model_artifact_horizon",
+  "forecast_horizon_description": "Legacy response keys use next_hour naming, but current artifacts should be interpreted as the model-defined horizon. The documented local evaluation uses horizon_steps=1, meaning the next observation rather than a guaranteed one-hour forecast."
 }
 ```
 
@@ -214,11 +218,13 @@ Risk-ranking response:
       "current_spaces_available": 18,
       "predicted_bikes_next_hour": 1,
       "predicted_spaces_next_hour": 19,
+      "forecast_horizon": "model_artifact_horizon",
       "risk_level": "stock_out",
       "risk_score": 101,
       "suggested_action": "rebalance_in"
     }
-  ]
+  ],
+  "forecast_horizon": "model_artifact_horizon"
 }
 ```
 
@@ -226,7 +232,7 @@ Risk-ranking response:
 
 The Streamlit dashboard now has two tabs:
 
-- Single-station prediction: select one station, enter current availability and weather, then call `/predict`.
+- Single-station prediction: select one station, enter current availability and weather, then call `/predict` for the model-horizon forecast.
 - Multi-station risk ranking: edit current bike / dock availability for multiple stations, then call `/stations/risk` to produce ranked operational actions.
 
 ## Dashboard Demo
@@ -413,7 +419,7 @@ CI configuration lives in `.github/workflows/ci.yml`.
 - ETL transform logic is shared; extract/load code still differs between the standalone job and Airflow DAG because their runtime environments differ.
 - The ETL validation gate defaults to strict mode; use `ETL_VALIDATION_MODE=warn` if transient API anomalies should be logged without interrupting the run.
 - The dbt analytics layer currently uses seed fixtures for model validation; full analysis requires connecting to the real MySQL warehouse.
-- `/predict` accepts manual `recent_observations` and can query the latest three bike counts from MySQL `station_status` when DB credentials are configured; the automatic lookup still reuses the request temperature / rain because the warehouse does not currently store weather history.
+- `/predict` accepts manual `recent_observations` and can query the latest three bike counts from MySQL `station_status` when DB credentials are configured; the automatic lookup still reuses the request temperature / rain because the warehouse does not currently store weather history. The API keeps `next_hour` response keys for compatibility, but the actual horizon should be read from response metadata.
 - The LSTM training flow now has a script, a baseline suite, and small tests; one local checkpoint-data evaluation shows the current LSTM beats rolling mean and same-time previous-day but does not beat the current-value baseline. Because the full processed training CSV is not committed, fresh clones cannot directly reproduce the full-data evaluation.
 - Dashboard demo mode is a deterministic mock for interviews, not a real model-performance result.
 
@@ -431,7 +437,7 @@ It does not claim to cover full-scale big-data platform work such as Spark, Kafk
 
 A fuller portfolio assessment and prioritization note is available in [`docs/portfolio_assessment.md`](docs/portfolio_assessment.md), the interview script is in [`docs/interview_talk_track.md`](docs/interview_talk_track.md), the report storyline is in [`docs/project_story.md`](docs/project_story.md), the ML modeling boundary is documented in [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md), and the local LSTM evaluation is in [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md).
 
-1. Clarify whether the forecasting target should be next observation, next hour, or the operational dispatch window.
+1. Decide whether operational dispatch requires changing the target from next observation to next hour or another time window.
 2. Re-evaluate the baseline suite against the chosen horizon before tuning the LSTM further or simplifying the model.
 3. Add a short deployment walkthrough recording if more portfolio material is needed.
 

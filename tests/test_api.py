@@ -167,6 +167,8 @@ def test_predict_returns_prediction_with_mocked_model(client, monkeypatch):
     assert response.json() == {
         "station_no": "500101001",
         "predicted_bikes_next_hour": 7,
+        "forecast_horizon": api_main.MODEL_FORECAST_HORIZON,
+        "forecast_horizon_description": api_main.MODEL_FORECAST_HORIZON_DESCRIPTION,
     }
 
 
@@ -388,6 +390,7 @@ def test_station_risks_returns_ranked_decision_support(client, monkeypatch):
                 "current_spaces_available": 18,
                 "predicted_bikes_next_hour": 1,
                 "predicted_spaces_next_hour": 19,
+                "forecast_horizon": api_main.MODEL_FORECAST_HORIZON,
                 "risk_level": "stock_out",
                 "risk_score": 101,
                 "suggested_action": "rebalance_in",
@@ -398,11 +401,14 @@ def test_station_risks_returns_ranked_decision_support(client, monkeypatch):
                 "current_spaces_available": 5,
                 "predicted_bikes_next_hour": 1,
                 "predicted_spaces_next_hour": 19,
+                "forecast_horizon": api_main.MODEL_FORECAST_HORIZON,
                 "risk_level": "stock_out",
                 "risk_score": 101,
                 "suggested_action": "rebalance_in",
             },
-        ]
+        ],
+        "forecast_horizon": api_main.MODEL_FORECAST_HORIZON,
+        "forecast_horizon_description": api_main.MODEL_FORECAST_HORIZON_DESCRIPTION,
     }
 
 

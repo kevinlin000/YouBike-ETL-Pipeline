@@ -13,6 +13,13 @@ from sqlalchemy.engine import Engine, URL
 
 logger = logging.getLogger(__name__)
 MODEL_TIME_STEPS = 3
+MODEL_FORECAST_HORIZON = "model_artifact_horizon"
+MODEL_FORECAST_HORIZON_DESCRIPTION = (
+    "Legacy response keys use next_hour naming, but current artifacts should be "
+    "interpreted as the model-defined horizon. The documented local evaluation "
+    "uses horizon_steps=1, meaning the next observation rather than a guaranteed "
+    "one-hour forecast."
+)
 
 # --- 1. 定義資料格式 ---
 class RecentObservation(BaseModel):
@@ -82,6 +89,8 @@ class PredictRequest(BaseModel):
 class PredictResponse(BaseModel):
     station_no: str
     predicted_bikes_next_hour: int
+    forecast_horizon: str
+    forecast_horizon_description: str
 
 class StationRiskInput(BaseModel):
     station_no: str
@@ -138,11 +147,14 @@ class StationRiskResult(BaseModel):
     current_spaces_available: int
     predicted_bikes_next_hour: int
     predicted_spaces_next_hour: int
+    forecast_horizon: str
     risk_level: str
     risk_score: int
     suggested_action: str
 
 class StationsRiskResponse(BaseModel):
+    forecast_horizon: str
+    forecast_horizon_description: str
     risks: list[StationRiskResult]
 
 class StationsResponse(BaseModel):
@@ -420,7 +432,9 @@ def predict(request: PredictRequest):
 
         return {
             "station_no": request.station_no,
-            "predicted_bikes_next_hour": final_prediction
+            "predicted_bikes_next_hour": final_prediction,
+            "forecast_horizon": MODEL_FORECAST_HORIZON,
+            "forecast_horizon_description": MODEL_FORECAST_HORIZON_DESCRIPTION,
         }
 
     except Exception as e:
@@ -454,6 +468,7 @@ def rank_station_risks(request: StationsRiskRequest):
                 "current_spaces_available": station.spaces_available,
                 "predicted_bikes_next_hour": predicted_bikes,
                 "predicted_spaces_next_hour": predicted_spaces,
+                "forecast_horizon": MODEL_FORECAST_HORIZON,
                 "risk_level": risk_level,
                 "risk_score": risk_score,
                 "suggested_action": suggested_action,
@@ -465,4 +480,8 @@ def rank_station_risks(request: StationsRiskRequest):
         raise HTTPException(status_code=500, detail="Internal Risk Ranking Error")
 
     risks.sort(key=lambda item: (-item["risk_score"], item["station_no"]))
-    return {"risks": risks}
+    return {
+        "forecast_horizon": MODEL_FORECAST_HORIZON,
+        "forecast_horizon_description": MODEL_FORECAST_HORIZON_DESCRIPTION,
+        "risks": risks,
+    }

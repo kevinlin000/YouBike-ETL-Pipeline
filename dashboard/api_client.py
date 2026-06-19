@@ -1,6 +1,11 @@
 import requests
 
 DEFAULT_TIMEOUT_SECONDS = 10
+FORECAST_HORIZON = "model_artifact_horizon"
+FORECAST_HORIZON_DESCRIPTION = (
+    "Demo and live responses keep legacy next_hour keys, but should be interpreted "
+    "as the model-defined forecast horizon."
+)
 DEMO_STATION_MAP = {
     "500101001": "捷運公館站 (大安區)",
     "500101002": "臺大資訊大樓 (大安區)",
@@ -106,6 +111,8 @@ def demo_predict_station(
     return {
         "station_no": str(station_no),
         "predicted_bikes_next_hour": predicted,
+        "forecast_horizon": FORECAST_HORIZON,
+        "forecast_horizon_description": FORECAST_HORIZON_DESCRIPTION,
     }
 
 
@@ -138,6 +145,7 @@ def demo_rank_station_risks(
                 "current_spaces_available": current_spaces,
                 "predicted_bikes_next_hour": predicted_bikes,
                 "predicted_spaces_next_hour": predicted_spaces,
+                "forecast_horizon": FORECAST_HORIZON,
                 "risk_level": risk_level,
                 "risk_score": risk_score,
                 "suggested_action": suggested_action,

@@ -161,10 +161,12 @@ FastAPI endpoint：
 | --- | --- | --- |
 | GET | `/` | 服務狀態 |
 | GET | `/stations` | 回傳模型支援的站點清單 |
-| POST | `/predict` | 預測指定站點一小時後的可借車數 |
+| POST | `/predict` | 預測指定站點在模型時窗內的可借車數 |
 | POST | `/stations/risk` | 批次評估多站點缺車 / 滿站風險並排序 |
 
 `/predict` 與 `/stations/risk` 支援可選的 `recent_observations`，可傳入 3 筆近期觀測值作為 LSTM lag window。若未提供，API 會在 DB credentials 存在時嘗試從 MySQL `station_status` 查詢最近 3 筆 `bikes_available`；查不到完整 3 筆或未設定 DB 時，會維持展示相容模式：使用目前狀態重複成短序列。
+
+注意：API 仍保留 `predicted_bikes_next_hour` / `predicted_spaces_next_hour` 這組早期 demo 欄位名稱以維持相容性；實際 horizon 應以 response 中的 `forecast_horizon` 與 `forecast_horizon_description` 判讀。目前本地評估使用 `horizon_steps=1`，代表下一筆 observation，而不是已驗證的一小時預測。
 
 範例 request：
 
@@ -187,7 +189,9 @@ FastAPI endpoint：
 ```json
 {
   "station_no": "500101001",
-  "predicted_bikes_next_hour": 10
+  "predicted_bikes_next_hour": 10,
+  "forecast_horizon": "model_artifact_horizon",
+  "forecast_horizon_description": "Legacy response keys use next_hour naming, but current artifacts should be interpreted as the model-defined horizon. The documented local evaluation uses horizon_steps=1, meaning the next observation rather than a guaranteed one-hour forecast."
 }
 ```
 
@@ -223,11 +227,13 @@ FastAPI endpoint：
       "current_spaces_available": 18,
       "predicted_bikes_next_hour": 1,
       "predicted_spaces_next_hour": 19,
+      "forecast_horizon": "model_artifact_horizon",
       "risk_level": "stock_out",
       "risk_score": 101,
       "suggested_action": "rebalance_in"
     }
-  ]
+  ],
+  "forecast_horizon": "model_artifact_horizon"
 }
 ```
 
@@ -235,7 +241,7 @@ FastAPI endpoint：
 
 Streamlit dashboard 目前分成兩個頁籤：
 
-- 單站預測：選擇站點、輸入目前車輛數與天氣條件，呼叫 `/predict` 取得一小時後預測。
+- 單站預測：選擇站點、輸入目前車輛數與天氣條件，呼叫 `/predict` 取得模型時窗預測。
 - 多站風險排序：以可編輯表格輸入多個站點的目前車輛與空位，呼叫 `/stations/risk` 取得風險排序與建議動作。
 
 ## Dashboard Demo
@@ -422,7 +428,7 @@ CI 設定位於 `.github/workflows/ci.yml`。
 - ETL transform 已抽成共用 module；extract/load 仍保留 standalone job 與 Airflow DAG 各自的執行環境差異。
 - ETL validation gate 預設採 strict mode；若真實 API 短暫異常不希望中斷流程，可用 `ETL_VALIDATION_MODE=warn` 改成只記錄警告。
 - dbt analytics layer 目前使用 seed fixtures 驗證模型結構；若要分析完整資料，需要連接實際 MySQL warehouse。
-- `/predict` 可手動傳入 `recent_observations`，也可在 DB credentials 存在時自動從 MySQL `station_status` 查最近 3 筆可借車數；但目前 warehouse 沒有 weather history，因此自動查詢路徑會沿用 request 中的 temperature / rain。
+- `/predict` 可手動傳入 `recent_observations`，也可在 DB credentials 存在時自動從 MySQL `station_status` 查最近 3 筆可借車數；但目前 warehouse 沒有 weather history，因此自動查詢路徑會沿用 request 中的 temperature / rain。API 保留 `next_hour` 欄位名稱作相容用途，實際 horizon 需看 response metadata。
 - LSTM 訓練流程已提供 script、baseline suite 與小型測試；一次本地 checkpoint-data 評估顯示目前 LSTM 有打敗 rolling mean 與 same-time previous-day，但沒有打敗 current-value baseline。由於完整 processed training CSV 未提交，fresh clone 無法直接重現完整資料評估。
 - Dashboard demo mode 是面試展示用的 deterministic mock，不代表真實模型評估表現。
 
@@ -440,7 +446,7 @@ CI 設定位於 `.github/workflows/ci.yml`。
 
 更完整的作品集評估與優先順序整理在 [`docs/portfolio_assessment.md`](docs/portfolio_assessment.md)，面試說明稿可參考 [`docs/interview_talk_track.md`](docs/interview_talk_track.md)，報告主線整理在 [`docs/project_story.md`](docs/project_story.md)，ML 脈絡與可主張範圍整理在 [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md)，本地 LSTM 評估結果在 [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md)。
 
-1. 釐清預測目標到底是下一筆觀測、下一小時，或實際調度需要的時間窗。
+1. 根據實際調度需求決定是否把模型 target 從下一筆 observation 改成下一小時或其他時間窗。
 2. 根據新 horizon 重新評估 baseline suite，再決定是否繼續調 LSTM 或改用更簡單模型。
 3. 若要強化部署敘事，可補一份短部署錄影。
 
