@@ -484,7 +484,7 @@ def build_metadata(
         },
         "limitations": [
             "Metrics are only meaningful when the full processed dataset is available.",
-            "The current FastAPI /predict path still needs a real warehouse-backed lag window.",
+            "The warehouse-backed inference path can fetch recent bike counts but still needs aligned weather history.",
         ],
     }
 

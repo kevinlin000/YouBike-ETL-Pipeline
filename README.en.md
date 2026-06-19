@@ -138,7 +138,7 @@ The prediction service uses a Multi-Station LSTM prototype with:
 - rainfall category
 - station ID embedding
 
-The defensible claim is that the project contains an LSTM prototype and a FastAPI model-serving path. The notebooks record training loss and artifact generation, while `scripts/train_multistation_lstm.py` turns the multi-station training flow into a reproducible CLI that writes model weights, scaler, station mappings, and `model_metadata.json`. The metadata includes LSTM metrics, a current-value naive baseline, and MAE/RMSE deltas against that baseline. See [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md) for the full modeling audit.
+The defensible claim is that the project contains an LSTM prototype and a FastAPI model-serving path. The notebooks record training loss and artifact generation, while `scripts/train_multistation_lstm.py` turns the multi-station training flow into a reproducible CLI that writes model weights, scaler, station mappings, and `model_metadata.json`. The metadata includes LSTM metrics, a current-value naive baseline, and MAE/RMSE deltas against that baseline. A local checkpoint-data evaluation is documented in [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md): the current LSTM did not beat the current-value baseline on the test split, so it should be positioned as a model-serving prototype rather than a proven accuracy improvement. See [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md) for the full modeling audit.
 
 ```bash
 make train-lstm
@@ -414,7 +414,7 @@ CI configuration lives in `.github/workflows/ci.yml`.
 - The ETL validation gate defaults to strict mode; use `ETL_VALIDATION_MODE=warn` if transient API anomalies should be logged without interrupting the run.
 - The dbt analytics layer currently uses seed fixtures for model validation; full analysis requires connecting to the real MySQL warehouse.
 - `/predict` accepts manual `recent_observations` and can query the latest three bike counts from MySQL `station_status` when DB credentials are configured; the automatic lookup still reuses the request temperature / rain because the warehouse does not currently store weather history.
-- The LSTM training flow now has a script, current-value naive baseline, and small tests; full out-of-sample metrics still require rerunning it where the full processed training CSV is available.
+- The LSTM training flow now has a script, current-value naive baseline, and small tests; one local checkpoint-data evaluation shows the current LSTM does not beat the current-value baseline. Because the full processed training CSV is not committed, fresh clones cannot directly reproduce the full-data evaluation.
 - Dashboard demo mode is a deterministic mock for interviews, not a real model-performance result.
 
 ## Role Relevance
@@ -429,10 +429,10 @@ It does not claim to cover full-scale big-data platform work such as Spark, Kafk
 
 ## Maintenance Roadmap
 
-A fuller portfolio assessment and prioritization note is available in [`docs/portfolio_assessment.md`](docs/portfolio_assessment.md), the interview script is in [`docs/interview_talk_track.md`](docs/interview_talk_track.md), the report storyline is in [`docs/project_story.md`](docs/project_story.md), and the ML modeling boundary is documented in [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md).
+A fuller portfolio assessment and prioritization note is available in [`docs/portfolio_assessment.md`](docs/portfolio_assessment.md), the interview script is in [`docs/interview_talk_track.md`](docs/interview_talk_track.md), the report storyline is in [`docs/project_story.md`](docs/project_story.md), the ML modeling boundary is documented in [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md), and the local LSTM evaluation is in [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md).
 
-1. Rerun `make train-lstm` with the full processed dataset and preserve the out-of-sample metrics from `model_metadata.json`.
-2. Use `lstm_vs_baseline` to determine whether the model actually beats the "next bike count equals current bike count" baseline.
+1. Add stronger baselines such as rolling average and same-time previous-day before tuning the LSTM further.
+2. Clarify whether the forecasting target should be next observation, next hour, or the operational dispatch window.
 3. Add a short deployment walkthrough recording if more portfolio material is needed.
 
 ## Author
