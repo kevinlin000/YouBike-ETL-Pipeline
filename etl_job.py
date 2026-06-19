@@ -2,11 +2,12 @@ import requests
 import pandas as pd
 from sqlalchemy import create_engine
 from sqlalchemy.exc import IntegrityError
-from datetime import datetime
 import time
 import logging
 from google.cloud import secretmanager
 import os
+
+from dags.youbike_transform import transform_youbike_data, validate_transformed_data_for_load
 
 # --- Logging ---
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -82,39 +83,23 @@ def extract_data():
 
 def transform_data(raw_data):
     """Transform: 資料清洗與整理。失敗時拋出例外。"""
-    if not raw_data:
-        raise ValueError("Extract 回傳空資料，無法 Transform")
+    return transform_youbike_data(raw_data)
 
-    df = pd.DataFrame(raw_data)
-    required_info = ["sno", "sna", "sarea", "latitude", "longitude", "Quantity"]
-    required_status = ["sno", "available_rent_bikes", "available_return_bikes", "srcUpdateTime"]
 
-    for col in required_info:
-        if col not in df.columns:
-            raise KeyError(f"station_info 缺少欄位: {col}")
-    for col in required_status:
-        if col not in df.columns:
-            raise KeyError(f"station_status 缺少欄位: {col}")
-
-    df_info = df[required_info].copy()
-    df_info.columns = ["station_no", "name_tw", "district", "lat", "lng", "total_spaces"]
-    df_info = df_info.drop_duplicates(subset=["station_no"])
-
-    df_status = df[required_status].copy()
-    df_status.columns = ["station_no", "bikes_available", "spaces_available", "record_time"]
-    # API 時間為台北時間（naive），轉成 UTC 後以 naive datetime 寫入 DB
-    ts = pd.to_datetime(df_status["record_time"])
-    if ts.dt.tz is None:
-        ts = ts.dt.tz_localize("Asia/Taipei", ambiguous="infer")
-    df_status["record_time"] = ts.dt.tz_convert("UTC").dt.tz_localize(None)
-
-    return df_info, df_status
+def validate_before_load(df_info, df_status):
+    """Validate transformed data before loading; strict mode fails, warn mode logs."""
+    validation_mode = os.getenv("ETL_VALIDATION_MODE", "strict").lower()
+    warning = validate_transformed_data_for_load(df_info, df_status, mode=validation_mode)
+    if warning:
+        logger.warning("ETL validation failed but continuing because mode=warn: %s", warning)
 
 
 def load_data(df_info, df_status):
     """Load: 寫入 MySQL 資料庫。失敗時拋出例外。"""
     if df_info is None or df_status is None:
         raise ValueError("Load 收到 None，請確認 Transform 已成功")
+
+    validate_before_load(df_info, df_status)
 
     try:
         with engine.connect() as conn:

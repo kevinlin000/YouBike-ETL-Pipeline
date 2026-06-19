@@ -17,3 +17,34 @@ models:
           - not_null
       - name: avg_filling_rate
         description: Average bikes_available divided by total station capacity.
+
+  - name: mart_district_peak_hour_health
+    description: District-level hourly operational health metrics with peak/off-peak labeling.
+    columns:
+      - name: district_hour_key
+        description: Synthetic unique key for district and hourly bucket.
+        tests:
+          - unique
+          - not_null
+      - name: district
+        tests:
+          - not_null
+      - name: record_hour
+        description: Hour bucket derived from record_time.
+        tests:
+          - not_null
+      - name: period_type
+        description: Peak/off-peak label based on Taipei commute windows.
+        tests:
+          - accepted_values:
+              values: ['peak', 'off_peak']
+      - name: stations_observed
+        description: Number of distinct stations contributing observations in the district-hour bucket.
+        tests:
+          - not_null
+      - name: observations
+        description: Number of station_status rows in the district-hour bucket.
+        tests:
+          - not_null
+      - name: avg_filling_rate
+        description: Average bikes_available divided by station capacity across the district-hour bucket.

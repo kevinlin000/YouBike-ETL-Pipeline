@@ -90,6 +90,7 @@ The schema uses `(station_no, record_time)` as a uniqueness constraint to preven
 - `stg_station_info`: cleaned station dimension model
 - `stg_station_status`: cleaned station status model with stock-out and full-load risk flags
 - `mart_station_hourly_health`: hourly station health metrics for dashboarding and downstream analysis
+- `mart_district_peak_hour_health`: district-hour operational health metrics with peak/off-peak labeling
 
 Use `profiles.example.yml` as a template for a real `profiles.yml`. Do not commit credentials. CI starts a disposable MySQL service and runs `dbt seed` and `dbt build`.
 
@@ -211,6 +212,14 @@ The Streamlit dashboard now has two tabs:
 - Single-station prediction: select one station, enter current availability and weather, then call `/predict`.
 - Multi-station risk ranking: edit current bike / dock availability for multiple stations, then call `/stations/risk` to produce ranked operational actions.
 
+## Dashboard Demo
+
+The dashboard includes demo mode, so the single-station prediction and multi-station risk-ranking flow can be shown without starting FastAPI, loading model files, or running Docker Compose. The walkthrough below uses deterministic mock data for interview and portfolio demos; it is not a model evaluation result.
+
+![Dashboard Demo Walkthrough](docs/images/dashboard_demo_walkthrough.gif)
+
+Static screenshot fallback: [`docs/images/dashboard_demo_risk_ranking.png`](docs/images/dashboard_demo_risk_ranking.png)
+
 ## Historical Deployment
 
 This project was previously deployed on a GCP VM with Docker Compose. The original Tableau dashboard and Streamlit cloud demo were created for course presentation purposes and may no longer be online. For that reason, this README does not publish old VM IPs or expired demo links.
@@ -256,7 +265,8 @@ YouBike-ETL-Pipeline/
 │   │   └── main.py                 # FastAPI inference service
 │   └── model_files/                # LSTM weights, scaler, station mappings
 ├── dags/
-│   └── youbike_dag.py              # Airflow ETL DAG
+│   ├── youbike_dag.py              # Airflow ETL DAG
+│   └── youbike_transform.py        # Shared YouBike transform logic
 ├── dashboard/
 │   └── app.py                      # Streamlit prediction UI
 ├── analytics/
@@ -321,10 +331,13 @@ Default services:
 For interview demos where you only need the dashboard and do not want to depend on live FastAPI services, model files, or Docker Compose, enable demo mode:
 
 ```bash
-DASHBOARD_DEMO_MODE=true streamlit run dashboard/app.py
+make install-app
+make dashboard-demo
 ```
 
-Demo mode uses fixed sample stations and deterministic mock prediction. It is useful for demonstrating the single-station prediction and multi-station risk-ranking flow; it is not a model evaluation result.
+This is equivalent to running `DASHBOARD_DEMO_MODE=true streamlit run dashboard/app.py`. Demo mode uses fixed sample stations and deterministic mock prediction. It is useful for demonstrating the single-station prediction and multi-station risk-ranking flow; it is not a model evaluation result.
+
+ETL runs data-quality validation before loading. The default `ETL_VALIDATION_MODE=strict` fails on duplicate status keys, negative availability, or non-numeric availability fields. Set `ETL_VALIDATION_MODE=warn` to log validation failures and continue.
 
 ### 3. Run tests
 
@@ -362,7 +375,8 @@ The public repository does not include database credentials. CI validates the db
 Current tests cover:
 
 - ETL empty-input and missing-column handling
-- ETL successful transform behavior
+- ETL successful transform behavior, station deduplication, and Taipei-time to UTC conversion
+- ETL post-transform validation for duplicate status keys, negative availability, and non-numeric availability fields
 - FastAPI health endpoint
 - `/stations` model-not-ready behavior
 - `/predict` request validation
@@ -378,7 +392,8 @@ CI configuration lives in `.github/workflows/ci.yml`.
 
 - This repository is a portfolio showcase, not an actively operated production service.
 - The Tableau dashboard and old Streamlit cloud demo may no longer be online.
-- ETL logic is still partially duplicated between `etl_job.py` and `dags/youbike_dag.py`.
+- ETL transform logic is shared; extract/load code still differs between the standalone job and Airflow DAG because their runtime environments differ.
+- The ETL validation gate defaults to strict mode; use `ETL_VALIDATION_MODE=warn` if transient API anomalies should be logged without interrupting the run.
 - The dbt analytics layer currently uses seed fixtures for model validation; full analysis requires connecting to the real MySQL warehouse.
 - The current `/predict` demo constructs a short sequence from the current state; production forecasting should use real lag windows from the database.
 - Dashboard demo mode is a deterministic mock for interviews, not a real model-performance result.
@@ -396,11 +411,10 @@ It does not claim to cover full-scale big-data platform work such as Spark, Kafk
 
 ## Maintenance Roadmap
 
-1. Extract shared ETL logic into a reusable module.
-2. Convert notebook training into a reproducible training script.
-3. Add data-quality checks for schema, duplicates, and time gaps.
-4. Extend dbt marts with district-level and peak-hour analysis models.
-5. Add dashboard screenshots or a short demo GIF to make the GitHub README easier to scan.
+A fuller portfolio assessment and prioritization note is available in [`docs/portfolio_assessment.md`](docs/portfolio_assessment.md), and the interview script is in [`docs/interview_talk_track.md`](docs/interview_talk_track.md).
+
+1. Convert notebook training into a reproducible training script.
+2. Add a short deployment walkthrough recording if more portfolio material is needed.
 
 ## Author
 

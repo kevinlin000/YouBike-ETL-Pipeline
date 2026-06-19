@@ -10,6 +10,11 @@ import logging
 from google.cloud import secretmanager
 import os
 
+try:
+    from youbike_transform import transform_youbike_data, validate_transformed_data_for_load
+except ModuleNotFoundError:
+    from dags.youbike_transform import transform_youbike_data, validate_transformed_data_for_load
+
 # --- Logging ---
 logger = logging.getLogger(__name__)
 
@@ -60,6 +65,14 @@ engine = create_engine(
 )
 
 
+def validate_before_load(df_info, df_status):
+    """Validate transformed data before loading; strict mode fails, warn mode logs."""
+    validation_mode = os.getenv("ETL_VALIDATION_MODE", "strict").lower()
+    warning = validate_transformed_data_for_load(df_info, df_status, mode=validation_mode)
+    if warning:
+        logger.warning("ETL validation failed but continuing because mode=warn: %s", warning)
+
+
 def etl_process():
     """Extract -> Transform -> Load，任一步失敗即拋出例外讓 Airflow 標記失敗。"""
     # 1. Extract（含 timeout 與 retry）
@@ -80,27 +93,8 @@ def etl_process():
         raise last_error
 
     # 2. Transform（失敗即拋出）
-    df = pd.DataFrame(raw_data)
-    required_info = ["sno", "sna", "sarea", "latitude", "longitude", "Quantity"]
-    required_status = ["sno", "available_rent_bikes", "available_return_bikes", "srcUpdateTime"]
-    for col in required_info:
-        if col not in df.columns:
-            raise KeyError(f"station_info 缺少欄位: {col}")
-    for col in required_status:
-        if col not in df.columns:
-            raise KeyError(f"station_status 缺少欄位: {col}")
-
-    df_info = df[required_info].copy()
-    df_info.columns = ["station_no", "name_tw", "district", "lat", "lng", "total_spaces"]
-    df_info = df_info.drop_duplicates(subset=["station_no"])
-
-    df_status = df[required_status].copy()
-    df_status.columns = ["station_no", "bikes_available", "spaces_available", "record_time"]
-    # API 時間為台北時間，轉成 UTC 後以 naive datetime 寫入 DB
-    ts = pd.to_datetime(df_status["record_time"])
-    if ts.dt.tz is None:
-        ts = ts.dt.tz_localize("Asia/Taipei", ambiguous="infer")
-    df_status["record_time"] = ts.dt.tz_convert("UTC").dt.tz_localize(None)
+    df_info, df_status = transform_youbike_data(raw_data)
+    validate_before_load(df_info, df_status)
 
     # 3. Load（失敗即拋出，唯一鍵衝突僅記錄）
     with engine.connect() as conn:

@@ -97,6 +97,7 @@ Schema 以 `(station_no, record_time)` 作為唯一鍵，避免同一站點同�
 - `stg_station_info`：清理後的站點維度模型
 - `stg_station_status`：清理後的站點狀態模型，加入缺車與滿站風險 flags
 - `mart_station_hourly_health`：小時層級站點營運健康指標，可供 dashboard 或後續分析使用
+- `mart_district_peak_hour_health`：行政區 × 小時層級營運健康指標，加入尖峰 / 離峰標籤
 
 dbt profiles 使用 `profiles.example.yml` 作為範本。實際 `profiles.yml` 需要使用本機或部署環境的 MySQL credentials，且不應提交到 Git。CI 會啟動 disposable MySQL service，執行 `dbt seed` 與 `dbt build`。
 
@@ -220,6 +221,14 @@ Streamlit dashboard 目前分成兩個頁籤：
 - 單站預測：選擇站點、輸入目前車輛數與天氣條件，呼叫 `/predict` 取得一小時後預測。
 - 多站風險排序：以可編輯表格輸入多個站點的目前車輛與空位，呼叫 `/stations/risk` 取得風險排序與建議動作。
 
+## Dashboard Demo
+
+Dashboard 提供 demo mode，可在不啟動 FastAPI、模型檔或 Docker Compose 的情況下展示單站預測與多站風險排序流程。下圖使用 deterministic mock data，適合面試或作品集展示；它不是模型評估結果。
+
+![Dashboard Demo Walkthrough](docs/images/dashboard_demo_walkthrough.gif)
+
+靜態截圖備份：[`docs/images/dashboard_demo_risk_ranking.png`](docs/images/dashboard_demo_risk_ranking.png)
+
 ## 部署與歷史展示
 
 本專案曾部署於 GCP VM，透過 Docker Compose 管理 Airflow、MySQL、FastAPI 與 Streamlit。原本的 Tableau dashboard 與 Streamlit 預測網站屬於課程展示用雲端 demo，目前不保證仍在線上，因此 README 不公開舊 VM IP 或失效連結。
@@ -265,7 +274,8 @@ YouBike-ETL-Pipeline/
 │   │   └── main.py                 # FastAPI 模型推論服務
 │   └── model_files/                # LSTM 權重、scaler、站點 mapping
 ├── dags/
-│   └── youbike_dag.py              # Airflow ETL DAG
+│   ├── youbike_dag.py              # Airflow ETL DAG
+│   └── youbike_transform.py        # 共用 YouBike transform 邏輯
 ├── dashboard/
 │   └── app.py                      # Streamlit 預測介面
 ├── analytics/
@@ -330,10 +340,13 @@ make up
 如果只需要面試展示 dashboard，不想依賴真實 FastAPI、模型檔或 Docker Compose，可啟用 demo mode：
 
 ```bash
-DASHBOARD_DEMO_MODE=true streamlit run dashboard/app.py
+make install-app
+make dashboard-demo
 ```
 
-Demo mode 使用固定範例站點與 deterministic mock prediction，方便展示單站預測與多站風險排序流程；它不是模型效果評估結果。
+這等同於執行 `DASHBOARD_DEMO_MODE=true streamlit run dashboard/app.py`。Demo mode 使用固定範例站點與 deterministic mock prediction，方便展示單站預測與多站風險排序流程；它不是模型效果評估結果。
+
+ETL load 前會執行資料品質 validation。預設 `ETL_VALIDATION_MODE=strict`，遇到重複 status key、負值或非數值 availability 會中止；若只想記錄警告並繼續，可設定 `ETL_VALIDATION_MODE=warn`。
 
 ### 3. 執行測試
 
@@ -371,7 +384,8 @@ make dbt-build
 目前測試包含：
 
 - ETL 空資料與缺欄位錯誤處理
-- ETL 正常轉換結果
+- ETL 正常轉換、站點去重與台北時間轉 UTC
+- ETL transform 後的重複 status key、負值與非數值 availability validation
 - FastAPI health endpoint
 - `/stations` model-not-ready 行為
 - `/predict` request validation
@@ -387,7 +401,8 @@ CI 設定位於 `.github/workflows/ci.yml`。
 
 - 本專案是作品展示，不是目前持續營運的 production service。
 - Tableau dashboard 與舊 Streamlit 雲端 demo 可能已失效，README 不依賴這些連結。
-- `etl_job.py` 與 `dags/youbike_dag.py` 仍有部分 ETL 邏輯重複，後續可抽成共用 module。
+- ETL transform 已抽成共用 module；extract/load 仍保留 standalone job 與 Airflow DAG 各自的執行環境差異。
+- ETL validation gate 預設採 strict mode；若真實 API 短暫異常不希望中斷流程，可用 `ETL_VALIDATION_MODE=warn` 改成只記錄警告。
 - dbt analytics layer 目前使用 seed fixtures 驗證模型結構；若要分析完整資料，需要連接實際 MySQL warehouse。
 - `/predict` 的即時 demo 會用目前狀態組成短序列；若要做更嚴謹的 production forecasting，應改由資料庫查詢真實 lag window。
 - Dashboard demo mode 是面試展示用的 deterministic mock，不代表真實模型評估表現。
@@ -405,11 +420,10 @@ CI 設定位於 `.github/workflows/ci.yml`。
 
 ## 後續維護方向
 
-1. 抽出共用 ETL module，消除 DAG 與 standalone job 的重複邏輯。
-2. 將 notebook 訓練流程整理成可重現的 training script。
-3. 補充資料品質檢查，例如欄位 schema validation、重複資料檢查與時間斷點檢查。
-4. 擴充 dbt marts，加入行政區 / 尖峰時段分析模型。
-5. 補充 dashboard 截圖或短 demo GIF，讓 GitHub README 的展示更直觀。
+更完整的作品集評估與優先順序整理在 [`docs/portfolio_assessment.md`](docs/portfolio_assessment.md)，面試說明稿可參考 [`docs/interview_talk_track.md`](docs/interview_talk_track.md)。
+
+1. 將 notebook 訓練流程整理成可重現的 training script。
+2. 若要強化部署敘事，可補一份短部署錄影。
 
 ## 作者
 

@@ -2,16 +2,18 @@ DBT_PYTHON ?= python3.11
 DBT_VENV ?= .venv-dbt
 DBT_BIN := $(DBT_VENV)/bin/dbt
 
-.PHONY: help install-dev install-test install-dbt test dbt-parse dbt-build up down logs ps
+.PHONY: help install-dev install-test install-app install-dbt test dbt-parse dbt-build dashboard-demo up down logs ps
 
 help:
 	@echo "Available commands:"
 	@echo "  make install-dev  Install local development dependencies"
 	@echo "  make install-test Install minimal ETL test dependencies"
+	@echo "  make install-app  Install FastAPI/Streamlit app dependencies"
 	@echo "  make install-dbt  Install optional dbt analytics dependencies"
 	@echo "  make test         Run ETL unit tests"
 	@echo "  make dbt-parse    Parse the dbt analytics project"
 	@echo "  make dbt-build    Run dbt build for the analytics project"
+	@echo "  make dashboard-demo Run Streamlit dashboard in deterministic demo mode"
 	@echo "  make up           Build and start Docker Compose services"
 	@echo "  make down         Stop Docker Compose services"
 	@echo "  make logs         Follow Docker Compose logs"
@@ -22,6 +24,9 @@ install-dev:
 
 install-test:
 	python -m pip install -r requirements-test.txt
+
+install-app:
+	python -m pip install -r requirements_app.txt
 
 install-dbt:
 	$(DBT_PYTHON) -m venv $(DBT_VENV)
@@ -39,6 +44,9 @@ dbt-build:
 	test -f analytics/dbt/profiles.yml || cp analytics/dbt/profiles.example.yml analytics/dbt/profiles.yml
 	cd analytics/dbt && ../../$(DBT_BIN) seed --profiles-dir .
 	cd analytics/dbt && ../../$(DBT_BIN) build --profiles-dir .
+
+dashboard-demo:
+	DASHBOARD_DEMO_MODE=true streamlit run dashboard/app.py
 
 up:
 	docker-compose up -d --build
