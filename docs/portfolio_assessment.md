@@ -12,20 +12,20 @@ This repository is best positioned as a maintained data engineering portfolio pr
 - `docs/interview_talk_track.md` provides a concise interview script, demo flow, and claim boundaries.
 - `docs/project_story.md` provides a report-style storyline that connects the operational problem, data pipeline, statistical evidence, LSTM prototype, API, dashboard, limitations, and next steps.
 - `docs/ml_modeling_audit.md` clarifies the ML notebook lineage, served LSTM artifacts, evaluation gaps, and interview-safe claims.
-- `docs/lstm_evaluation_report.md` records a local checkpoint-data training run and documents that the current LSTM does not beat the current-value baseline on the test split.
+- `docs/lstm_evaluation_report.md` records a local checkpoint-data training run and documents that the current LSTM beats rolling mean and same-time previous-day baselines, but not the strongest current-value baseline on the test split.
 - `docs/adr/0002-dashboard-demo-mode.md` records why demo mode is deterministic and what it should not be used to claim.
 - `docs/images/dashboard_demo_walkthrough.gif` provides a compact visual walkthrough for README scanning.
 - `dags/youbike_transform.py` centralizes transform behavior used by both the standalone ETL job and the Airflow DAG.
 - `validate_transformed_data_for_load()` wires tested data-quality checks into the pre-load ETL path, with strict and warn modes.
 - `mart_district_peak_hour_health` adds district-hour analytics with peak/off-peak labeling to the dbt layer.
-- `scripts/train_multistation_lstm.py` converts the multi-station LSTM notebook flow into a reproducible training CLI with artifact metadata and a current-value naive baseline.
+- `scripts/train_multistation_lstm.py` converts the multi-station LSTM notebook flow into a reproducible training CLI with artifact metadata and current-value, rolling-mean, and same-time previous-day baselines.
 
 ## Highest-Value Improvements
 
-1. Improve the forecasting evaluation baseline suite.
+1. Clarify the operational forecast horizon.
    - Value: strengthens ML engineering credibility.
-   - Scope: keep the current LSTM report as the boundary, then add rolling-average and same-time previous-day baselines before tuning or replacing served artifacts.
-   - Risk: medium. It depends on preserving the processed dataset lineage and choosing the right operational forecast horizon.
+   - Scope: decide whether the target should be next observation, next hour, or a dispatch-specific window, then re-evaluate the existing baseline suite before tuning or replacing served artifacts.
+   - Risk: medium. It depends on preserving the processed dataset lineage and matching the model target to real operations.
 
 2. Add weather-history alignment to inference.
    - Value: closes the gap between notebook training and served inference.
@@ -64,4 +64,4 @@ Also be explicit that the regression R-squared improvement is not the LSTM evalu
 
 ## Recommendation
 
-For the next engineering iteration, strengthen the baseline suite and clarify the forecast horizon if the goal is to improve the ML engineering story. The documented local run shows the current LSTM does not beat the current-value baseline, so model-accuracy claims should remain conservative. If the goal is recruiter-facing polish, add a static architecture diagram or short deployment walkthrough.
+For the next engineering iteration, clarify the forecast horizon if the goal is to improve the ML engineering story. The documented local run shows the current LSTM beats weaker baselines but not the strongest current-value baseline, so model-accuracy claims should remain conservative. If the goal is recruiter-facing polish, add a static architecture diagram or short deployment walkthrough.

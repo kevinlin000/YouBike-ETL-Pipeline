@@ -147,7 +147,7 @@ dbt profiles 使用 `profiles.example.yml` 作為範本。實際 `profiles.yml` 
 - 降雨分級 `Rain_Cat`
 - 站點 ID embedding
 
-目前 repo 中可被嚴謹主張的是「完成 LSTM prototype 與 FastAPI 模型服務化流程」。Notebook 記錄 training loss 與 artifact 產出，`scripts/train_multistation_lstm.py` 則將多站訓練流程整理成可重現 CLI，會輸出模型權重、scaler、站點 mapping 與 `model_metadata.json`。metadata 會同時記錄 LSTM 指標、current-value naive baseline 指標，以及 LSTM 相對 baseline 的 MAE/RMSE 改善量。一次本地 checkpoint-data 評估整理在 [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md)：目前 LSTM 在 test split 沒有打敗 current-value baseline，因此應定位為 model-serving prototype，而不是已驗證的準確預測模型。完整脈絡整理在 [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md)。
+目前 repo 中可被嚴謹主張的是「完成 LSTM prototype 與 FastAPI 模型服務化流程」。Notebook 記錄 training loss 與 artifact 產出，`scripts/train_multistation_lstm.py` 則將多站訓練流程整理成可重現 CLI，會輸出模型權重、scaler、站點 mapping 與 `model_metadata.json`。metadata 會同時記錄 LSTM 指標、current-value、rolling mean、same-time previous-day baseline 指標，以及 LSTM 相對各 baseline 的 MAE/RMSE 改善量。一次本地 checkpoint-data 評估整理在 [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md)：目前 LSTM 在 test split 有打敗 rolling mean 與 same-time previous-day，但沒有打敗最強的 current-value baseline，因此應定位為 model-serving prototype，而不是已驗證的準確預測模型。完整脈絡整理在 [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md)。
 
 ```bash
 make train-lstm
@@ -423,7 +423,7 @@ CI 設定位於 `.github/workflows/ci.yml`。
 - ETL validation gate 預設採 strict mode；若真實 API 短暫異常不希望中斷流程，可用 `ETL_VALIDATION_MODE=warn` 改成只記錄警告。
 - dbt analytics layer 目前使用 seed fixtures 驗證模型結構；若要分析完整資料，需要連接實際 MySQL warehouse。
 - `/predict` 可手動傳入 `recent_observations`，也可在 DB credentials 存在時自動從 MySQL `station_status` 查最近 3 筆可借車數；但目前 warehouse 沒有 weather history，因此自動查詢路徑會沿用 request 中的 temperature / rain。
-- LSTM 訓練流程已提供 script、current-value naive baseline 與小型測試；一次本地 checkpoint-data 評估顯示目前 LSTM 沒有打敗 current-value baseline。由於完整 processed training CSV 未提交，fresh clone 無法直接重現完整資料評估。
+- LSTM 訓練流程已提供 script、baseline suite 與小型測試；一次本地 checkpoint-data 評估顯示目前 LSTM 有打敗 rolling mean 與 same-time previous-day，但沒有打敗 current-value baseline。由於完整 processed training CSV 未提交，fresh clone 無法直接重現完整資料評估。
 - Dashboard demo mode 是面試展示用的 deterministic mock，不代表真實模型評估表現。
 
 ## 與職缺能力的對應
@@ -440,8 +440,8 @@ CI 設定位於 `.github/workflows/ci.yml`。
 
 更完整的作品集評估與優先順序整理在 [`docs/portfolio_assessment.md`](docs/portfolio_assessment.md)，面試說明稿可參考 [`docs/interview_talk_track.md`](docs/interview_talk_track.md)，報告主線整理在 [`docs/project_story.md`](docs/project_story.md)，ML 脈絡與可主張範圍整理在 [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md)，本地 LSTM 評估結果在 [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md)。
 
-1. 補 rolling average、same-time previous-day 等更強 baseline，再決定是否繼續調 LSTM。
-2. 釐清預測目標到底是下一筆觀測、下一小時，或實際調度需要的時間窗。
+1. 釐清預測目標到底是下一筆觀測、下一小時，或實際調度需要的時間窗。
+2. 根據新 horizon 重新評估 baseline suite，再決定是否繼續調 LSTM 或改用更簡單模型。
 3. 若要強化部署敘事，可補一份短部署錄影。
 
 ## 作者

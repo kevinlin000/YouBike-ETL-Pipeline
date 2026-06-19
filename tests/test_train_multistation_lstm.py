@@ -83,6 +83,24 @@ def test_current_value_baseline_uses_last_observed_bike_count():
     assert metrics["rmse"] >= metrics["mae"]
 
 
+def test_baseline_suite_includes_rolling_and_previous_day_metrics():
+    bundle = trainer.prepare_datasets(
+        synthetic_training_frame(),
+        station_selection="district-representative",
+        time_steps=3,
+        horizon_steps=1,
+        train_ratio=0.6,
+        val_ratio=0.2,
+    )
+
+    metrics = trainer.evaluate_all_baselines(bundle)
+
+    assert set(metrics) == {"current_value", "rolling_mean", "same_time_previous_day"}
+    assert metrics["rolling_mean"]["train"]["n"] == bundle.split_counts["train"]
+    assert metrics["rolling_mean"]["train"]["mae"] >= 0
+    assert metrics["same_time_previous_day"]["train"] == {}
+
+
 def test_train_and_save_writes_api_compatible_artifacts(tmp_path):
     data_path = tmp_path / "training.csv"
     output_dir = tmp_path / "artifacts"
@@ -130,11 +148,20 @@ def test_train_and_save_writes_api_compatible_artifacts(tmp_path):
     assert saved_metadata["metrics"].keys() == metadata["metrics"].keys()
     assert set(saved_metadata["metrics"]) == {
         "lstm",
+        "baselines",
+        "lstm_vs_baselines",
         "baseline_current_value",
         "lstm_vs_baseline",
     }
     assert set(saved_metadata["metrics"]["lstm"]) == {"train", "validation", "test"}
+    assert set(saved_metadata["metrics"]["baselines"]) == {
+        "current_value",
+        "rolling_mean",
+        "same_time_previous_day",
+    }
     assert set(saved_metadata["metrics"]["baseline_current_value"]) == {"train", "validation", "test"}
     assert "mae" in saved_metadata["metrics"]["baseline_current_value"]["test"]
+    assert "mae" in saved_metadata["metrics"]["baselines"]["rolling_mean"]["test"]
+    assert saved_metadata["metrics"]["baselines"]["same_time_previous_day"]["test"] == {}
     assert "mae_delta" in saved_metadata["metrics"]["lstm_vs_baseline"]["test"]
     assert saved_metadata["model"]["type"] == "MultiStationLSTM"

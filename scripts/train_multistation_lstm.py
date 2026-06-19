@@ -76,6 +76,7 @@ class DatasetBundle:
     station_info_map: dict[str, str]
     split_counts: dict[str, int]
     selected_station_ids: list[str]
+    baseline_predictions: dict[str, dict[str, np.ndarray]]
 
 
 def get_rain_category(rain: float) -> int:
@@ -200,6 +201,46 @@ def stack_or_empty(items: list[np.ndarray], shape: tuple[int, ...]) -> np.ndarra
     return np.asarray(items, dtype=np.float32)
 
 
+def empty_baseline_prediction_lists() -> dict[str, dict[str, list[float]]]:
+    return {
+        "current_value": {"train": [], "validation": [], "test": []},
+        "rolling_mean": {"train": [], "validation": [], "test": []},
+        "same_time_previous_day": {"train": [], "validation": [], "test": []},
+    }
+
+
+def find_same_time_previous_day_value(
+    times: np.ndarray,
+    raw_bikes: np.ndarray,
+    target_idx: int,
+    tolerance: np.timedelta64 = np.timedelta64(30, "m"),
+) -> float:
+    """Return the prior-day same-time bike count, or NaN when no close row exists."""
+    target_time = times[target_idx]
+    desired_time = target_time - np.timedelta64(1, "D")
+    insert_pos = int(np.searchsorted(times, desired_time))
+    candidate_indices = [idx for idx in (insert_pos - 1, insert_pos) if 0 <= idx < len(times)]
+    if not candidate_indices:
+        return float("nan")
+
+    best_idx = min(candidate_indices, key=lambda idx: abs(times[idx] - desired_time))
+    if abs(times[best_idx] - desired_time) > tolerance:
+        return float("nan")
+    return float(raw_bikes[best_idx])
+
+
+def finalize_baseline_predictions(
+    predictions: dict[str, dict[str, list[float]]],
+) -> dict[str, dict[str, np.ndarray]]:
+    return {
+        baseline_name: {
+            split_name: np.asarray(values, dtype=np.float32)
+            for split_name, values in split_values.items()
+        }
+        for baseline_name, split_values in predictions.items()
+    }
+
+
 def build_datasets(
     df: pd.DataFrame,
     scaler: MinMaxScaler,
@@ -207,7 +248,16 @@ def build_datasets(
     horizon_steps: int,
     train_ratio: float,
     val_ratio: float,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, dict[str, int]]:
+) -> tuple[
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    dict[str, int],
+    dict[str, dict[str, np.ndarray]],
+]:
     if time_steps < 1:
         raise ValueError("time_steps must be >= 1")
     if horizon_steps < 1:
@@ -225,13 +275,17 @@ def build_datasets(
     val_y: list[float] = []
     test_x: list[np.ndarray] = []
     test_y: list[float] = []
+    baseline_prediction_lists = empty_baseline_prediction_lists()
 
     scaled = df.copy()
+    scaled["_raw_bikes_available"] = scaled["bikes_available"].astype(float)
     scaled[FEATURE_COLUMNS] = scaler.transform(scaled[FEATURE_COLUMNS])
 
     for _, station_df in scaled.groupby("station_no", sort=False):
         station_df = station_df.sort_values("record_time")
         values = station_df[FEATURE_COLUMNS].to_numpy(dtype=np.float32)
+        raw_bikes = station_df["_raw_bikes_available"].to_numpy(dtype=np.float32)
+        times = station_df["record_time"].to_numpy(dtype="datetime64[ns]")
         station_ids = station_df["station_idx"].to_numpy(dtype=np.float32).reshape(-1, 1)
         n_rows = len(station_df)
         train_cutoff = int(n_rows * train_ratio)
@@ -247,16 +301,32 @@ def build_datasets(
                 )
             )
             target = float(values[target_idx, 0])
+            raw_window = raw_bikes[start_idx : start_idx + time_steps]
+            baseline_values = {
+                "current_value": float(raw_window[-1]),
+                "rolling_mean": float(np.mean(raw_window)),
+                "same_time_previous_day": find_same_time_previous_day_value(
+                    times,
+                    raw_bikes,
+                    target_idx,
+                ),
+            }
 
             if target_idx < train_cutoff:
                 train_x.append(sequence)
                 train_y.append(target)
+                split_name = "train"
             elif target_idx < val_cutoff:
                 val_x.append(sequence)
                 val_y.append(target)
+                split_name = "validation"
             else:
                 test_x.append(sequence)
                 test_y.append(target)
+                split_name = "test"
+
+            for baseline_name, baseline_value in baseline_values.items():
+                baseline_prediction_lists[baseline_name][split_name].append(baseline_value)
 
     feature_shape = (0, time_steps, len(FEATURE_COLUMNS) + 1)
     x_train = stack_or_empty(train_x, feature_shape)
@@ -274,7 +344,9 @@ def build_datasets(
     if split_counts["train"] == 0:
         raise ValueError("No training sequences were created; lower time_steps or provide more rows")
 
-    return x_train, y_train, x_val, y_val, x_test, y_test, split_counts
+    baseline_predictions = finalize_baseline_predictions(baseline_prediction_lists)
+
+    return x_train, y_train, x_val, y_val, x_test, y_test, split_counts, baseline_predictions
 
 
 def prepare_datasets(
@@ -292,7 +364,16 @@ def prepare_datasets(
         max_stations=max_stations,
     )
     scaler = fit_scaler_on_training_rows(prepared, train_ratio=train_ratio)
-    x_train, y_train, x_val, y_val, x_test, y_test, split_counts = build_datasets(
+    (
+        x_train,
+        y_train,
+        x_val,
+        y_val,
+        x_test,
+        y_test,
+        split_counts,
+        baseline_predictions,
+    ) = build_datasets(
         prepared,
         scaler=scaler,
         time_steps=time_steps,
@@ -312,6 +393,7 @@ def prepare_datasets(
         station_info_map=station_info_map,
         split_counts=split_counts,
         selected_station_ids=selected_station_ids,
+        baseline_predictions=baseline_predictions,
     )
 
 
@@ -364,10 +446,14 @@ def inverse_bike_values(scaler: MinMaxScaler, values: np.ndarray) -> np.ndarray:
 
 
 def regression_metrics(actual: np.ndarray, predicted: np.ndarray) -> dict[str, float]:
+    finite_mask = np.isfinite(actual) & np.isfinite(predicted)
+    actual = actual[finite_mask]
+    predicted = predicted[finite_mask]
     if len(actual) == 0:
         return {}
     errors = predicted - actual
     return {
+        "n": int(len(actual)),
         "mae": float(np.mean(np.abs(errors))),
         "rmse": float(np.sqrt(np.mean(errors**2))),
     }
@@ -405,6 +491,32 @@ def evaluate_current_value_baseline(
     return regression_metrics(actual_raw, baseline_raw)
 
 
+def evaluate_rolling_mean_baseline(
+    scaler: MinMaxScaler,
+    x_values: np.ndarray,
+    y_values: np.ndarray,
+) -> dict[str, float]:
+    """Predict the target as the average bike count in the input window."""
+    if len(x_values) == 0:
+        return {}
+
+    baseline_scaled = np.mean(x_values[:, :, 0], axis=1).reshape(-1, 1)
+    actual_raw = inverse_bike_values(scaler, y_values)
+    baseline_raw = inverse_bike_values(scaler, baseline_scaled)
+    return regression_metrics(actual_raw, baseline_raw)
+
+
+def evaluate_raw_baseline_predictions(
+    scaler: MinMaxScaler,
+    y_values: np.ndarray,
+    predictions_raw: np.ndarray,
+) -> dict[str, float]:
+    if len(y_values) == 0:
+        return {}
+    actual_raw = inverse_bike_values(scaler, y_values)
+    return regression_metrics(actual_raw, predictions_raw)
+
+
 def compare_against_baseline(
     model_metrics: dict[str, dict[str, float]],
     baseline_metrics: dict[str, dict[str, float]],
@@ -432,10 +544,25 @@ def evaluate_model(model: MultiStationLSTM, bundle: DatasetBundle) -> dict[str, 
 
 
 def evaluate_current_value_baselines(bundle: DatasetBundle) -> dict[str, dict[str, float]]:
+    return evaluate_all_baselines(bundle)["current_value"]
+
+
+def evaluate_all_baselines(bundle: DatasetBundle) -> dict[str, dict[str, dict[str, float]]]:
+    split_arrays = {
+        "train": bundle.y_train,
+        "validation": bundle.y_val,
+        "test": bundle.y_test,
+    }
     return {
-        "train": evaluate_current_value_baseline(bundle.scaler, bundle.x_train, bundle.y_train),
-        "validation": evaluate_current_value_baseline(bundle.scaler, bundle.x_val, bundle.y_val),
-        "test": evaluate_current_value_baseline(bundle.scaler, bundle.x_test, bundle.y_test),
+        baseline_name: {
+            split_name: evaluate_raw_baseline_predictions(
+                bundle.scaler,
+                split_arrays[split_name],
+                predictions,
+            )
+            for split_name, predictions in split_predictions.items()
+        }
+        for baseline_name, split_predictions in bundle.baseline_predictions.items()
     }
 
 
@@ -444,9 +571,14 @@ def build_metadata(
     bundle: DatasetBundle,
     history: list[dict[str, float]],
     model_metrics: dict[str, dict[str, float]],
-    baseline_metrics: dict[str, dict[str, float]],
+    baseline_metrics: dict[str, dict[str, dict[str, float]]],
 ) -> dict:
-    metric_comparison = compare_against_baseline(model_metrics, baseline_metrics)
+    metric_comparison = {
+        baseline_name: compare_against_baseline(model_metrics, split_metrics)
+        for baseline_name, split_metrics in baseline_metrics.items()
+    }
+    current_value_metrics = baseline_metrics["current_value"]
+    current_value_comparison = metric_comparison["current_value"]
     return {
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "source_data_path": str(args.data_path),
@@ -479,8 +611,10 @@ def build_metadata(
         },
         "metrics": {
             "lstm": model_metrics,
-            "baseline_current_value": baseline_metrics,
-            "lstm_vs_baseline": metric_comparison,
+            "baselines": baseline_metrics,
+            "lstm_vs_baselines": metric_comparison,
+            "baseline_current_value": current_value_metrics,
+            "lstm_vs_baseline": current_value_comparison,
         },
         "limitations": [
             "Metrics are only meaningful when the full processed dataset is available.",
@@ -534,7 +668,7 @@ def train_and_save(args: argparse.Namespace) -> dict:
         seed=args.seed,
     )
     model_metrics = evaluate_model(model, bundle)
-    baseline_metrics = evaluate_current_value_baselines(bundle)
+    baseline_metrics = evaluate_all_baselines(bundle)
     metadata = build_metadata(args, bundle, history, model_metrics, baseline_metrics)
     save_artifacts(Path(args.output_dir), model, bundle, metadata)
     return metadata
