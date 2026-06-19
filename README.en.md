@@ -24,7 +24,7 @@ This repository is a **portfolio showcase**, not an actively operated production
 | Ingestion | 10-minute micro-batch ingestion with Airflow |
 | Data model | Split static station metadata and dynamic status logs into dimension / fact tables |
 | Analysis | Used CV, t-tests, ANOVA, chi-square testing, and regression to identify imbalance patterns |
-| Forecasting | Built a Multi-Station LSTM with weather, station, and lag-style features |
+| Forecasting | Built a Multi-Station LSTM prototype with station, weather, and short-sequence status features, then packaged it as API artifacts |
 | Serving | Exposed model inference and station risk ranking through FastAPI, with a Streamlit UI for prediction and redistribution support |
 | Deployment evidence | Historical GCP VM deployment with Docker Compose, Airflow, MySQL, API, and dashboard services |
 | Engineering hygiene | pytest coverage for ETL / API behavior and GitHub Actions CI |
@@ -122,19 +122,21 @@ Chi-square testing and standardized residual analysis were used to identify seve
 
 ### 5. High-Frequency Data Improves Predictive Power
 
-Regression comparison showed that static location features alone had low explanatory power, while adding lag-style temporal features increased R-squared from roughly `0.02` to `0.92`.
+Regression comparison showed that static location features alone had low explanatory power, while adding lag-style temporal features increased R-squared from roughly `0.02` to `0.92`. This number belongs to the statistical regression analysis and should be used as evidence that recent station state has predictive signal. It is not the LSTM test-set performance.
 
 **Engineering implication**: 10-minute ingestion is central to the predictive value of the system.
 
 ## Model Serving
 
-The prediction service uses a Multi-Station LSTM with:
+The prediction service uses a Multi-Station LSTM prototype with:
 
 - current bike availability
 - temperature
 - rainfall
 - rainfall category
 - station ID embedding
+
+The defensible claim is that the project contains an LSTM prototype and a FastAPI model-serving path. The notebooks record training loss and artifact generation, but they do not yet provide a time-based train / validation / test evaluation. Dashboard demo output and regression R-squared should not be presented as LSTM accuracy. See [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md) for the full modeling audit.
 
 FastAPI endpoints:
 
@@ -396,6 +398,7 @@ CI configuration lives in `.github/workflows/ci.yml`.
 - The ETL validation gate defaults to strict mode; use `ETL_VALIDATION_MODE=warn` if transient API anomalies should be logged without interrupting the run.
 - The dbt analytics layer currently uses seed fixtures for model validation; full analysis requires connecting to the real MySQL warehouse.
 - The current `/predict` demo constructs a short sequence from the current state; production forecasting should use real lag windows from the database.
+- The LSTM notebooks currently demonstrate a prototype and serving path, but do not yet provide out-of-sample evaluation, baseline comparison, or complete model metadata.
 - Dashboard demo mode is a deterministic mock for interviews, not a real model-performance result.
 - Notebook-based training has not yet been converted into a fully reproducible training script.
 
@@ -411,7 +414,7 @@ It does not claim to cover full-scale big-data platform work such as Spark, Kafk
 
 ## Maintenance Roadmap
 
-A fuller portfolio assessment and prioritization note is available in [`docs/portfolio_assessment.md`](docs/portfolio_assessment.md), and the interview script is in [`docs/interview_talk_track.md`](docs/interview_talk_track.md).
+A fuller portfolio assessment and prioritization note is available in [`docs/portfolio_assessment.md`](docs/portfolio_assessment.md), the interview script is in [`docs/interview_talk_track.md`](docs/interview_talk_track.md), and the ML modeling boundary is documented in [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md).
 
 1. Convert notebook training into a reproducible training script.
 2. Add a short deployment walkthrough recording if more portfolio material is needed.

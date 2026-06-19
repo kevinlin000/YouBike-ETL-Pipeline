@@ -16,6 +16,8 @@ The analysis layer uses descriptive statistics, t-tests, ANOVA, clustering, chi-
 
 The application layer wraps the LSTM inference path with FastAPI. The dashboard turns raw predictions into a decision-support workflow: a user can inspect a single station or rank multiple stations by stock-out and full-load risk. For interviews, demo mode uses deterministic mock data to show the product flow safely. It should be described as a workflow demo, not as model-performance evidence.
 
+When discussing the machine-learning portion, be precise: the regression R-squared improvement shows that recent station state has predictive signal, while the LSTM is a served prototype that still needs reproducible training and out-of-sample evaluation before it should be called production forecasting.
+
 ## Demo Flow
 
 1. Run `make dashboard-demo`.
@@ -32,11 +34,14 @@ The application layer wraps the LSTM inference path with FastAPI. The dashboard 
 - "The model-serving interface is represented through FastAPI endpoints and request validation."
 - "The project preserves historical deployment evidence through GCP, Docker, Airflow, and monitoring screenshots."
 - "The strongest engineering story is connecting high-frequency station data to station-level operational decisions."
+- "The LSTM portion is best described as a prototype model-serving layer, not a completed model-evaluation claim."
 
 ## Claims To Avoid
 
 - Do not say the service is currently running in production.
 - Do not present demo-mode output as real model accuracy.
+- Do not say the LSTM achieved R-squared 0.92; that number belongs to the regression analysis.
+- Do not imply `/predict` currently queries a real historical lag window from the warehouse.
 - Do not imply the current dbt layer is a full enterprise warehouse.
 - Do not claim complete MLOps coverage.
 - Do not oversell Spark, Kafka, Kubernetes, or data lake experience from this repo.
@@ -53,12 +58,16 @@ Station metadata changes slowly, while availability changes frequently. Separati
 
 ### What does the LSTM add?
 
-The analysis suggested that recent station availability carries predictive signal. The LSTM is used to model sequential station behavior, while the API and dashboard show how model output can be turned into application behavior.
+The analysis suggested that recent station availability carries predictive signal. The LSTM extends that idea into a PyTorch sequence-model prototype with station embeddings and weather features. The strongest thing to emphasize is the model-serving workflow: notebook artifacts are packaged, loaded by FastAPI, validated through API contracts, and translated by the dashboard into operational risk labels.
+
+The careful limitation is that this is not yet a rigorously evaluated forecasting system. The notebook records training loss, but the next ML step is a reproducible training script with a time-based split, MAE/RMSE, and a naive baseline.
 
 ### What would you improve next?
 
-For engineering quality, I would convert notebook training into a reproducible script if the role values ML engineering, or expand dbt marts if the role values analytics engineering. The shared transform module and pre-load validation gate are already in place, so the next step depends on which job family I want to target.
+For ML engineering quality, I would first convert notebook training into a reproducible script with fixed inputs, model metadata, a time-based train/validation/test split, MAE/RMSE, and a naive baseline. For analytics engineering roles, I would expand the dbt marts and connect the warehouse-backed metrics to the dashboard. The shared transform module and pre-load validation gate are already in place, so the next step depends on which job family I want to target.
 
 ### What is the biggest limitation?
 
-The dashboard demo mode is intentionally mocked for presentation. It demonstrates workflow and interface design, not live model performance. For production forecasting, the API should query real lag windows from the warehouse and the training pipeline should be converted from notebooks into a reproducible script.
+The biggest limitation is the ML evaluation path. The dashboard demo mode is intentionally mocked for presentation, and the live `/predict` path currently builds a short sequence from the current state instead of querying a real recent-history window. For production forecasting, the API should query real lag windows from the warehouse and the training pipeline should be converted from notebooks into a reproducible script with documented out-of-sample metrics.
+
+For deeper ML context, use [`docs/ml_modeling_audit.md`](ml_modeling_audit.md).

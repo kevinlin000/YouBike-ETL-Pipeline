@@ -10,6 +10,7 @@ This repository is best positioned as a maintained data engineering portfolio pr
 - CI covers ETL behavior, API validation, dashboard client logic, demo mode, and dbt scaffold parsing/build behavior.
 - README now separates current runnable demo material from historical deployment evidence.
 - `docs/interview_talk_track.md` provides a concise interview script, demo flow, and claim boundaries.
+- `docs/ml_modeling_audit.md` clarifies the ML notebook lineage, served LSTM artifacts, evaluation gaps, and interview-safe claims.
 - `docs/adr/0002-dashboard-demo-mode.md` records why demo mode is deterministic and what it should not be used to claim.
 - `docs/images/dashboard_demo_walkthrough.gif` provides a compact visual walkthrough for README scanning.
 - `dags/youbike_transform.py` centralizes transform behavior used by both the standalone ETL job and the Airflow DAG.
@@ -20,15 +21,20 @@ This repository is best positioned as a maintained data engineering portfolio pr
 
 1. Convert notebook training into a reproducible script.
    - Value: strengthens ML engineering credibility.
-   - Scope: scripted training entrypoint, config, fixed output artifacts, documented metrics.
+   - Scope: scripted training entrypoint, config, fixed output artifacts, model metadata, time-based split, MAE/RMSE, and naive baseline.
    - Risk: medium to high. Model artifacts and data availability need careful handling.
 
-2. Add a concise architecture diagram image.
+2. Replace the current API inference shortcut with a real lag-window path.
+   - Value: closes the gap between notebook training and served inference.
+   - Scope: query latest station observations from the warehouse, build the same feature window used in training, and keep the request-only demo path clearly labeled.
+   - Risk: medium. It touches API behavior and depends on warehouse availability.
+
+3. Add a concise architecture diagram image.
    - Value: helps non-technical reviewers understand the system faster than Mermaid alone.
    - Scope: render the existing Airflow/MySQL/FastAPI/Streamlit flow into a static image.
    - Risk: low. Keep it aligned with the README architecture.
 
-3. Add validation observability examples.
+4. Add validation observability examples.
    - Value: shows how strict/warn validation affects ETL operations.
    - Scope: document expected log messages and when to use `ETL_VALIDATION_MODE=warn`.
    - Risk: low. Keep it documentation-only unless the project is revived.
@@ -51,6 +57,8 @@ Lead with the operational problem: YouBike imbalance is station-level and time-d
 
 Be explicit that dashboard demo mode uses deterministic mock data. The correct claim is that demo mode shows the product and API workflow; it is not evidence of model accuracy.
 
+Also be explicit that the regression R-squared improvement is not the LSTM evaluation metric. It supports the data-engineering decision to collect high-frequency lag features, while the LSTM currently demonstrates a prototype model-serving path.
+
 ## Recommendation
 
-For the next engineering iteration, convert notebook training into a reproducible script if the goal is to strengthen the ML engineering story. If the goal is recruiter-facing polish, add a static architecture diagram or short deployment walkthrough.
+For the next engineering iteration, convert notebook training into a reproducible script if the goal is to strengthen the ML engineering story. That should come before making stronger model-accuracy claims. If the goal is recruiter-facing polish, add a static architecture diagram or short deployment walkthrough.

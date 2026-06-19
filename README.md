@@ -24,7 +24,7 @@
 | 擷取頻率 | 以 Airflow micro-batch 每 10 分鐘擷取一次即時資料 |
 | 資料建模 | 使用 `station_info` 維度表與 `station_status` 事實表分離靜態與動態資料 |
 | 統計分析 | 使用 CV、t 檢定、ANOVA、卡方檢定與迴歸分析定位缺車熱點 |
-| 預測建模 | 使用 Multi-Station LSTM 整合站點、天氣與歷史狀態特徵 |
+| 預測建模 | 建立 Multi-Station LSTM prototype，整合站點、天氣與短序列狀態特徵，並封裝為 API artifact |
 | 服務化 | 以 FastAPI 提供模型推論與站點風險排序 API，Streamlit 提供單站預測與多站調度輔助介面 |
 | 部署證據 | 曾以 Docker Compose 部署於 GCP VM，並保留 Airflow、Docker、GCP 監控截圖 |
 | 工程化維護 | 以 pytest 覆蓋 ETL / API 基礎行為，並以 GitHub Actions 自動執行測試 |
@@ -131,19 +131,21 @@ dbt profiles 使用 `profiles.example.yml` 作為範本。實際 `profiles.yml` 
 
 ### 5. 高頻資料的預測價值
 
-迴歸模型比較顯示，只使用靜態地點特徵時，模型解釋力很低；加入時間滯後特徵（lag feature）後，解釋力大幅提升，報告中 R-squared 從約 `0.02` 提升到約 `0.92`。
+迴歸模型比較顯示，只使用靜態地點特徵時，模型解釋力很低；加入時間滯後特徵（lag feature）後，解釋力大幅提升，報告中 R-squared 從約 `0.02` 提升到約 `0.92`。這個數字來自統計迴歸分析，用來支持「近期站點狀態具有預測訊號」；它不是 LSTM 的 test-set 評估結果。
 
 **工程意義**：每 10 分鐘擷取一次資料不是裝飾，而是讓預測模型能利用時間序列自相關性的關鍵。
 
 ## 模型與 API
 
-模型採用 Multi-Station LSTM，輸入特徵包含：
+模型服務採用 Multi-Station LSTM prototype，輸入特徵包含：
 
 - 目前可借車數
 - 氣溫
 - 降雨量
 - 降雨分級 `Rain_Cat`
 - 站點 ID embedding
+
+目前 repo 中可被嚴謹主張的是「完成 LSTM prototype 與 FastAPI 模型服務化流程」。Notebook 目前記錄 training loss 與 artifact 產出，但尚未提供時間切分的 train / validation / test 指標，因此不應把 dashboard demo 或迴歸 R-squared 當成 LSTM 準確度。完整脈絡整理在 [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md)。
 
 FastAPI endpoint：
 
@@ -405,6 +407,7 @@ CI 設定位於 `.github/workflows/ci.yml`。
 - ETL validation gate 預設採 strict mode；若真實 API 短暫異常不希望中斷流程，可用 `ETL_VALIDATION_MODE=warn` 改成只記錄警告。
 - dbt analytics layer 目前使用 seed fixtures 驗證模型結構；若要分析完整資料，需要連接實際 MySQL warehouse。
 - `/predict` 的即時 demo 會用目前狀態組成短序列；若要做更嚴謹的 production forecasting，應改由資料庫查詢真實 lag window。
+- LSTM notebook 目前主要證明 prototype 與模型服務化流程，尚未提供 out-of-sample 評估、baseline 比較或完整 model metadata。
 - Dashboard demo mode 是面試展示用的 deterministic mock，不代表真實模型評估表現。
 - Notebook 訓練流程尚未完全轉成可重現的 training script。
 
@@ -420,7 +423,7 @@ CI 設定位於 `.github/workflows/ci.yml`。
 
 ## 後續維護方向
 
-更完整的作品集評估與優先順序整理在 [`docs/portfolio_assessment.md`](docs/portfolio_assessment.md)，面試說明稿可參考 [`docs/interview_talk_track.md`](docs/interview_talk_track.md)。
+更完整的作品集評估與優先順序整理在 [`docs/portfolio_assessment.md`](docs/portfolio_assessment.md)，面試說明稿可參考 [`docs/interview_talk_track.md`](docs/interview_talk_track.md)，ML 脈絡與可主張範圍整理在 [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md)。
 
 1. 將 notebook 訓練流程整理成可重現的 training script。
 2. 若要強化部署敘事，可補一份短部署錄影。
