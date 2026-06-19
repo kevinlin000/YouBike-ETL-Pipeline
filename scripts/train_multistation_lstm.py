@@ -390,6 +390,39 @@ def evaluate_split(
     return regression_metrics(actual_raw, predicted_raw)
 
 
+def evaluate_current_value_baseline(
+    scaler: MinMaxScaler,
+    x_values: np.ndarray,
+    y_values: np.ndarray,
+) -> dict[str, float]:
+    """Predict the target as the last observed bike count in the input window."""
+    if len(x_values) == 0:
+        return {}
+
+    baseline_scaled = x_values[:, -1, 0].reshape(-1, 1)
+    actual_raw = inverse_bike_values(scaler, y_values)
+    baseline_raw = inverse_bike_values(scaler, baseline_scaled)
+    return regression_metrics(actual_raw, baseline_raw)
+
+
+def compare_against_baseline(
+    model_metrics: dict[str, dict[str, float]],
+    baseline_metrics: dict[str, dict[str, float]],
+) -> dict[str, dict[str, float]]:
+    comparison: dict[str, dict[str, float]] = {}
+    for split_name, split_model_metrics in model_metrics.items():
+        split_baseline_metrics = baseline_metrics.get(split_name, {})
+        if not split_model_metrics or not split_baseline_metrics:
+            comparison[split_name] = {}
+            continue
+
+        comparison[split_name] = {
+            "mae_delta": split_baseline_metrics["mae"] - split_model_metrics["mae"],
+            "rmse_delta": split_baseline_metrics["rmse"] - split_model_metrics["rmse"],
+        }
+    return comparison
+
+
 def evaluate_model(model: MultiStationLSTM, bundle: DatasetBundle) -> dict[str, dict[str, float]]:
     return {
         "train": evaluate_split(model, bundle.scaler, bundle.x_train, bundle.y_train),
@@ -398,12 +431,22 @@ def evaluate_model(model: MultiStationLSTM, bundle: DatasetBundle) -> dict[str, 
     }
 
 
+def evaluate_current_value_baselines(bundle: DatasetBundle) -> dict[str, dict[str, float]]:
+    return {
+        "train": evaluate_current_value_baseline(bundle.scaler, bundle.x_train, bundle.y_train),
+        "validation": evaluate_current_value_baseline(bundle.scaler, bundle.x_val, bundle.y_val),
+        "test": evaluate_current_value_baseline(bundle.scaler, bundle.x_test, bundle.y_test),
+    }
+
+
 def build_metadata(
     args: argparse.Namespace,
     bundle: DatasetBundle,
     history: list[dict[str, float]],
-    metrics: dict[str, dict[str, float]],
+    model_metrics: dict[str, dict[str, float]],
+    baseline_metrics: dict[str, dict[str, float]],
 ) -> dict:
+    metric_comparison = compare_against_baseline(model_metrics, baseline_metrics)
     return {
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "source_data_path": str(args.data_path),
@@ -434,7 +477,11 @@ def build_metadata(
             "seed": args.seed,
             "final_train_loss": history[-1]["train_loss"] if history else None,
         },
-        "metrics": metrics,
+        "metrics": {
+            "lstm": model_metrics,
+            "baseline_current_value": baseline_metrics,
+            "lstm_vs_baseline": metric_comparison,
+        },
         "limitations": [
             "Metrics are only meaningful when the full processed dataset is available.",
             "The current FastAPI /predict path still needs a real warehouse-backed lag window.",
@@ -486,8 +533,9 @@ def train_and_save(args: argparse.Namespace) -> dict:
         batch_size=args.batch_size,
         seed=args.seed,
     )
-    metrics = evaluate_model(model, bundle)
-    metadata = build_metadata(args, bundle, history, metrics)
+    model_metrics = evaluate_model(model, bundle)
+    baseline_metrics = evaluate_current_value_baselines(bundle)
+    metadata = build_metadata(args, bundle, history, model_metrics, baseline_metrics)
     save_artifacts(Path(args.output_dir), model, bundle, metadata)
     return metadata
 

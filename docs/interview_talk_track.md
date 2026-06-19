@@ -60,11 +60,11 @@ Station metadata changes slowly, while availability changes frequently. Separati
 
 The analysis suggested that recent station availability carries predictive signal. The LSTM extends that idea into a PyTorch sequence-model prototype with station embeddings and weather features. The strongest thing to emphasize is the model-serving workflow: notebook artifacts are packaged, loaded by FastAPI, validated through API contracts, and translated by the dashboard into operational risk labels.
 
-The careful limitation is that this is not yet a rigorously evaluated forecasting system. The repo now includes a reproducible training script with time-based train / validation / test splitting and metadata output, but full metrics still need to be generated from the complete processed dataset and compared against a naive baseline.
+The careful limitation is that this is not yet a rigorously evaluated forecasting system. The repo now includes a reproducible training script with time-based train / validation / test splitting, metadata output, and a current-value naive baseline. Full metrics still need to be generated from the complete processed dataset and reviewed through `lstm_vs_baseline`.
 
 ### What would you improve next?
 
-For ML engineering quality, I would rerun the training script on the full processed dataset, preserve the generated `model_metadata.json`, add a naive baseline, and then replace the API shortcut with a real warehouse-backed lag window. For analytics engineering roles, I would expand the dbt marts and connect the warehouse-backed metrics to the dashboard. The shared transform module and pre-load validation gate are already in place, so the next step depends on which job family I want to target.
+For ML engineering quality, I would rerun the training script on the full processed dataset, preserve the generated `model_metadata.json`, inspect whether `lstm_vs_baseline` is positive on the test split, and then replace the API shortcut with a real warehouse-backed lag window. For analytics engineering roles, I would expand the dbt marts and connect the warehouse-backed metrics to the dashboard. The shared transform module and pre-load validation gate are already in place, so the next step depends on which job family I want to target.
 
 ### What is the biggest limitation?
 

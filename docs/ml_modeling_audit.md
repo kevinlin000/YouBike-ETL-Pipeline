@@ -60,7 +60,7 @@ The repository supports these claims:
 - High-frequency station data has value because the statistical analysis shows strong temporal dependence through lag-style regression features.
 - A PyTorch LSTM prototype was built for station-level bike availability forecasting.
 - The model was packaged into FastAPI-compatible artifacts.
-- The multi-station training flow now has a CLI with time-based train / validation / test splits and metadata output.
+- The multi-station training flow now has a CLI with time-based train / validation / test splits, current-value naive baseline metrics, and metadata output.
 - The API and dashboard demonstrate how model output can be converted into operational risk labels such as `stock_out`, `full_load`, `low_supply`, and `low_dock`.
 - The dashboard demo mode is useful for interview presentation because it shows the workflow without requiring live model services.
 
@@ -70,7 +70,7 @@ The repository does not currently prove:
 
 - Out-of-sample LSTM accuracy on the full historical dataset unless `scripts/train_multistation_lstm.py` is rerun with that data and the generated metadata is preserved.
 - Production forecasting quality.
-- That the LSTM beats a naive baseline such as "predict the current bike count" or "use the previous observation."
+- That the LSTM beats the current-value baseline on the full historical dataset unless `scripts/train_multistation_lstm.py` is rerun with that data and `lstm_vs_baseline` is reviewed.
 - That the API endpoint uses a real historical lag window at request time.
 - That all Taipei YouBike stations are supported by the trained model.
 
@@ -86,11 +86,11 @@ That means the endpoint demonstrates model-serving mechanics, but it is not the 
 
 Use this phrasing:
 
-> I treated the ML part as a prototype model-serving layer. The analysis showed that recent station state is important, so I built a PyTorch LSTM with station embeddings and weather features, saved the artifacts, and served them through FastAPI. I later converted the notebook flow into a reproducible training script with metadata output. The remaining limitation is that I still need to rerun it on the full dataset, add a naive baseline, and replace the API shortcut with a real lag-window inference path before I would call it production forecasting.
+> I treated the ML part as a prototype model-serving layer. The analysis showed that recent station state is important, so I built a PyTorch LSTM with station embeddings and weather features, saved the artifacts, and served them through FastAPI. I later converted the notebook flow into a reproducible training script with metadata output and a current-value naive baseline. The remaining limitation is that I still need to rerun it on the full dataset and replace the API shortcut with a real lag-window inference path before I would call it production forecasting.
 
 Chinese version:
 
-> 我當時 ML 這段不是在做完整 production ML，而是先用統計分析確認近期站點狀態有預測訊號，再用 PyTorch LSTM 做一個多站點預測 prototype。後面把模型權重、scaler、站點 mapping 存成 artifact，讓 FastAPI 可以載入推論，Streamlit 再把預測結果轉成缺車或滿站風險排序。現在 repo 已經補了可重現 training script 和 metadata 輸出；如果要主張模型準確度，下一步要用完整資料重跑、補 naive baseline，並把 API 改成真正查 lag window。
+> 我當時 ML 這段不是在做完整 production ML，而是先用統計分析確認近期站點狀態有預測訊號，再用 PyTorch LSTM 做一個多站點預測 prototype。後面把模型權重、scaler、站點 mapping 存成 artifact，讓 FastAPI 可以載入推論，Streamlit 再把預測結果轉成缺車或滿站風險排序。現在 repo 已經補了可重現 training script、metadata 輸出和 current-value naive baseline；如果要主張模型準確度，下一步要用完整資料重跑，並把 API 改成真正查 lag window。
 
 Avoid this phrasing:
 
@@ -104,7 +104,7 @@ Also avoid:
 
 1. Rerun `make train-lstm` where `data/processed/youbike_weather_merged.csv` is available.
 2. Preserve the generated `model_metadata.json` and summarize the out-of-sample metrics in docs.
-3. Add at least one naive baseline such as "next bike count equals current bike count."
+3. Use `metrics.lstm_vs_baseline` to decide whether the model improves on the current-value baseline.
 4. Update `/predict` to build a real lag window from recent warehouse records instead of repeating the current row.
 5. Add a small evaluation report under `docs/` so the README can link to real model metrics.
 

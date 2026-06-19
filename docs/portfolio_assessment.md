@@ -16,7 +16,7 @@ This repository is best positioned as a maintained data engineering portfolio pr
 - `dags/youbike_transform.py` centralizes transform behavior used by both the standalone ETL job and the Airflow DAG.
 - `validate_transformed_data_for_load()` wires tested data-quality checks into the pre-load ETL path, with strict and warn modes.
 - `mart_district_peak_hour_health` adds district-hour analytics with peak/off-peak labeling to the dbt layer.
-- `scripts/train_multistation_lstm.py` converts the multi-station LSTM notebook flow into a reproducible training CLI with artifact metadata.
+- `scripts/train_multistation_lstm.py` converts the multi-station LSTM notebook flow into a reproducible training CLI with artifact metadata and a current-value naive baseline.
 
 ## Highest-Value Improvements
 
@@ -25,22 +25,17 @@ This repository is best positioned as a maintained data engineering portfolio pr
    - Scope: run `make train-lstm` where `data/processed/youbike_weather_merged.csv` is available, review `model_metadata.json`, and document MAE/RMSE.
    - Risk: medium. The full processed dataset is not committed to the public repo.
 
-2. Add a naive baseline to the LSTM evaluation.
-   - Value: makes model quality claims interpretable.
-   - Scope: compare LSTM predictions against a baseline such as "next bike count equals current bike count."
-   - Risk: low to medium. It is evaluation-only, but it changes how the project discusses model value.
-
-3. Replace the current API inference shortcut with a real lag-window path.
+2. Replace the current API inference shortcut with a real lag-window path.
    - Value: closes the gap between notebook training and served inference.
    - Scope: query latest station observations from the warehouse, build the same feature window used in training, and keep the request-only demo path clearly labeled.
    - Risk: medium. It touches API behavior and depends on warehouse availability.
 
-4. Add a concise architecture diagram image.
+3. Add a concise architecture diagram image.
    - Value: helps non-technical reviewers understand the system faster than Mermaid alone.
    - Scope: render the existing Airflow/MySQL/FastAPI/Streamlit flow into a static image.
    - Risk: low. Keep it aligned with the README architecture.
 
-5. Add validation observability examples.
+4. Add validation observability examples.
    - Value: shows how strict/warn validation affects ETL operations.
    - Scope: document expected log messages and when to use `ETL_VALIDATION_MODE=warn`.
    - Risk: low. Keep it documentation-only unless the project is revived.
@@ -67,4 +62,4 @@ Also be explicit that the regression R-squared improvement is not the LSTM evalu
 
 ## Recommendation
 
-For the next engineering iteration, rerun the training script on the full processed dataset and add a naive baseline if the goal is to strengthen the ML engineering story. That should come before making stronger model-accuracy claims. If the goal is recruiter-facing polish, add a static architecture diagram or short deployment walkthrough.
+For the next engineering iteration, rerun the training script on the full processed dataset and review `lstm_vs_baseline` if the goal is to strengthen the ML engineering story. That should come before making stronger model-accuracy claims. If the goal is recruiter-facing polish, add a static architecture diagram or short deployment walkthrough.

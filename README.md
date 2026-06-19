@@ -145,7 +145,7 @@ dbt profiles 使用 `profiles.example.yml` 作為範本。實際 `profiles.yml` 
 - 降雨分級 `Rain_Cat`
 - 站點 ID embedding
 
-目前 repo 中可被嚴謹主張的是「完成 LSTM prototype 與 FastAPI 模型服務化流程」。Notebook 記錄 training loss 與 artifact 產出，`scripts/train_multistation_lstm.py` 則將多站訓練流程整理成可重現 CLI，會輸出模型權重、scaler、站點 mapping 與 `model_metadata.json`。完整脈絡整理在 [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md)。
+目前 repo 中可被嚴謹主張的是「完成 LSTM prototype 與 FastAPI 模型服務化流程」。Notebook 記錄 training loss 與 artifact 產出，`scripts/train_multistation_lstm.py` 則將多站訓練流程整理成可重現 CLI，會輸出模型權重、scaler、站點 mapping 與 `model_metadata.json`。metadata 會同時記錄 LSTM 指標、current-value naive baseline 指標，以及 LSTM 相對 baseline 的 MAE/RMSE 改善量。完整脈絡整理在 [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md)。
 
 ```bash
 make train-lstm
@@ -399,7 +399,7 @@ make dbt-build
 - `/predict` request validation
 - `/stations/risk` 批次風險排序、request validation 與 unknown station 行為
 - dashboard API client payload、demo mode、錯誤處理與顯示 label mapping
-- LSTM training script 的站點選擇、序列切分、artifact 與 metadata 輸出
+- LSTM training script 的站點選擇、序列切分、baseline 評估、artifact 與 metadata 輸出
 - unknown station 錯誤處理
 - mocked model prediction response
 - dbt seed fixtures、source/model tests、staging/mart build
@@ -414,8 +414,7 @@ CI 設定位於 `.github/workflows/ci.yml`。
 - ETL validation gate 預設採 strict mode；若真實 API 短暫異常不希望中斷流程，可用 `ETL_VALIDATION_MODE=warn` 改成只記錄警告。
 - dbt analytics layer 目前使用 seed fixtures 驗證模型結構；若要分析完整資料，需要連接實際 MySQL warehouse。
 - `/predict` 的即時 demo 會用目前狀態組成短序列；若要做更嚴謹的 production forecasting，應改由資料庫查詢真實 lag window。
-- LSTM 訓練流程已提供 script 與小型測試；但完整 processed training CSV 未提交，因此完整 out-of-sample 指標需要在具備真實資料的環境重跑。
-- 目前 metadata 會記錄 train / validation / test 指標，但尚未補 naive baseline 比較。
+- LSTM 訓練流程已提供 script、current-value naive baseline 與小型測試；但完整 processed training CSV 未提交，因此完整 out-of-sample 指標需要在具備真實資料的環境重跑。
 - Dashboard demo mode 是面試展示用的 deterministic mock，不代表真實模型評估表現。
 
 ## 與職缺能力的對應
@@ -433,7 +432,7 @@ CI 設定位於 `.github/workflows/ci.yml`。
 更完整的作品集評估與優先順序整理在 [`docs/portfolio_assessment.md`](docs/portfolio_assessment.md)，面試說明稿可參考 [`docs/interview_talk_track.md`](docs/interview_talk_track.md)，ML 脈絡與可主張範圍整理在 [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md)。
 
 1. 用完整 processed dataset 重跑 `make train-lstm`，保存 `model_metadata.json` 的 out-of-sample 指標。
-2. 為 LSTM 評估補 naive baseline，例如預測「下一筆等於目前車輛數」。
+2. 根據 `lstm_vs_baseline` 判斷模型是否真的優於「下一筆等於目前車輛數」的基準。
 3. 若要強化部署敘事，可補一份短部署錄影。
 
 ## 作者

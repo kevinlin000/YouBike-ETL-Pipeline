@@ -63,6 +63,26 @@ def test_prepare_datasets_selects_one_representative_station_per_district():
     assert bundle.split_counts == {"train": 10, "validation": 6, "test": 6}
 
 
+def test_current_value_baseline_uses_last_observed_bike_count():
+    bundle = trainer.prepare_datasets(
+        synthetic_training_frame(),
+        station_selection="district-representative",
+        time_steps=3,
+        horizon_steps=1,
+        train_ratio=0.6,
+        val_ratio=0.2,
+    )
+
+    metrics = trainer.evaluate_current_value_baseline(
+        bundle.scaler,
+        bundle.x_train,
+        bundle.y_train,
+    )
+
+    assert metrics["mae"] >= 0
+    assert metrics["rmse"] >= metrics["mae"]
+
+
 def test_train_and_save_writes_api_compatible_artifacts(tmp_path):
     data_path = tmp_path / "training.csv"
     output_dir = tmp_path / "artifacts"
@@ -108,4 +128,13 @@ def test_train_and_save_writes_api_compatible_artifacts(tmp_path):
     assert saved_metadata["feature_columns"] == trainer.FEATURE_COLUMNS
     assert saved_metadata["split"]["sequence_counts"] == {"train": 10, "validation": 6, "test": 6}
     assert saved_metadata["metrics"].keys() == metadata["metrics"].keys()
+    assert set(saved_metadata["metrics"]) == {
+        "lstm",
+        "baseline_current_value",
+        "lstm_vs_baseline",
+    }
+    assert set(saved_metadata["metrics"]["lstm"]) == {"train", "validation", "test"}
+    assert set(saved_metadata["metrics"]["baseline_current_value"]) == {"train", "validation", "test"}
+    assert "mae" in saved_metadata["metrics"]["baseline_current_value"]["test"]
+    assert "mae_delta" in saved_metadata["metrics"]["lstm_vs_baseline"]["test"]
     assert saved_metadata["model"]["type"] == "MultiStationLSTM"
