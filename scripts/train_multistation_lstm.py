@@ -20,6 +20,7 @@ import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
+from sklearn.linear_model import Ridge
 from sklearn.preprocessing import MinMaxScaler
 from torch.utils.data import DataLoader, TensorDataset
 
@@ -517,6 +518,50 @@ def evaluate_raw_baseline_predictions(
     return regression_metrics(actual_raw, predictions_raw)
 
 
+def build_tabular_lag_features(x_values: np.ndarray, num_stations: int) -> np.ndarray:
+    if len(x_values) == 0:
+        feature_count = x_values.shape[1] * (x_values.shape[2] - 1) + num_stations
+        return np.empty((0, feature_count), dtype=np.float32)
+
+    numeric_features = x_values[:, :, :-1].reshape(len(x_values), -1)
+    station_ids = x_values[:, -1, -1].astype(int)
+    station_one_hot = np.zeros((len(x_values), num_stations), dtype=np.float32)
+    station_one_hot[np.arange(len(x_values)), station_ids] = 1.0
+    return np.hstack((numeric_features, station_one_hot)).astype(np.float32)
+
+
+def evaluate_ridge_lag_regression_baseline(
+    bundle: DatasetBundle,
+    alpha: float = 1.0,
+) -> dict[str, dict[str, float]]:
+    """Train a simple tabular baseline on the same lag window used by the LSTM."""
+    train_features = build_tabular_lag_features(bundle.x_train, len(bundle.station_mapping))
+    if len(train_features) == 0:
+        return {"train": {}, "validation": {}, "test": {}}
+
+    model = Ridge(alpha=alpha)
+    model.fit(train_features, bundle.y_train.reshape(-1))
+
+    split_values = {
+        "train": (bundle.x_train, bundle.y_train),
+        "validation": (bundle.x_val, bundle.y_val),
+        "test": (bundle.x_test, bundle.y_test),
+    }
+    metrics = {}
+    for split_name, (x_values, y_values) in split_values.items():
+        if len(x_values) == 0:
+            metrics[split_name] = {}
+            continue
+
+        features = build_tabular_lag_features(x_values, len(bundle.station_mapping))
+        predicted_scaled = model.predict(features).reshape(-1, 1)
+        actual_raw = inverse_bike_values(bundle.scaler, y_values)
+        predicted_raw = inverse_bike_values(bundle.scaler, predicted_scaled)
+        metrics[split_name] = regression_metrics(actual_raw, predicted_raw)
+
+    return metrics
+
+
 def compare_against_baseline(
     model_metrics: dict[str, dict[str, float]],
     baseline_metrics: dict[str, dict[str, float]],
@@ -553,7 +598,7 @@ def evaluate_all_baselines(bundle: DatasetBundle) -> dict[str, dict[str, dict[st
         "validation": bundle.y_val,
         "test": bundle.y_test,
     }
-    return {
+    naive_baselines = {
         baseline_name: {
             split_name: evaluate_raw_baseline_predictions(
                 bundle.scaler,
@@ -564,6 +609,8 @@ def evaluate_all_baselines(bundle: DatasetBundle) -> dict[str, dict[str, dict[st
         }
         for baseline_name, split_predictions in bundle.baseline_predictions.items()
     }
+    naive_baselines["ridge_lag_regression"] = evaluate_ridge_lag_regression_baseline(bundle)
+    return naive_baselines
 
 
 def find_best_baseline_for_metric(

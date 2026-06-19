@@ -147,7 +147,7 @@ dbt profiles 使用 `profiles.example.yml` 作為範本。實際 `profiles.yml` 
 - 降雨分級 `Rain_Cat`
 - 站點 ID embedding
 
-目前 repo 中可被嚴謹主張的是「完成 LSTM prototype 與 FastAPI 模型服務化流程」。Notebook 記錄 training loss 與 artifact 產出，`scripts/train_multistation_lstm.py` 則將多站訓練流程整理成可重現 CLI，會輸出模型權重、scaler、站點 mapping 與 `model_metadata.json`。metadata 會同時記錄 LSTM 指標、current-value、rolling mean、same-time previous-day baseline 指標、LSTM 相對各 baseline 的 MAE/RMSE 改善量，以及是否打敗 test split 最佳 baseline 的 `model_selection` 摘要。本地 checkpoint-data 評估整理在 [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md)：下一筆 observation 目標下，LSTM 有打敗 rolling mean 與 same-time previous-day，但沒有打敗最強的 current-value baseline；近似一小時目標（`horizon_steps=6`）下，LSTM 仍未打敗 current-value 或 rolling mean。因此應定位為 model-serving prototype，而不是已驗證的準確預測模型。完整脈絡整理在 [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md)。
+目前 repo 中可被嚴謹主張的是「完成 LSTM prototype 與 FastAPI 模型服務化流程」。Notebook 記錄 training loss 與 artifact 產出，`scripts/train_multistation_lstm.py` 則將多站訓練流程整理成可重現 CLI，會輸出模型權重、scaler、站點 mapping 與 `model_metadata.json`。metadata 會同時記錄 LSTM 指標、current-value、rolling mean、same-time previous-day、Ridge lag regression baseline 指標、LSTM 相對各 baseline 的 MAE/RMSE 改善量，以及是否打敗 test split 最佳 baseline 的 `model_selection` 摘要。本地 checkpoint-data 評估整理在 [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md)：下一筆 observation 目標下，LSTM 有打敗 rolling mean 與 same-time previous-day，但沒有打敗 current-value 或 Ridge；近似一小時目標（`horizon_steps=6`）下，LSTM 仍未打敗最強 baseline。因此應定位為 model-serving prototype，而不是已驗證的準確預測模型。完整脈絡整理在 [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md)。
 
 ```bash
 make train-lstm
@@ -429,7 +429,7 @@ CI 設定位於 `.github/workflows/ci.yml`。
 - ETL validation gate 預設採 strict mode；若真實 API 短暫異常不希望中斷流程，可用 `ETL_VALIDATION_MODE=warn` 改成只記錄警告。
 - dbt analytics layer 目前使用 seed fixtures 驗證模型結構；若要分析完整資料，需要連接實際 MySQL warehouse。
 - `/predict` 可手動傳入 `recent_observations`，也可在 DB credentials 存在時自動從 MySQL `station_status` 查最近 3 筆可借車數；但目前 warehouse 沒有 weather history，因此自動查詢路徑會沿用 request 中的 temperature / rain。API 保留 `next_hour` 欄位名稱作相容用途，實際 horizon 需看 response metadata。
-- LSTM 訓練流程已提供 script、baseline suite 與小型測試；本地 checkpoint-data 評估顯示目前 LSTM 在下一筆 observation 與近似一小時 horizon 下，都沒有打敗最強 baseline。由於完整 processed training CSV 未提交，fresh clone 無法直接重現完整資料評估。
+- LSTM 訓練流程已提供 script、baseline suite、Ridge lag-regression baseline 與小型測試；本地 checkpoint-data 評估顯示目前 LSTM 在下一筆 observation 與近似一小時 horizon 下，都沒有打敗最強 baseline。由於完整 processed training CSV 未提交，fresh clone 無法直接重現完整資料評估。
 - Dashboard demo mode 是面試展示用的 deterministic mock，不代表真實模型評估表現。
 
 ## 與職缺能力的對應

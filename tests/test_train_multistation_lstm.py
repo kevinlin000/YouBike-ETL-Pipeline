@@ -95,9 +95,16 @@ def test_baseline_suite_includes_rolling_and_previous_day_metrics():
 
     metrics = trainer.evaluate_all_baselines(bundle)
 
-    assert set(metrics) == {"current_value", "rolling_mean", "same_time_previous_day"}
+    assert set(metrics) == {
+        "current_value",
+        "ridge_lag_regression",
+        "rolling_mean",
+        "same_time_previous_day",
+    }
     assert metrics["rolling_mean"]["train"]["n"] == bundle.split_counts["train"]
     assert metrics["rolling_mean"]["train"]["mae"] >= 0
+    assert metrics["ridge_lag_regression"]["train"]["n"] == bundle.split_counts["train"]
+    assert metrics["ridge_lag_regression"]["test"]["mae"] >= 0
     assert metrics["same_time_previous_day"]["train"] == {}
 
 
@@ -211,12 +218,14 @@ def test_train_and_save_writes_api_compatible_artifacts(tmp_path):
     assert set(saved_metadata["metrics"]["lstm"]) == {"train", "validation", "test"}
     assert set(saved_metadata["metrics"]["baselines"]) == {
         "current_value",
+        "ridge_lag_regression",
         "rolling_mean",
         "same_time_previous_day",
     }
     assert set(saved_metadata["metrics"]["baseline_current_value"]) == {"train", "validation", "test"}
     assert "mae" in saved_metadata["metrics"]["baseline_current_value"]["test"]
     assert "mae" in saved_metadata["metrics"]["baselines"]["rolling_mean"]["test"]
+    assert "mae" in saved_metadata["metrics"]["baselines"]["ridge_lag_regression"]["test"]
     assert saved_metadata["metrics"]["baselines"]["same_time_previous_day"]["test"] == {}
     assert "mae_delta" in saved_metadata["metrics"]["lstm_vs_baseline"]["test"]
     assert saved_metadata["model"]["type"] == "MultiStationLSTM"

@@ -18,13 +18,13 @@ This repository is best positioned as a maintained data engineering portfolio pr
 - `dags/youbike_transform.py` centralizes transform behavior used by both the standalone ETL job and the Airflow DAG.
 - `validate_transformed_data_for_load()` wires tested data-quality checks into the pre-load ETL path, with strict and warn modes.
 - `mart_district_peak_hour_health` adds district-hour analytics with peak/off-peak labeling to the dbt layer.
-- `scripts/train_multistation_lstm.py` converts the multi-station LSTM notebook flow into a reproducible training CLI with artifact metadata and current-value, rolling-mean, and same-time previous-day baselines.
+- `scripts/train_multistation_lstm.py` converts the multi-station LSTM notebook flow into a reproducible training CLI with artifact metadata and current-value, rolling-mean, same-time previous-day, and Ridge lag-regression baselines.
 
 ## Highest-Value Improvements
 
 1. Improve model features before more LSTM tuning.
    - Value: strengthens ML engineering credibility.
-   - Scope: keep the current evaluation report as the boundary, then add aligned weather history, richer lag features, and simpler tabular/time-series baselines before replacing served artifacts.
+   - Scope: keep the current evaluation report as the boundary, then add aligned weather history and richer lag features before replacing served artifacts.
    - Risk: medium. It depends on preserving the processed dataset lineage and matching features to real operations.
 
 2. Add weather-history alignment to inference.

@@ -8,7 +8,7 @@ The strongest defensible claim is:
 
 > The project includes a PyTorch Multi-Station LSTM prototype, trained from notebook-generated YouBike and weather features, then packaged as FastAPI inference artifacts and surfaced through a Streamlit decision-support dashboard.
 
-The current repository does not yet support a stronger claim such as "the LSTM is a production-grade, rigorously evaluated forecasting model." The notebooks show training loss and model-serving integration, and `scripts/train_multistation_lstm.py` now provides a reproducible training CLI. Local runs against the maintainer's processed notebook checkpoint are documented in [`docs/lstm_evaluation_report.md`](lstm_evaluation_report.md); the LSTM did not beat the strongest baseline on either the next-observation run or the approximate one-hour run.
+The current repository does not yet support a stronger claim such as "the LSTM is a production-grade, rigorously evaluated forecasting model." The notebooks show training loss and model-serving integration, and `scripts/train_multistation_lstm.py` now provides a reproducible training CLI. Local runs against the maintainer's processed notebook checkpoint are documented in [`docs/lstm_evaluation_report.md`](lstm_evaluation_report.md); the LSTM did not beat the strongest naive or Ridge lag-regression baseline on either the next-observation run or the approximate one-hour run.
 
 ## Mental Model
 
@@ -60,7 +60,7 @@ The repository supports these claims:
 - High-frequency station data has value because the statistical analysis shows strong temporal dependence through lag-style regression features.
 - A PyTorch LSTM prototype was built for station-level bike availability forecasting.
 - The model was packaged into FastAPI-compatible artifacts.
-- The multi-station training flow now has a CLI with time-based train / validation / test splits, current-value, rolling-mean, and same-time previous-day baseline metrics, plus metadata output.
+- The multi-station training flow now has a CLI with time-based train / validation / test splits, current-value, rolling-mean, same-time previous-day, and Ridge lag-regression baseline metrics, plus metadata output.
 - Local checkpoint-data evaluations have been documented, and they show the current LSTM configuration should be treated as a serving prototype rather than a proven improvement over the strongest baseline.
 - The API and dashboard demonstrate how model output can be converted into operational risk labels such as `stock_out`, `full_load`, `low_supply`, and `low_dock`.
 - The dashboard demo mode is useful for interview presentation because it shows the workflow without requiring live model services.
@@ -89,11 +89,11 @@ This closes the biggest serving-shape gap, but it is still not complete producti
 
 Use this phrasing:
 
-> I treated the ML part as a prototype model-serving layer. The analysis showed that recent station state is important, so I built a PyTorch LSTM with station embeddings and weather features, saved the artifacts, and served them through FastAPI. I later converted the notebook flow into a reproducible training script with metadata output and a baseline suite. Local evaluations show the current LSTM does not beat the strongest baseline for either next-observation or approximate one-hour forecasting, so I would not claim production forecasting accuracy. The API can now accept a 3-row recent-observation window and can read recent bike counts from the warehouse when DB credentials are configured. The remaining limitation is aligned weather history, richer lag features, and stronger horizon-specific modeling.
+> I treated the ML part as a prototype model-serving layer. The analysis showed that recent station state is important, so I built a PyTorch LSTM with station embeddings and weather features, saved the artifacts, and served them through FastAPI. I later converted the notebook flow into a reproducible training script with metadata output and a baseline suite, including a simple Ridge lag-regression baseline. Local evaluations show the current LSTM does not beat the strongest baseline for either next-observation or approximate one-hour forecasting, so I would not claim production forecasting accuracy. The API can now accept a 3-row recent-observation window and can read recent bike counts from the warehouse when DB credentials are configured. The remaining limitation is aligned weather history, richer lag features, and stronger horizon-specific modeling.
 
 Chinese version:
 
-> 我當時 ML 這段不是在做完整 production ML，而是先用統計分析確認近期站點狀態有預測訊號，再用 PyTorch LSTM 做一個多站點預測 prototype。後面把模型權重、scaler、站點 mapping 存成 artifact，讓 FastAPI 可以載入推論，Streamlit 再把預測結果轉成缺車或滿站風險排序。現在 repo 已經補了可重現 training script、metadata 輸出、baseline suite，也做了本地評估；結果是目前 LSTM 在下一筆 observation 和近似一小時 horizon 都沒有打敗最強 baseline，所以我會把它定位成 model-serving prototype，而不是已證明準確的 forecasting model。API 也已經可以接 3 筆近期觀測值；如果有 DB credentials，會查 warehouse 最近 3 筆可借車數。剩下限制是 weather history alignment、更完整 lag features 和針對實際 horizon 的模型評估。
+> 我當時 ML 這段不是在做完整 production ML，而是先用統計分析確認近期站點狀態有預測訊號，再用 PyTorch LSTM 做一個多站點預測 prototype。後面把模型權重、scaler、站點 mapping 存成 artifact，讓 FastAPI 可以載入推論，Streamlit 再把預測結果轉成缺車或滿站風險排序。現在 repo 已經補了可重現 training script、metadata 輸出、baseline suite，也加入簡單的 Ridge lag-regression baseline 並做了本地評估；結果是目前 LSTM 在下一筆 observation 和近似一小時 horizon 都沒有打敗最強 baseline，所以我會把它定位成 model-serving prototype，而不是已證明準確的 forecasting model。API 也已經可以接 3 筆近期觀測值；如果有 DB credentials，會查 warehouse 最近 3 筆可借車數。剩下限制是 weather history alignment、更完整 lag features 和針對實際 horizon 的模型評估。
 
 Avoid this phrasing:
 
@@ -107,7 +107,7 @@ Also avoid:
 
 1. Keep [`docs/lstm_evaluation_report.md`](lstm_evaluation_report.md) as the current model-evaluation boundary.
 2. Add aligned weather history and richer lag features before tuning the LSTM further.
-3. Compare against simpler tabular/time-series baselines before adding more neural-network complexity.
+3. Improve the simpler tabular/time-series baselines before adding more neural-network complexity.
 4. Add weather-history alignment to the warehouse-backed inference path.
 5. Replace served artifacts only after a new model beats the baseline suite on the test split.
 
