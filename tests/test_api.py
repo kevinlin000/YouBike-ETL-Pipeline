@@ -18,6 +18,8 @@ def reset_model_resources(monkeypatch):
     monkeypatch.setattr(api_main, "scaler", None)
     monkeypatch.setattr(api_main, "station_mapping", None)
     monkeypatch.setattr(api_main, "station_info_map", None)
+    monkeypatch.setattr(api_main, "db_engine", None)
+    monkeypatch.setattr(api_main, "get_recent_observations_from_warehouse", lambda *_args: None)
 
 
 @pytest.fixture
@@ -197,6 +199,72 @@ def test_predict_uses_recent_observations_as_lag_window(client, monkeypatch):
             [10.0, 27.0, 0.0, 0.0, 4.0],
             [11.0, 27.2, 0.5, 1.0, 4.0],
             [12.0, 27.5, 3.0, 2.0, 4.0],
+        ],
+    )
+
+
+def test_predict_uses_warehouse_lag_window_when_request_history_missing(client, monkeypatch):
+    fake_model = CapturingModel()
+    monkeypatch.setattr(api_main, "model", fake_model)
+    monkeypatch.setattr(api_main, "scaler", FakeScaler())
+    monkeypatch.setattr(api_main, "station_mapping", {"500101001": 4})
+    monkeypatch.setattr(
+        api_main,
+        "get_recent_observations_from_warehouse",
+        lambda station_no, temperature, rain: [
+            api_main.RecentObservation(bikes_available=20, temperature=temperature, rain=rain),
+            api_main.RecentObservation(bikes_available=21, temperature=temperature, rain=rain),
+            api_main.RecentObservation(bikes_available=22, temperature=temperature, rain=rain),
+        ],
+    )
+
+    response = client.post(
+        "/predict",
+        json={
+            "station_no": "500101001",
+            "bikes_available": 99,
+            "temperature": 27.5,
+            "rain": 0.5,
+        },
+    )
+
+    assert response.status_code == 200
+    assert fake_model.input_tensor is not None
+    np.testing.assert_allclose(
+        fake_model.input_tensor.squeeze(0).numpy(),
+        [
+            [20.0, 27.5, 0.5, 1.0, 4.0],
+            [21.0, 27.5, 0.5, 1.0, 4.0],
+            [22.0, 27.5, 0.5, 1.0, 4.0],
+        ],
+    )
+
+
+def test_predict_falls_back_to_current_state_when_warehouse_lookup_missing(client, monkeypatch):
+    fake_model = CapturingModel()
+    monkeypatch.setattr(api_main, "model", fake_model)
+    monkeypatch.setattr(api_main, "scaler", FakeScaler())
+    monkeypatch.setattr(api_main, "station_mapping", {"500101001": 4})
+    monkeypatch.setattr(api_main, "get_recent_observations_from_warehouse", lambda *_args: None)
+
+    response = client.post(
+        "/predict",
+        json={
+            "station_no": "500101001",
+            "bikes_available": 12,
+            "temperature": 27.5,
+            "rain": 0,
+        },
+    )
+
+    assert response.status_code == 200
+    assert fake_model.input_tensor is not None
+    np.testing.assert_allclose(
+        fake_model.input_tensor.squeeze(0).numpy(),
+        [
+            [12.0, 27.5, 0.0, 0.0, 4.0],
+            [12.0, 27.5, 0.0, 0.0, 4.0],
+            [12.0, 27.5, 0.0, 0.0, 4.0],
         ],
     )
 

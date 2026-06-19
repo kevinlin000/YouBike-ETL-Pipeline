@@ -25,9 +25,9 @@ This repository is best positioned as a maintained data engineering portfolio pr
    - Scope: run `make train-lstm` where `data/processed/youbike_weather_merged.csv` is available, review `model_metadata.json`, and document MAE/RMSE.
    - Risk: medium. The full processed dataset is not committed to the public repo.
 
-2. Add warehouse-backed lag-window lookup to inference.
+2. Add weather-history alignment to inference.
    - Value: closes the gap between notebook training and served inference.
-   - Scope: query latest station observations from the warehouse, build the same feature window already accepted by `recent_observations`, and keep the request-only demo path clearly labeled.
+   - Scope: extend the warehouse-backed path beyond recent bike counts so it can join aligned weather history before inference.
    - Risk: medium. It touches API behavior and depends on warehouse availability.
 
 3. Add a concise architecture diagram image.

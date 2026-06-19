@@ -8,6 +8,8 @@ import logging
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, field_validator
 from contextlib import asynccontextmanager
+from sqlalchemy import create_engine, text
+from sqlalchemy.engine import Engine, URL
 
 logger = logging.getLogger(__name__)
 MODEL_TIME_STEPS = 3
@@ -152,6 +154,7 @@ model = None
 scaler = None
 station_mapping = None
 station_info_map = None  # 新增：站點資訊對照表
+db_engine: Engine | None = None
 
 # --- 3. 定義模型架構 (必須與訓練程式碼完全同步) ---
 class MultiStationLSTM(nn.Module):
@@ -191,7 +194,7 @@ class MultiStationLSTM(nn.Module):
 # --- 4. 生命週期管理 (啟動時載入模型) ---
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global model, scaler, station_mapping, station_info_map
+    global model, scaler, station_mapping, station_info_map, db_engine
     
     # 模型檔案路徑
     # 取得目前 main.py 的所在目錄 (api/app)
@@ -217,9 +220,11 @@ async def lifespan(app: FastAPI):
         logger.info("所有模型資源載入成功。")
     except Exception as e:
         logger.exception("模型載入失敗: %s", e)
+    db_engine = create_optional_db_engine()
     yield
     model = None
     scaler = None
+    db_engine = None
     logger.info("模型資源已釋放。")
 
 app = FastAPI(lifespan=lifespan, title="YouBike LSTM Prediction API")
@@ -243,6 +248,75 @@ def ensure_station_supported(station_no: str) -> None:
     if station_mapping is None or station_no not in station_mapping:
         raise HTTPException(status_code=404, detail="Station ID not supported by model")
 
+def create_optional_db_engine() -> Engine | None:
+    db_password = os.getenv("DB_PASSWORD")
+    if not db_password:
+        logger.info("DB_PASSWORD is not set; warehouse lag-window lookup disabled.")
+        return None
+
+    db_user = os.getenv("DB_USER", "admin")
+    db_host = os.getenv("DB_HOST", "127.0.0.1")
+    db_port = os.getenv("DB_PORT", "3306")
+    db_name = os.getenv("DB_NAME", "youbike_db")
+    return create_engine(
+        URL.create(
+            "mysql+pymysql",
+            username=db_user,
+            password=db_password,
+            host=db_host,
+            port=int(db_port),
+            database=db_name,
+        ),
+        pool_size=2,
+        max_overflow=2,
+        pool_recycle=1800,
+        pool_pre_ping=True,
+    )
+
+def get_recent_observations_from_warehouse(
+    station_no: str,
+    temperature: float,
+    rain: float,
+) -> list[RecentObservation] | None:
+    if db_engine is None:
+        return None
+
+    query = text(
+        """
+        SELECT bikes_available
+        FROM station_status
+        WHERE station_no = :station_no
+        ORDER BY record_time DESC
+        LIMIT :limit
+        """
+    )
+    try:
+        with db_engine.connect() as conn:
+            rows = conn.execute(
+                query,
+                {"station_no": station_no, "limit": MODEL_TIME_STEPS},
+            ).fetchall()
+    except Exception as exc:
+        logger.warning("Warehouse lag-window lookup failed for station %s: %s", station_no, exc)
+        return None
+
+    if len(rows) != MODEL_TIME_STEPS:
+        logger.info(
+            "Warehouse lag-window lookup returned %s rows for station %s; using fallback.",
+            len(rows),
+            station_no,
+        )
+        return None
+
+    return [
+        RecentObservation(
+            bikes_available=int(row.bikes_available),
+            temperature=temperature,
+            rain=rain,
+        )
+        for row in reversed(rows)
+    ]
+
 def observation_features(observation: RecentObservation) -> list[float]:
     return [
         observation.bikes_available,
@@ -252,11 +326,19 @@ def observation_features(observation: RecentObservation) -> list[float]:
     ]
 
 def build_feature_sequence(
+    station_no: str,
     bikes_available: int,
     temperature: float,
     rain: float,
     recent_observations: list[RecentObservation] | None,
 ) -> np.ndarray:
+    if recent_observations is None:
+        recent_observations = get_recent_observations_from_warehouse(
+            station_no,
+            temperature,
+            rain,
+        )
+
     # When real lag-window observations are unavailable, keep the old demo path.
     if recent_observations is None:
         return np.array([[
@@ -277,6 +359,7 @@ def predict_bikes_next_hour(
 ) -> int:
     # 特徵工程與模型輸入必須與訓練流程保持一致。
     raw_features = build_feature_sequence(
+        station_no,
         bikes_available,
         temperature,
         rain,

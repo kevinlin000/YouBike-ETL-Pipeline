@@ -71,26 +71,26 @@ The repository does not currently prove:
 - Out-of-sample LSTM accuracy on the full historical dataset unless `scripts/train_multistation_lstm.py` is rerun with that data and the generated metadata is preserved.
 - Production forecasting quality.
 - That the LSTM beats the current-value baseline on the full historical dataset unless `scripts/train_multistation_lstm.py` is rerun with that data and `lstm_vs_baseline` is reviewed.
-- That the API endpoint automatically queries a real historical lag window from the warehouse at request time.
+- That the API endpoint automatically queries a complete historical feature window with weather history.
 - That all Taipei YouBike stations are supported by the trained model.
 
 The reported R-squared improvement from roughly `0.02` to `0.92` belongs to the regression analysis in the statistical notebook. It should be described as evidence that lag features are valuable, not as LSTM performance.
 
 ## API Inference Gap
 
-The training notebook creates real sliding windows from historical rows. The FastAPI `/predict` path now accepts optional `recent_observations`, so callers can provide the same 3-row lag-window shape used by the training flow. For dashboard/demo compatibility, requests without `recent_observations` still fall back to repeating the current state three times.
+The training notebook creates real sliding windows from historical rows. The FastAPI `/predict` path accepts optional `recent_observations`, so callers can provide the same 3-row lag-window shape used by the training flow. When request history is omitted and DB credentials are available, the API attempts to load the latest three `bikes_available` rows from MySQL `station_status`.
 
-That means the endpoint can consume a real recent-history window, but it still does not fetch that window from the warehouse automatically. A production-grade endpoint should query the warehouse for the latest three observations for the requested station, join the needed weather features, and then run inference on that true sequence.
+This closes the biggest serving-shape gap, but it is still not complete production forecasting. The current warehouse table does not store weather history, so the automatic lookup uses historical bike counts with the request's current temperature and rain values. A production-grade endpoint should query both recent station observations and aligned weather features before running inference.
 
 ## Interview-Safe Explanation
 
 Use this phrasing:
 
-> I treated the ML part as a prototype model-serving layer. The analysis showed that recent station state is important, so I built a PyTorch LSTM with station embeddings and weather features, saved the artifacts, and served them through FastAPI. I later converted the notebook flow into a reproducible training script with metadata output and a current-value naive baseline. The API can now accept a 3-row recent-observation window, but the remaining limitation is that I still need to rerun training on the full dataset and add warehouse-backed lag-window lookup before I would call it production forecasting.
+> I treated the ML part as a prototype model-serving layer. The analysis showed that recent station state is important, so I built a PyTorch LSTM with station embeddings and weather features, saved the artifacts, and served them through FastAPI. I later converted the notebook flow into a reproducible training script with metadata output and a current-value naive baseline. The API can now accept a 3-row recent-observation window and can read recent bike counts from the warehouse when DB credentials are configured. The remaining limitation is that I still need to rerun training on the full dataset and add weather-history alignment before I would call it production forecasting.
 
 Chinese version:
 
-> 我當時 ML 這段不是在做完整 production ML，而是先用統計分析確認近期站點狀態有預測訊號，再用 PyTorch LSTM 做一個多站點預測 prototype。後面把模型權重、scaler、站點 mapping 存成 artifact，讓 FastAPI 可以載入推論，Streamlit 再把預測結果轉成缺車或滿站風險排序。現在 repo 已經補了可重現 training script、metadata 輸出、current-value naive baseline，也讓 API 可以接 3 筆近期觀測值；如果要主張 production forecasting，下一步要用完整資料重跑，並讓 API 自動從 warehouse 查 lag window。
+> 我當時 ML 這段不是在做完整 production ML，而是先用統計分析確認近期站點狀態有預測訊號，再用 PyTorch LSTM 做一個多站點預測 prototype。後面把模型權重、scaler、站點 mapping 存成 artifact，讓 FastAPI 可以載入推論，Streamlit 再把預測結果轉成缺車或滿站風險排序。現在 repo 已經補了可重現 training script、metadata 輸出、current-value naive baseline，也讓 API 可以接 3 筆近期觀測值；如果有 DB credentials，API 也會查 warehouse 最近 3 筆可借車數。剩下限制是 weather history 還沒進 warehouse lookup，所以還不能說是完整 production forecasting。
 
 Avoid this phrasing:
 
@@ -105,7 +105,7 @@ Also avoid:
 1. Rerun `make train-lstm` where `data/processed/youbike_weather_merged.csv` is available.
 2. Preserve the generated `model_metadata.json` and summarize the out-of-sample metrics in docs.
 3. Use `metrics.lstm_vs_baseline` to decide whether the model improves on the current-value baseline.
-4. Add warehouse-backed lookup so `/predict` can fetch recent observations automatically instead of requiring callers to provide them.
+4. Add weather-history alignment to the warehouse-backed inference path.
 5. Add a small evaluation report under `docs/` so the README can link to real model metrics.
 
 ## Current Portfolio Positioning

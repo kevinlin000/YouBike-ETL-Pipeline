@@ -162,7 +162,7 @@ FastAPI endpoint：
 | POST | `/predict` | 預測指定站點一小時後的可借車數 |
 | POST | `/stations/risk` | 批次評估多站點缺車 / 滿站風險並排序 |
 
-`/predict` 與 `/stations/risk` 支援可選的 `recent_observations`，可傳入 3 筆近期觀測值作為 LSTM lag window。若未提供，API 會維持展示相容模式：使用目前狀態重複成短序列。
+`/predict` 與 `/stations/risk` 支援可選的 `recent_observations`，可傳入 3 筆近期觀測值作為 LSTM lag window。若未提供，API 會在 DB credentials 存在時嘗試從 MySQL `station_status` 查詢最近 3 筆 `bikes_available`；查不到完整 3 筆或未設定 DB 時，會維持展示相容模式：使用目前狀態重複成短序列。
 
 範例 request：
 
@@ -403,7 +403,7 @@ make dbt-build
 - ETL transform 後的重複 status key、負值與非數值 availability validation
 - FastAPI health endpoint
 - `/stations` model-not-ready 行為
-- `/predict` request validation 與 `recent_observations` lag-window 行為
+- `/predict` request validation、`recent_observations` lag-window 與 warehouse lookup fallback 行為
 - `/stations/risk` 批次風險排序、request validation、unknown station 與 per-station `recent_observations` 行為
 - dashboard API client payload、demo mode、錯誤處理與顯示 label mapping
 - LSTM training script 的站點選擇、序列切分、baseline 評估、artifact 與 metadata 輸出
@@ -420,7 +420,7 @@ CI 設定位於 `.github/workflows/ci.yml`。
 - ETL transform 已抽成共用 module；extract/load 仍保留 standalone job 與 Airflow DAG 各自的執行環境差異。
 - ETL validation gate 預設採 strict mode；若真實 API 短暫異常不希望中斷流程，可用 `ETL_VALIDATION_MODE=warn` 改成只記錄警告。
 - dbt analytics layer 目前使用 seed fixtures 驗證模型結構；若要分析完整資料，需要連接實際 MySQL warehouse。
-- `/predict` 已支援手動傳入 `recent_observations` 作為 lag window；但 API 尚未自動從 MySQL warehouse 查詢近期觀測值。
+- `/predict` 可手動傳入 `recent_observations`，也可在 DB credentials 存在時自動從 MySQL `station_status` 查最近 3 筆可借車數；但目前 warehouse 沒有 weather history，因此自動查詢路徑會沿用 request 中的 temperature / rain。
 - LSTM 訓練流程已提供 script、current-value naive baseline 與小型測試；但完整 processed training CSV 未提交，因此完整 out-of-sample 指標需要在具備真實資料的環境重跑。
 - Dashboard demo mode 是面試展示用的 deterministic mock，不代表真實模型評估表現。
 
