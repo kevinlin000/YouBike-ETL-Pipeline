@@ -153,6 +153,8 @@ FastAPI endpoints:
 | POST | `/predict` | Predicts available bikes one hour later |
 | POST | `/stations/risk` | Ranks multi-station stock-out / full-load risk |
 
+`/predict` and `/stations/risk` accept optional `recent_observations`, a 3-row recent-history window for LSTM inference. When it is omitted, the API keeps the demo-compatible fallback and repeats the current state into a short sequence.
+
 Example request:
 
 ```json
@@ -160,7 +162,12 @@ Example request:
   "station_no": "500101001",
   "bikes_available": 12,
   "temperature": 27.5,
-  "rain": 0.0
+  "rain": 0.0,
+  "recent_observations": [
+    {"bikes_available": 10, "temperature": 27.0, "rain": 0.0},
+    {"bikes_available": 11, "temperature": 27.2, "rain": 0.0},
+    {"bikes_available": 12, "temperature": 27.5, "rain": 0.0}
+  ]
 }
 ```
 
@@ -387,8 +394,8 @@ Current tests cover:
 - ETL post-transform validation for duplicate status keys, negative availability, and non-numeric availability fields
 - FastAPI health endpoint
 - `/stations` model-not-ready behavior
-- `/predict` request validation
-- `/stations/risk` batch ranking, request validation, and unknown station behavior
+- `/predict` request validation and `recent_observations` lag-window behavior
+- `/stations/risk` batch ranking, request validation, unknown station behavior, and per-station `recent_observations`
 - dashboard API client payloads, demo mode, error handling, and display label mapping
 - LSTM training script station selection, sequence splitting, baseline evaluation, artifact output, and metadata output
 - unknown station handling
@@ -404,7 +411,7 @@ CI configuration lives in `.github/workflows/ci.yml`.
 - ETL transform logic is shared; extract/load code still differs between the standalone job and Airflow DAG because their runtime environments differ.
 - The ETL validation gate defaults to strict mode; use `ETL_VALIDATION_MODE=warn` if transient API anomalies should be logged without interrupting the run.
 - The dbt analytics layer currently uses seed fixtures for model validation; full analysis requires connecting to the real MySQL warehouse.
-- The current `/predict` demo constructs a short sequence from the current state; production forecasting should use real lag windows from the database.
+- `/predict` now accepts manual `recent_observations` as a lag window, but the API does not yet query recent observations from the MySQL warehouse automatically.
 - The LSTM training flow now has a script, current-value naive baseline, and small tests; full out-of-sample metrics still require rerunning it where the full processed training CSV is available.
 - Dashboard demo mode is a deterministic mock for interviews, not a real model-performance result.
 

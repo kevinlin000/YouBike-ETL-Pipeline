@@ -41,7 +41,7 @@ When discussing the machine-learning portion, be precise: the regression R-squar
 - Do not say the service is currently running in production.
 - Do not present demo-mode output as real model accuracy.
 - Do not say the LSTM achieved R-squared 0.92; that number belongs to the regression analysis.
-- Do not imply `/predict` currently queries a real historical lag window from the warehouse.
+- Do not imply `/predict` currently queries a real historical lag window from the warehouse automatically.
 - Do not imply the current dbt layer is a full enterprise warehouse.
 - Do not claim complete MLOps coverage.
 - Do not oversell Spark, Kafka, Kubernetes, or data lake experience from this repo.
@@ -64,10 +64,10 @@ The careful limitation is that this is not yet a rigorously evaluated forecastin
 
 ### What would you improve next?
 
-For ML engineering quality, I would rerun the training script on the full processed dataset, preserve the generated `model_metadata.json`, inspect whether `lstm_vs_baseline` is positive on the test split, and then replace the API shortcut with a real warehouse-backed lag window. For analytics engineering roles, I would expand the dbt marts and connect the warehouse-backed metrics to the dashboard. The shared transform module and pre-load validation gate are already in place, so the next step depends on which job family I want to target.
+For ML engineering quality, I would rerun the training script on the full processed dataset, preserve the generated `model_metadata.json`, inspect whether `lstm_vs_baseline` is positive on the test split, and then add warehouse-backed lag-window lookup. The API already accepts a 3-row recent-observation window, but it does not yet fetch that window automatically. For analytics engineering roles, I would expand the dbt marts and connect the warehouse-backed metrics to the dashboard. The shared transform module and pre-load validation gate are already in place, so the next step depends on which job family I want to target.
 
 ### What is the biggest limitation?
 
-The biggest limitation is the ML evaluation path. The dashboard demo mode is intentionally mocked for presentation, and the live `/predict` path currently builds a short sequence from the current state instead of querying a real recent-history window. For production forecasting, the API should query real lag windows from the warehouse, and the training script should be rerun on the full dataset with documented out-of-sample metrics and a baseline comparison.
+The biggest limitation is the ML evaluation path and data-backed inference. The dashboard demo mode is intentionally mocked for presentation. The live `/predict` path can accept a caller-provided recent-history window, but it does not yet query that window from the warehouse. For production forecasting, the API should query real lag windows from the warehouse, and the training script should be rerun on the full dataset with documented out-of-sample metrics and a baseline comparison.
 
 For deeper ML context, use [`docs/ml_modeling_audit.md`](ml_modeling_audit.md).

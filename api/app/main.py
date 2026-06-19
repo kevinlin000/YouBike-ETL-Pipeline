@@ -10,10 +10,10 @@ from pydantic import BaseModel, field_validator
 from contextlib import asynccontextmanager
 
 logger = logging.getLogger(__name__)
+MODEL_TIME_STEPS = 3
 
 # --- 1. 定義資料格式 ---
-class PredictRequest(BaseModel):
-    station_no: str
+class RecentObservation(BaseModel):
     bikes_available: int
     temperature: float
     rain: float
@@ -39,6 +39,44 @@ class PredictRequest(BaseModel):
             raise ValueError("rain 不可為負數")
         return v
 
+class PredictRequest(BaseModel):
+    station_no: str
+    bikes_available: int
+    temperature: float
+    rain: float
+    recent_observations: list[RecentObservation] | None = None
+
+    @field_validator("bikes_available")
+    @classmethod
+    def bikes_non_negative(cls, v: int) -> int:
+        if v < 0:
+            raise ValueError("bikes_available 不可為負數")
+        return v
+
+    @field_validator("temperature")
+    @classmethod
+    def temperature_reasonable(cls, v: float) -> float:
+        if not -50 <= v <= 60:
+            raise ValueError("temperature 需介於 -50 與 60 之間")
+        return v
+
+    @field_validator("rain")
+    @classmethod
+    def rain_non_negative(cls, v: float) -> float:
+        if v < 0:
+            raise ValueError("rain 不可為負數")
+        return v
+
+    @field_validator("recent_observations")
+    @classmethod
+    def recent_observations_match_model_window(
+        cls,
+        v: list[RecentObservation] | None,
+    ) -> list[RecentObservation] | None:
+        if v is not None and len(v) != MODEL_TIME_STEPS:
+            raise ValueError(f"recent_observations 必須剛好包含 {MODEL_TIME_STEPS} 筆")
+        return v
+
 class PredictResponse(BaseModel):
     station_no: str
     predicted_bikes_next_hour: int
@@ -47,12 +85,23 @@ class StationRiskInput(BaseModel):
     station_no: str
     bikes_available: int
     spaces_available: int
+    recent_observations: list[RecentObservation] | None = None
 
     @field_validator("bikes_available", "spaces_available")
     @classmethod
     def availability_non_negative(cls, v: int) -> int:
         if v < 0:
             raise ValueError("availability values 不可為負數")
+        return v
+
+    @field_validator("recent_observations")
+    @classmethod
+    def recent_observations_match_model_window(
+        cls,
+        v: list[RecentObservation] | None,
+    ) -> list[RecentObservation] | None:
+        if v is not None and len(v) != MODEL_TIME_STEPS:
+            raise ValueError(f"recent_observations 必須剛好包含 {MODEL_TIME_STEPS} 筆")
         return v
 
 class StationsRiskRequest(BaseModel):
@@ -194,27 +243,50 @@ def ensure_station_supported(station_no: str) -> None:
     if station_mapping is None or station_no not in station_mapping:
         raise HTTPException(status_code=404, detail="Station ID not supported by model")
 
+def observation_features(observation: RecentObservation) -> list[float]:
+    return [
+        observation.bikes_available,
+        observation.temperature,
+        observation.rain,
+        get_rain_cat(observation.rain),
+    ]
+
+def build_feature_sequence(
+    bikes_available: int,
+    temperature: float,
+    rain: float,
+    recent_observations: list[RecentObservation] | None,
+) -> np.ndarray:
+    # When real lag-window observations are unavailable, keep the old demo path.
+    if recent_observations is None:
+        return np.array([[
+            bikes_available,
+            temperature,
+            rain,
+            get_rain_cat(rain),
+        ]] * MODEL_TIME_STEPS)
+
+    return np.array([observation_features(observation) for observation in recent_observations])
+
 def predict_bikes_next_hour(
     station_no: str,
     bikes_available: int,
     temperature: float,
     rain: float,
+    recent_observations: list[RecentObservation] | None = None,
 ) -> int:
     # 特徵工程與模型輸入必須與訓練流程保持一致。
-    rain_cat = get_rain_cat(rain)
-    raw_features = np.array([[
+    raw_features = build_feature_sequence(
         bikes_available,
         temperature,
         rain,
-        rain_cat
-    ]])
-
+        recent_observations,
+    )
     features_scaled = scaler.transform(raw_features)
-    seq_features = np.tile(features_scaled, (3, 1))
 
     s_idx = station_mapping[station_no]
-    s_idx_seq = np.full((3, 1), s_idx)
-    combined_input = np.hstack((seq_features, s_idx_seq))
+    s_idx_seq = np.full((len(features_scaled), 1), s_idx)
+    combined_input = np.hstack((features_scaled, s_idx_seq))
     input_tensor = torch.FloatTensor(combined_input).unsqueeze(0)
 
     with torch.no_grad():
@@ -260,6 +332,7 @@ def predict(request: PredictRequest):
             request.bikes_available,
             request.temperature,
             request.rain,
+            request.recent_observations,
         )
 
         return {
@@ -284,6 +357,7 @@ def rank_station_risks(request: StationsRiskRequest):
                 station.bikes_available,
                 request.temperature,
                 request.rain,
+                station.recent_observations,
             )
             observed_capacity = station.bikes_available + station.spaces_available
             predicted_spaces = max(0, observed_capacity - predicted_bikes)

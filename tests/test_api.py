@@ -41,6 +41,16 @@ class FakeModel:
         return torch.tensor([[self.value]])
 
 
+class CapturingModel(FakeModel):
+    def __init__(self, value=7.2):
+        super().__init__(value=value)
+        self.input_tensor = None
+
+    def __call__(self, input_tensor):
+        self.input_tensor = input_tensor.detach().clone()
+        return super().__call__(input_tensor)
+
+
 def test_home_returns_service_metadata(client):
     response = client.get("/")
 
@@ -88,6 +98,27 @@ def test_predict_requires_ready_model(client):
         {"station_no": "500101001", "bikes_available": -1, "temperature": 27.5, "rain": 0},
         {"station_no": "500101001", "bikes_available": 12, "temperature": 99, "rain": 0},
         {"station_no": "500101001", "bikes_available": 12, "temperature": 27.5, "rain": -0.1},
+        {
+            "station_no": "500101001",
+            "bikes_available": 12,
+            "temperature": 27.5,
+            "rain": 0,
+            "recent_observations": [
+                {"bikes_available": 10, "temperature": 27.0, "rain": 0},
+                {"bikes_available": 11, "temperature": 27.2, "rain": 0},
+            ],
+        },
+        {
+            "station_no": "500101001",
+            "bikes_available": 12,
+            "temperature": 27.5,
+            "rain": 0,
+            "recent_observations": [
+                {"bikes_available": 10, "temperature": 27.0, "rain": 0},
+                {"bikes_available": -1, "temperature": 27.2, "rain": 0},
+                {"bikes_available": 12, "temperature": 27.5, "rain": 0},
+            ],
+        },
     ],
 )
 def test_predict_validates_request_payload(client, payload):
@@ -137,6 +168,39 @@ def test_predict_returns_prediction_with_mocked_model(client, monkeypatch):
     }
 
 
+def test_predict_uses_recent_observations_as_lag_window(client, monkeypatch):
+    fake_model = CapturingModel()
+    monkeypatch.setattr(api_main, "model", fake_model)
+    monkeypatch.setattr(api_main, "scaler", FakeScaler())
+    monkeypatch.setattr(api_main, "station_mapping", {"500101001": 4})
+
+    response = client.post(
+        "/predict",
+        json={
+            "station_no": "500101001",
+            "bikes_available": 99,
+            "temperature": 35,
+            "rain": 12,
+            "recent_observations": [
+                {"bikes_available": 10, "temperature": 27.0, "rain": 0},
+                {"bikes_available": 11, "temperature": 27.2, "rain": 0.5},
+                {"bikes_available": 12, "temperature": 27.5, "rain": 3},
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    assert fake_model.input_tensor is not None
+    np.testing.assert_allclose(
+        fake_model.input_tensor.squeeze(0).numpy(),
+        [
+            [10.0, 27.0, 0.0, 0.0, 4.0],
+            [11.0, 27.2, 0.5, 1.0, 4.0],
+            [12.0, 27.5, 3.0, 2.0, 4.0],
+        ],
+    )
+
+
 def test_station_risks_requires_ready_model(client):
     response = client.post(
         "/stations/risk",
@@ -175,6 +239,20 @@ def test_station_risks_requires_ready_model(client):
             "temperature": 27.5,
             "rain": 0,
             "stations": [{"station_no": "500101001", "bikes_available": -1, "spaces_available": 8}],
+        },
+        {
+            "temperature": 27.5,
+            "rain": 0,
+            "stations": [
+                {
+                    "station_no": "500101001",
+                    "bikes_available": 12,
+                    "spaces_available": 8,
+                    "recent_observations": [
+                        {"bikes_available": 10, "temperature": 27.0, "rain": 0},
+                    ],
+                }
+            ],
         },
     ],
 )
@@ -283,3 +361,41 @@ def test_station_risks_detects_full_load_risk(client, monkeypatch):
     assert response.status_code == 200
     assert response.json()["risks"][0]["risk_level"] == "full_load"
     assert response.json()["risks"][0]["suggested_action"] == "rebalance_out"
+
+
+def test_station_risks_can_use_per_station_recent_observations(client, monkeypatch):
+    fake_model = CapturingModel(value=1.2)
+    monkeypatch.setattr(api_main, "model", fake_model)
+    monkeypatch.setattr(api_main, "scaler", FakeScaler())
+    monkeypatch.setattr(api_main, "station_mapping", {"500101001": 2})
+
+    response = client.post(
+        "/stations/risk",
+        json={
+            "temperature": 27.5,
+            "rain": 0,
+            "stations": [
+                {
+                    "station_no": "500101001",
+                    "bikes_available": 12,
+                    "spaces_available": 8,
+                    "recent_observations": [
+                        {"bikes_available": 8, "temperature": 26.0, "rain": 0},
+                        {"bikes_available": 9, "temperature": 26.5, "rain": 0},
+                        {"bikes_available": 10, "temperature": 27.0, "rain": 0},
+                    ],
+                }
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    assert fake_model.input_tensor is not None
+    np.testing.assert_allclose(
+        fake_model.input_tensor.squeeze(0).numpy(),
+        [
+            [8.0, 26.0, 0.0, 0.0, 2.0],
+            [9.0, 26.5, 0.0, 0.0, 2.0],
+            [10.0, 27.0, 0.0, 0.0, 2.0],
+        ],
+    )
