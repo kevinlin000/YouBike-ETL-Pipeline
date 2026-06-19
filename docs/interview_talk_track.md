@@ -2,6 +2,8 @@
 
 Use this as a concise script for explaining the project in interviews. The goal is to present the repo as a data engineering and analytics portfolio project, not as a currently operated production service.
 
+For a fuller report-style storyline, use [`docs/project_story.md`](project_story.md).
+
 ## 30-Second Version
 
 This project analyzes Taipei YouBike 2.0 station imbalance and turns it into an end-to-end data application. I built scheduled station-status ingestion, normalized MySQL tables, statistical analysis notebooks, a PyTorch LSTM prediction service behind FastAPI, and a Streamlit dashboard for single-station prediction and multi-station risk ranking. The current dashboard has a deterministic demo mode, so I can show the product flow without needing Docker Compose, model files, or live cloud services.

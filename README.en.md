@@ -16,6 +16,8 @@ The project has three layers:
 
 This repository is a **portfolio showcase**, not an actively operated production service.
 
+For the shortest end-to-end project narrative, start with [`docs/project_story.md`](docs/project_story.md). It connects the problem, data pipeline, analysis, LSTM prototype, FastAPI service, dashboard, limitations, and next steps.
+
 ## Key Results
 
 | Area | Result |
@@ -427,7 +429,7 @@ It does not claim to cover full-scale big-data platform work such as Spark, Kafk
 
 ## Maintenance Roadmap
 
-A fuller portfolio assessment and prioritization note is available in [`docs/portfolio_assessment.md`](docs/portfolio_assessment.md), the interview script is in [`docs/interview_talk_track.md`](docs/interview_talk_track.md), and the ML modeling boundary is documented in [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md).
+A fuller portfolio assessment and prioritization note is available in [`docs/portfolio_assessment.md`](docs/portfolio_assessment.md), the interview script is in [`docs/interview_talk_track.md`](docs/interview_talk_track.md), the report storyline is in [`docs/project_story.md`](docs/project_story.md), and the ML modeling boundary is documented in [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md).
 
 1. Rerun `make train-lstm` with the full processed dataset and preserve the out-of-sample metrics from `model_metadata.json`.
 2. Use `lstm_vs_baseline` to determine whether the model actually beats the "next bike count equals current bike count" baseline.

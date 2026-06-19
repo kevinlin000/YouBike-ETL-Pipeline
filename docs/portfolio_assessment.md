@@ -10,6 +10,7 @@ This repository is best positioned as a maintained data engineering portfolio pr
 - CI covers ETL behavior, API validation, dashboard client logic, demo mode, and dbt scaffold parsing/build behavior.
 - README now separates current runnable demo material from historical deployment evidence.
 - `docs/interview_talk_track.md` provides a concise interview script, demo flow, and claim boundaries.
+- `docs/project_story.md` provides a report-style storyline that connects the operational problem, data pipeline, statistical evidence, LSTM prototype, API, dashboard, limitations, and next steps.
 - `docs/ml_modeling_audit.md` clarifies the ML notebook lineage, served LSTM artifacts, evaluation gaps, and interview-safe claims.
 - `docs/adr/0002-dashboard-demo-mode.md` records why demo mode is deterministic and what it should not be used to claim.
 - `docs/images/dashboard_demo_walkthrough.gif` provides a compact visual walkthrough for README scanning.

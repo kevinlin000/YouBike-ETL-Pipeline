@@ -16,6 +16,8 @@
 
 此 repo 目前定位為 **portfolio showcase**，用於展示資料管線設計、資料建模、統計分析與模型服務化能力；不是目前仍在線上營運的 production service。
 
+若只想快速理解整個報告脈絡，先看 [`docs/project_story.md`](docs/project_story.md)。它把問題、資料、分析、LSTM prototype、FastAPI、dashboard、限制與下一步串成一條主線。
+
 ## 核心成果
 
 | 面向 | 成果 |
@@ -436,7 +438,7 @@ CI 設定位於 `.github/workflows/ci.yml`。
 
 ## 後續維護方向
 
-更完整的作品集評估與優先順序整理在 [`docs/portfolio_assessment.md`](docs/portfolio_assessment.md)，面試說明稿可參考 [`docs/interview_talk_track.md`](docs/interview_talk_track.md)，ML 脈絡與可主張範圍整理在 [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md)。
+更完整的作品集評估與優先順序整理在 [`docs/portfolio_assessment.md`](docs/portfolio_assessment.md)，面試說明稿可參考 [`docs/interview_talk_track.md`](docs/interview_talk_track.md)，報告主線整理在 [`docs/project_story.md`](docs/project_story.md)，ML 脈絡與可主張範圍整理在 [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md)。
 
 1. 用完整 processed dataset 重跑 `make train-lstm`，保存 `model_metadata.json` 的 out-of-sample 指標。
 2. 根據 `lstm_vs_baseline` 判斷模型是否真的優於「下一筆等於目前車輛數」的基準。
