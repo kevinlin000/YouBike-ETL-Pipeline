@@ -4,6 +4,8 @@ This note records local evaluation runs of `scripts/train_multistation_lstm.py` 
 
 The results are intentionally documented as model evidence, not promoted as new production artifacts. The served API artifacts were not replaced.
 
+New training runs write a `model_selection` summary into `model_metadata.json`. The promotion rule is intentionally conservative: a candidate LSTM should beat the best available baseline on the test split for both MAE and RMSE before replacing served artifacts.
+
 ## Run Context
 
 | Item | Value |
@@ -91,7 +93,7 @@ Avoid:
 
 The next modeling iteration should focus on improving feature history and baselines before replacing the served artifacts:
 
-1. Keep the served artifacts unchanged until a candidate model beats the baseline suite on the chosen horizon.
+1. Keep the served artifacts unchanged until `model_selection.recommendation` says the candidate beats the best test baseline on both MAE and RMSE.
 2. Add aligned weather history and richer lag features to the training/evaluation dataset before tuning the LSTM further.
 3. Consider simpler tabular/time-series baselines before adding more neural-network complexity.
 4. Add aligned weather history to the inference path before production-style claims.

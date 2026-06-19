@@ -147,13 +147,13 @@ dbt profiles 使用 `profiles.example.yml` 作為範本。實際 `profiles.yml` 
 - 降雨分級 `Rain_Cat`
 - 站點 ID embedding
 
-目前 repo 中可被嚴謹主張的是「完成 LSTM prototype 與 FastAPI 模型服務化流程」。Notebook 記錄 training loss 與 artifact 產出，`scripts/train_multistation_lstm.py` 則將多站訓練流程整理成可重現 CLI，會輸出模型權重、scaler、站點 mapping 與 `model_metadata.json`。metadata 會同時記錄 LSTM 指標、current-value、rolling mean、same-time previous-day baseline 指標，以及 LSTM 相對各 baseline 的 MAE/RMSE 改善量。本地 checkpoint-data 評估整理在 [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md)：下一筆 observation 目標下，LSTM 有打敗 rolling mean 與 same-time previous-day，但沒有打敗最強的 current-value baseline；近似一小時目標（`horizon_steps=6`）下，LSTM 仍未打敗 current-value 或 rolling mean。因此應定位為 model-serving prototype，而不是已驗證的準確預測模型。完整脈絡整理在 [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md)。
+目前 repo 中可被嚴謹主張的是「完成 LSTM prototype 與 FastAPI 模型服務化流程」。Notebook 記錄 training loss 與 artifact 產出，`scripts/train_multistation_lstm.py` 則將多站訓練流程整理成可重現 CLI，會輸出模型權重、scaler、站點 mapping 與 `model_metadata.json`。metadata 會同時記錄 LSTM 指標、current-value、rolling mean、same-time previous-day baseline 指標、LSTM 相對各 baseline 的 MAE/RMSE 改善量，以及是否打敗 test split 最佳 baseline 的 `model_selection` 摘要。本地 checkpoint-data 評估整理在 [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md)：下一筆 observation 目標下，LSTM 有打敗 rolling mean 與 same-time previous-day，但沒有打敗最強的 current-value baseline；近似一小時目標（`horizon_steps=6`）下，LSTM 仍未打敗 current-value 或 rolling mean。因此應定位為 model-serving prototype，而不是已驗證的準確預測模型。完整脈絡整理在 [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md)。
 
 ```bash
 make train-lstm
 ```
 
-此指令預設讀取 `data/processed/youbike_weather_merged.csv`，並將新 artifact 輸出到 `.scratch/model_training`，避免不小心覆蓋目前 API 使用的 `api/model_files`。若要正式替換服務中的模型，應先檢查 `model_metadata.json` 的 train / validation / test 指標，再明確指定 `--output-dir api/model_files`。
+此指令預設讀取 `data/processed/youbike_weather_merged.csv`，並將新 artifact 輸出到 `.scratch/model_training`，避免不小心覆蓋目前 API 使用的 `api/model_files`。若要正式替換服務中的模型，應先檢查 `model_metadata.json` 的 train / validation / test 指標與 `model_selection.recommendation`，再明確指定 `--output-dir api/model_files`。
 
 FastAPI endpoint：
 

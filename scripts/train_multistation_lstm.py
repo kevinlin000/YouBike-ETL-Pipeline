@@ -566,6 +566,75 @@ def evaluate_all_baselines(bundle: DatasetBundle) -> dict[str, dict[str, dict[st
     }
 
 
+def find_best_baseline_for_metric(
+    baseline_metrics: dict[str, dict[str, dict[str, float]]],
+    split_name: str,
+    metric_name: str,
+) -> dict[str, float | str] | None:
+    candidates = []
+    for baseline_name, split_metrics in baseline_metrics.items():
+        metrics = split_metrics.get(split_name, {})
+        if metric_name in metrics:
+            candidates.append((baseline_name, metrics))
+
+    if not candidates:
+        return None
+
+    best_name, best_metrics = min(candidates, key=lambda item: item[1][metric_name])
+    return {
+        "name": best_name,
+        "mae": best_metrics["mae"],
+        "rmse": best_metrics["rmse"],
+        "n": best_metrics["n"],
+    }
+
+
+def build_model_selection_summary(
+    model_metrics: dict[str, dict[str, float]],
+    baseline_metrics: dict[str, dict[str, dict[str, float]]],
+    primary_split: str = "test",
+) -> dict:
+    split_summary = {}
+    for split_name, split_model_metrics in model_metrics.items():
+        best_by_mae = find_best_baseline_for_metric(baseline_metrics, split_name, "mae")
+        best_by_rmse = find_best_baseline_for_metric(baseline_metrics, split_name, "rmse")
+        if not split_model_metrics or best_by_mae is None or best_by_rmse is None:
+            split_summary[split_name] = {}
+            continue
+
+        split_summary[split_name] = {
+            "lstm": {
+                "mae": split_model_metrics["mae"],
+                "rmse": split_model_metrics["rmse"],
+                "n": split_model_metrics["n"],
+            },
+            "best_baseline_by_mae": best_by_mae,
+            "best_baseline_by_rmse": best_by_rmse,
+            "lstm_beats_best_baseline_by_mae": split_model_metrics["mae"] < best_by_mae["mae"],
+            "lstm_beats_best_baseline_by_rmse": split_model_metrics["rmse"] < best_by_rmse["rmse"],
+        }
+
+    primary_summary = split_summary.get(primary_split, {})
+    candidate_beats_best_baseline = bool(
+        primary_summary.get("lstm_beats_best_baseline_by_mae")
+        and primary_summary.get("lstm_beats_best_baseline_by_rmse")
+    )
+    recommendation = (
+        "Candidate LSTM beats the best baseline on the test split for both MAE and RMSE; "
+        "inspect lineage before replacing served artifacts."
+        if candidate_beats_best_baseline
+        else "Do not replace served artifacts; candidate LSTM does not beat the best test baseline."
+    )
+
+    return {
+        "primary_split": primary_split,
+        "promotion_rule": "LSTM must beat the best available baseline on the test split for both MAE and RMSE.",
+        "candidate_beats_best_baseline": candidate_beats_best_baseline,
+        "recommendation": recommendation,
+        "splits": split_summary,
+    }
+
+
 def build_metadata(
     args: argparse.Namespace,
     bundle: DatasetBundle,
@@ -579,6 +648,7 @@ def build_metadata(
     }
     current_value_metrics = baseline_metrics["current_value"]
     current_value_comparison = metric_comparison["current_value"]
+    model_selection = build_model_selection_summary(model_metrics, baseline_metrics)
     return {
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "source_data_path": str(args.data_path),
@@ -616,6 +686,7 @@ def build_metadata(
             "baseline_current_value": current_value_metrics,
             "lstm_vs_baseline": current_value_comparison,
         },
+        "model_selection": model_selection,
         "limitations": [
             "Metrics are only meaningful when the full processed dataset is available.",
             "The warehouse-backed inference path can fetch recent bike counts but still needs aligned weather history.",
@@ -729,6 +800,7 @@ def main(argv: Iterable[str] | None = None) -> None:
     args = parse_args(argv)
     metadata = train_and_save(args)
     print(json.dumps(metadata["metrics"], ensure_ascii=False, indent=2))
+    print(json.dumps(metadata["model_selection"], ensure_ascii=False, indent=2))
     print(f"Saved model artifacts to {Path(args.output_dir).resolve()}")
 
 

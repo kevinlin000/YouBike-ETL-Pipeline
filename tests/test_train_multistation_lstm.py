@@ -101,6 +101,61 @@ def test_baseline_suite_includes_rolling_and_previous_day_metrics():
     assert metrics["same_time_previous_day"]["train"] == {}
 
 
+def test_model_selection_summary_requires_beating_best_test_baseline():
+    model_metrics = {
+        "train": {"n": 10, "mae": 1.0, "rmse": 1.5},
+        "validation": {"n": 4, "mae": 1.1, "rmse": 1.6},
+        "test": {"n": 4, "mae": 2.0, "rmse": 3.0},
+    }
+    baseline_metrics = {
+        "current_value": {
+            "train": {"n": 10, "mae": 1.2, "rmse": 1.8},
+            "validation": {"n": 4, "mae": 1.0, "rmse": 1.5},
+            "test": {"n": 4, "mae": 1.8, "rmse": 2.9},
+        },
+        "rolling_mean": {
+            "train": {"n": 10, "mae": 1.4, "rmse": 2.0},
+            "validation": {"n": 4, "mae": 1.3, "rmse": 1.9},
+            "test": {"n": 4, "mae": 2.2, "rmse": 3.1},
+        },
+        "same_time_previous_day": {
+            "train": {},
+            "validation": {},
+            "test": {"n": 4, "mae": 5.0, "rmse": 6.0},
+        },
+    }
+
+    summary = trainer.build_model_selection_summary(model_metrics, baseline_metrics)
+
+    test_summary = summary["splits"]["test"]
+    assert test_summary["best_baseline_by_mae"]["name"] == "current_value"
+    assert test_summary["best_baseline_by_rmse"]["name"] == "current_value"
+    assert test_summary["lstm_beats_best_baseline_by_mae"] is False
+    assert test_summary["lstm_beats_best_baseline_by_rmse"] is False
+    assert summary["candidate_beats_best_baseline"] is False
+    assert summary["recommendation"].startswith("Do not replace served artifacts")
+
+
+def test_model_selection_summary_allows_candidate_when_test_metrics_win():
+    model_metrics = {
+        "test": {"n": 4, "mae": 1.7, "rmse": 2.8},
+    }
+    baseline_metrics = {
+        "current_value": {
+            "test": {"n": 4, "mae": 1.8, "rmse": 2.9},
+        },
+        "rolling_mean": {
+            "test": {"n": 4, "mae": 2.2, "rmse": 3.1},
+        },
+    }
+
+    summary = trainer.build_model_selection_summary(model_metrics, baseline_metrics)
+
+    assert summary["splits"]["test"]["lstm_beats_best_baseline_by_mae"] is True
+    assert summary["splits"]["test"]["lstm_beats_best_baseline_by_rmse"] is True
+    assert summary["candidate_beats_best_baseline"] is True
+
+
 def test_train_and_save_writes_api_compatible_artifacts(tmp_path):
     data_path = tmp_path / "training.csv"
     output_dir = tmp_path / "artifacts"
@@ -165,3 +220,5 @@ def test_train_and_save_writes_api_compatible_artifacts(tmp_path):
     assert saved_metadata["metrics"]["baselines"]["same_time_previous_day"]["test"] == {}
     assert "mae_delta" in saved_metadata["metrics"]["lstm_vs_baseline"]["test"]
     assert saved_metadata["model"]["type"] == "MultiStationLSTM"
+    assert saved_metadata["model_selection"]["primary_split"] == "test"
+    assert "candidate_beats_best_baseline" in saved_metadata["model_selection"]
