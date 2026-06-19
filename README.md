@@ -145,7 +145,13 @@ dbt profiles 使用 `profiles.example.yml` 作為範本。實際 `profiles.yml` 
 - 降雨分級 `Rain_Cat`
 - 站點 ID embedding
 
-目前 repo 中可被嚴謹主張的是「完成 LSTM prototype 與 FastAPI 模型服務化流程」。Notebook 目前記錄 training loss 與 artifact 產出，但尚未提供時間切分的 train / validation / test 指標，因此不應把 dashboard demo 或迴歸 R-squared 當成 LSTM 準確度。完整脈絡整理在 [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md)。
+目前 repo 中可被嚴謹主張的是「完成 LSTM prototype 與 FastAPI 模型服務化流程」。Notebook 記錄 training loss 與 artifact 產出，`scripts/train_multistation_lstm.py` 則將多站訓練流程整理成可重現 CLI，會輸出模型權重、scaler、站點 mapping 與 `model_metadata.json`。完整脈絡整理在 [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md)。
+
+```bash
+make train-lstm
+```
+
+此指令預設讀取 `data/processed/youbike_weather_merged.csv`，並將新 artifact 輸出到 `.scratch/model_training`，避免不小心覆蓋目前 API 使用的 `api/model_files`。若要正式替換服務中的模型，應先檢查 `model_metadata.json` 的 train / validation / test 指標，再明確指定 `--output-dir api/model_files`。
 
 FastAPI endpoint：
 
@@ -357,7 +363,7 @@ make install-dev
 make test
 ```
 
-測試涵蓋 ETL transform 與 FastAPI 基礎行為，不需要連線到 MySQL 或 GCP，也不會載入真實模型檔。
+測試涵蓋 ETL transform、FastAPI 基礎行為、dashboard client 與 LSTM training script 的小型 fixture，不需要連線到 MySQL 或 GCP，也不會載入真實模型檔。
 
 GitHub Actions 會在 push / pull request 時自動執行 Python 測試，並啟動 MySQL service 執行 dbt seed/build。
 
@@ -393,6 +399,7 @@ make dbt-build
 - `/predict` request validation
 - `/stations/risk` 批次風險排序、request validation 與 unknown station 行為
 - dashboard API client payload、demo mode、錯誤處理與顯示 label mapping
+- LSTM training script 的站點選擇、序列切分、artifact 與 metadata 輸出
 - unknown station 錯誤處理
 - mocked model prediction response
 - dbt seed fixtures、source/model tests、staging/mart build
@@ -407,9 +414,9 @@ CI 設定位於 `.github/workflows/ci.yml`。
 - ETL validation gate 預設採 strict mode；若真實 API 短暫異常不希望中斷流程，可用 `ETL_VALIDATION_MODE=warn` 改成只記錄警告。
 - dbt analytics layer 目前使用 seed fixtures 驗證模型結構；若要分析完整資料，需要連接實際 MySQL warehouse。
 - `/predict` 的即時 demo 會用目前狀態組成短序列；若要做更嚴謹的 production forecasting，應改由資料庫查詢真實 lag window。
-- LSTM notebook 目前主要證明 prototype 與模型服務化流程，尚未提供 out-of-sample 評估、baseline 比較或完整 model metadata。
+- LSTM 訓練流程已提供 script 與小型測試；但完整 processed training CSV 未提交，因此完整 out-of-sample 指標需要在具備真實資料的環境重跑。
+- 目前 metadata 會記錄 train / validation / test 指標，但尚未補 naive baseline 比較。
 - Dashboard demo mode 是面試展示用的 deterministic mock，不代表真實模型評估表現。
-- Notebook 訓練流程尚未完全轉成可重現的 training script。
 
 ## 與職缺能力的對應
 
@@ -425,8 +432,9 @@ CI 設定位於 `.github/workflows/ci.yml`。
 
 更完整的作品集評估與優先順序整理在 [`docs/portfolio_assessment.md`](docs/portfolio_assessment.md)，面試說明稿可參考 [`docs/interview_talk_track.md`](docs/interview_talk_track.md)，ML 脈絡與可主張範圍整理在 [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md)。
 
-1. 將 notebook 訓練流程整理成可重現的 training script。
-2. 若要強化部署敘事，可補一份短部署錄影。
+1. 用完整 processed dataset 重跑 `make train-lstm`，保存 `model_metadata.json` 的 out-of-sample 指標。
+2. 為 LSTM 評估補 naive baseline，例如預測「下一筆等於目前車輛數」。
+3. 若要強化部署敘事，可補一份短部署錄影。
 
 ## 作者
 

@@ -136,7 +136,13 @@ The prediction service uses a Multi-Station LSTM prototype with:
 - rainfall category
 - station ID embedding
 
-The defensible claim is that the project contains an LSTM prototype and a FastAPI model-serving path. The notebooks record training loss and artifact generation, but they do not yet provide a time-based train / validation / test evaluation. Dashboard demo output and regression R-squared should not be presented as LSTM accuracy. See [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md) for the full modeling audit.
+The defensible claim is that the project contains an LSTM prototype and a FastAPI model-serving path. The notebooks record training loss and artifact generation, while `scripts/train_multistation_lstm.py` turns the multi-station training flow into a reproducible CLI that writes model weights, scaler, station mappings, and `model_metadata.json`. See [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md) for the full modeling audit.
+
+```bash
+make train-lstm
+```
+
+This command reads `data/processed/youbike_weather_merged.csv` and writes new artifacts to `.scratch/model_training`, so it does not accidentally overwrite the currently served artifacts in `api/model_files`. To intentionally replace the served model, inspect `model_metadata.json` first and then run the script with `--output-dir api/model_files`.
 
 FastAPI endpoints:
 
@@ -348,7 +354,7 @@ make install-dev
 make test
 ```
 
-The tests cover ETL transform logic and basic FastAPI behavior. They do not require MySQL or GCP access and do not load real model artifacts.
+The tests cover ETL transform logic, basic FastAPI behavior, the dashboard client, and a small-fixture run of the LSTM training script. They do not require MySQL or GCP access and do not load real model artifacts.
 
 GitHub Actions runs Python tests and starts a MySQL service for dbt seed/build on push and pull request events.
 
@@ -384,6 +390,7 @@ Current tests cover:
 - `/predict` request validation
 - `/stations/risk` batch ranking, request validation, and unknown station behavior
 - dashboard API client payloads, demo mode, error handling, and display label mapping
+- LSTM training script station selection, sequence splitting, artifact output, and metadata output
 - unknown station handling
 - mocked model prediction response
 - dbt seed fixtures, source/model tests, and staging/mart build
@@ -398,9 +405,9 @@ CI configuration lives in `.github/workflows/ci.yml`.
 - The ETL validation gate defaults to strict mode; use `ETL_VALIDATION_MODE=warn` if transient API anomalies should be logged without interrupting the run.
 - The dbt analytics layer currently uses seed fixtures for model validation; full analysis requires connecting to the real MySQL warehouse.
 - The current `/predict` demo constructs a short sequence from the current state; production forecasting should use real lag windows from the database.
-- The LSTM notebooks currently demonstrate a prototype and serving path, but do not yet provide out-of-sample evaluation, baseline comparison, or complete model metadata.
+- The LSTM training flow now has a script and small tests; full out-of-sample metrics still require rerunning it where the full processed training CSV is available.
+- The generated metadata records train / validation / test metrics, but a naive baseline comparison has not yet been added.
 - Dashboard demo mode is a deterministic mock for interviews, not a real model-performance result.
-- Notebook-based training has not yet been converted into a fully reproducible training script.
 
 ## Role Relevance
 
@@ -416,8 +423,9 @@ It does not claim to cover full-scale big-data platform work such as Spark, Kafk
 
 A fuller portfolio assessment and prioritization note is available in [`docs/portfolio_assessment.md`](docs/portfolio_assessment.md), the interview script is in [`docs/interview_talk_track.md`](docs/interview_talk_track.md), and the ML modeling boundary is documented in [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md).
 
-1. Convert notebook training into a reproducible training script.
-2. Add a short deployment walkthrough recording if more portfolio material is needed.
+1. Rerun `make train-lstm` with the full processed dataset and preserve the out-of-sample metrics from `model_metadata.json`.
+2. Add a naive LSTM baseline such as "next bike count equals current bike count."
+3. Add a short deployment walkthrough recording if more portfolio material is needed.
 
 ## Author
 

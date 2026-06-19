@@ -60,14 +60,14 @@ Station metadata changes slowly, while availability changes frequently. Separati
 
 The analysis suggested that recent station availability carries predictive signal. The LSTM extends that idea into a PyTorch sequence-model prototype with station embeddings and weather features. The strongest thing to emphasize is the model-serving workflow: notebook artifacts are packaged, loaded by FastAPI, validated through API contracts, and translated by the dashboard into operational risk labels.
 
-The careful limitation is that this is not yet a rigorously evaluated forecasting system. The notebook records training loss, but the next ML step is a reproducible training script with a time-based split, MAE/RMSE, and a naive baseline.
+The careful limitation is that this is not yet a rigorously evaluated forecasting system. The repo now includes a reproducible training script with time-based train / validation / test splitting and metadata output, but full metrics still need to be generated from the complete processed dataset and compared against a naive baseline.
 
 ### What would you improve next?
 
-For ML engineering quality, I would first convert notebook training into a reproducible script with fixed inputs, model metadata, a time-based train/validation/test split, MAE/RMSE, and a naive baseline. For analytics engineering roles, I would expand the dbt marts and connect the warehouse-backed metrics to the dashboard. The shared transform module and pre-load validation gate are already in place, so the next step depends on which job family I want to target.
+For ML engineering quality, I would rerun the training script on the full processed dataset, preserve the generated `model_metadata.json`, add a naive baseline, and then replace the API shortcut with a real warehouse-backed lag window. For analytics engineering roles, I would expand the dbt marts and connect the warehouse-backed metrics to the dashboard. The shared transform module and pre-load validation gate are already in place, so the next step depends on which job family I want to target.
 
 ### What is the biggest limitation?
 
-The biggest limitation is the ML evaluation path. The dashboard demo mode is intentionally mocked for presentation, and the live `/predict` path currently builds a short sequence from the current state instead of querying a real recent-history window. For production forecasting, the API should query real lag windows from the warehouse and the training pipeline should be converted from notebooks into a reproducible script with documented out-of-sample metrics.
+The biggest limitation is the ML evaluation path. The dashboard demo mode is intentionally mocked for presentation, and the live `/predict` path currently builds a short sequence from the current state instead of querying a real recent-history window. For production forecasting, the API should query real lag windows from the warehouse, and the training script should be rerun on the full dataset with documented out-of-sample metrics and a baseline comparison.
 
 For deeper ML context, use [`docs/ml_modeling_audit.md`](ml_modeling_audit.md).

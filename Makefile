@@ -2,7 +2,7 @@ DBT_PYTHON ?= python3.11
 DBT_VENV ?= .venv-dbt
 DBT_BIN := $(DBT_VENV)/bin/dbt
 
-.PHONY: help install-dev install-test install-app install-dbt test dbt-parse dbt-build dashboard-demo up down logs ps
+.PHONY: help install-dev install-test install-app install-dbt test dbt-parse dbt-build train-lstm dashboard-demo up down logs ps
 
 help:
 	@echo "Available commands:"
@@ -13,6 +13,7 @@ help:
 	@echo "  make test         Run ETL unit tests"
 	@echo "  make dbt-parse    Parse the dbt analytics project"
 	@echo "  make dbt-build    Run dbt build for the analytics project"
+	@echo "  make train-lstm   Train LSTM artifacts into .scratch/model_training"
 	@echo "  make dashboard-demo Run Streamlit dashboard in deterministic demo mode"
 	@echo "  make up           Build and start Docker Compose services"
 	@echo "  make down         Stop Docker Compose services"
@@ -44,6 +45,9 @@ dbt-build:
 	test -f analytics/dbt/profiles.yml || cp analytics/dbt/profiles.example.yml analytics/dbt/profiles.yml
 	cd analytics/dbt && ../../$(DBT_BIN) seed --profiles-dir .
 	cd analytics/dbt && ../../$(DBT_BIN) build --profiles-dir .
+
+train-lstm:
+	python scripts/train_multistation_lstm.py --data-path data/processed/youbike_weather_merged.csv --output-dir .scratch/model_training
 
 dashboard-demo:
 	DASHBOARD_DEMO_MODE=true streamlit run dashboard/app.py
