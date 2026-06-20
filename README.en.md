@@ -16,7 +16,17 @@ The project has three layers:
 
 This repository is a **portfolio showcase**, not an actively operated production service.
 
-For the shortest end-to-end project narrative, start with [`docs/project_story.md`](docs/project_story.md). It connects the problem, data pipeline, analysis, LSTM prototype, FastAPI service, dashboard, limitations, and next steps.
+For a quick reviewer path, start with [`docs/reviewer_quickstart.md`](docs/reviewer_quickstart.md). For the shortest end-to-end project narrative, continue with [`docs/project_story.md`](docs/project_story.md). It connects the problem, data pipeline, analysis, LSTM prototype, FastAPI service, dashboard, limitations, and next steps.
+
+## Quick Review Path
+
+If you are reviewing this as a portfolio project:
+
+1. **3-minute scan**: read [`docs/reviewer_quickstart.md`](docs/reviewer_quickstart.md), then inspect the backend / AI architecture diagram and dashboard GIF below.
+2. **Backend focus**: read [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md), `api/app/main.py`, and `tests/test_api.py` for FastAPI contracts, validation, readiness handling, and risk ranking.
+3. **AI application focus**: read [`docs/demo_walkthrough.md`](docs/demo_walkthrough.md) and [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md) for the demo workflow and model-claim boundaries.
+
+The Chinese README is the primary narrative. This English README is the supporting scan version.
 
 ## Key Results
 
@@ -443,7 +453,7 @@ It does not claim to cover full-scale big-data platform work such as Spark, Kafk
 
 ## Maintenance Roadmap
 
-A fuller portfolio assessment and prioritization note is available in [`docs/portfolio_assessment.md`](docs/portfolio_assessment.md), backend / AI application framing is in [`docs/backend_ai_positioning.md`](docs/backend_ai_positioning.md), the backend / AI architecture diagram is in [`docs/backend_ai_architecture.md`](docs/backend_ai_architecture.md), the demo walkthrough is in [`docs/demo_walkthrough.md`](docs/demo_walkthrough.md), the API contract walkthrough is in [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md), the documentation language strategy is in [`docs/documentation_language_strategy.md`](docs/documentation_language_strategy.md), the interview script is in [`docs/interview_talk_track.md`](docs/interview_talk_track.md), the report storyline is in [`docs/project_story.md`](docs/project_story.md), the ML modeling boundary is documented in [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md), and the local LSTM evaluation is in [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md).
+A fuller portfolio assessment and prioritization note is available in [`docs/portfolio_assessment.md`](docs/portfolio_assessment.md), the reviewer quickstart is in [`docs/reviewer_quickstart.md`](docs/reviewer_quickstart.md), backend / AI application framing is in [`docs/backend_ai_positioning.md`](docs/backend_ai_positioning.md), the backend / AI architecture diagram is in [`docs/backend_ai_architecture.md`](docs/backend_ai_architecture.md), the demo walkthrough is in [`docs/demo_walkthrough.md`](docs/demo_walkthrough.md), the API contract walkthrough is in [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md), the documentation language strategy is in [`docs/documentation_language_strategy.md`](docs/documentation_language_strategy.md), the interview script is in [`docs/interview_talk_track.md`](docs/interview_talk_track.md), the report storyline is in [`docs/project_story.md`](docs/project_story.md), the ML modeling boundary is documented in [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md), and the local LSTM evaluation is in [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md).
 
 1. If deepening ML, add aligned weather history and richer lag features.
 2. If improving job-search materials, record a 60-90 second demo video.

@@ -10,6 +10,7 @@ This repository is best positioned as a backend / AI application portfolio proje
 - Demo mode makes the dashboard interview-ready without requiring Docker Compose, model artifacts, or live API services.
 - CI covers ETL behavior, API validation, dashboard client logic, demo mode, and dbt scaffold parsing/build behavior.
 - README now separates current runnable demo material from historical deployment evidence.
+- `docs/reviewer_quickstart.md` gives interviewers and reviewers a 3-minute and 10-minute reading path through the repo.
 - `docs/interview_talk_track.md` provides a concise interview script, demo flow, and claim boundaries.
 - `docs/backend_ai_positioning.md` frames the project for backend / AI application engineering roles.
 - `docs/backend_ai_architecture.md` provides a backend-centered architecture diagram for reviewers.
@@ -28,8 +29,8 @@ This repository is best positioned as a backend / AI application portfolio proje
 
 ## Highest-Value Improvements
 
-1. Record a short demo walkthrough.
-   - Value: shows the backend / AI application flow quickly in a recruiter-friendly format.
+1. Record a short demo walkthrough video.
+   - Value: shows the backend / AI application flow quickly in a recruiter-friendly format after the reviewer quickstart has established what to look for.
    - Scope: use `docs/demo_walkthrough.md` as the script, start from dashboard demo mode, then map single-station prediction and risk ranking back to API contracts.
    - Risk: low. Keep demo-mode limitations explicit.
 
@@ -65,4 +66,4 @@ Also be explicit that the regression R-squared improvement is not the LSTM evalu
 
 ## Recommendation
 
-For the next engineering iteration, record a short demo walkthrough if the target is backend / AI application engineering. Improve model features only after the application story is easy to review. The API now exposes forecast-horizon metadata, and documented local runs show the current LSTM does not beat the strongest baseline on tested horizons, so model-accuracy claims should remain conservative.
+For the next engineering iteration, record a short demo walkthrough video if the target is backend / AI application engineering. Improve model features only after the application story is easy to review. The API now exposes forecast-horizon metadata, and documented local runs show the current LSTM does not beat the strongest baseline on tested horizons, so model-accuracy claims should remain conservative.

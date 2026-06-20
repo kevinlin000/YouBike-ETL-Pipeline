@@ -41,6 +41,7 @@ English short version: Chinese is the primary language for narrative, interview 
 | --- | --- |
 | Main portfolio entry | `README.md` |
 | English overview | `README.en.md` |
+| Reviewer quick path | `docs/reviewer_quickstart.md` |
 | Backend / AI role framing | `docs/backend_ai_positioning.md` |
 | Demo script | `docs/demo_walkthrough.md` |
 | API contract detail | `docs/api_contract_walkthrough.md` |

@@ -16,7 +16,17 @@
 
 此 repo 目前定位為 **portfolio showcase**，用於展示資料管線設計、資料建模、統計分析與模型服務化能力；不是目前仍在線上營運的 production service。
 
-若只想快速理解整個報告脈絡，先看 [`docs/project_story.md`](docs/project_story.md)。它把問題、資料、分析、LSTM prototype、FastAPI、dashboard、限制與下一步串成一條主線。
+若只想快速判斷這個 repo 的作品集價值，先看 [`docs/reviewer_quickstart.md`](docs/reviewer_quickstart.md)。若想理解完整報告脈絡，再看 [`docs/project_story.md`](docs/project_story.md)。它把問題、資料、分析、LSTM prototype、FastAPI、dashboard、限制與下一步串成一條主線。
+
+## 快速導覽
+
+如果你是面試官或 reviewer，建議用這條路線看：
+
+1. **3 分鐘版本**：先看 [`docs/reviewer_quickstart.md`](docs/reviewer_quickstart.md)，再看下方 backend / AI 架構圖與 dashboard GIF。
+2. **後端重點**：看 [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md)、`api/app/main.py` 和 `tests/test_api.py`，確認 FastAPI contract、validation、model readiness 和風險排序。
+3. **AI 應用重點**：看 [`docs/demo_walkthrough.md`](docs/demo_walkthrough.md) 和 [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md)，確認 demo workflow 與模型 claim boundary。
+
+英文 README 是輔助掃描版本；中文 README 是主要敘事版本。文件語言策略見 [`docs/documentation_language_strategy.md`](docs/documentation_language_strategy.md)。
 
 ## 核心成果
 
@@ -452,7 +462,7 @@ CI 設定位於 `.github/workflows/ci.yml`。
 
 ## 後續維護方向
 
-更完整的作品集評估與優先順序整理在 [`docs/portfolio_assessment.md`](docs/portfolio_assessment.md)，後端 / AI 應用定位可參考 [`docs/backend_ai_positioning.md`](docs/backend_ai_positioning.md)，後端 / AI 架構圖在 [`docs/backend_ai_architecture.md`](docs/backend_ai_architecture.md)，demo walkthrough 在 [`docs/demo_walkthrough.md`](docs/demo_walkthrough.md)，API contract walkthrough 在 [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md)，文件語言策略在 [`docs/documentation_language_strategy.md`](docs/documentation_language_strategy.md)，面試說明稿可參考 [`docs/interview_talk_track.md`](docs/interview_talk_track.md)，報告主線整理在 [`docs/project_story.md`](docs/project_story.md)，ML 脈絡與可主張範圍整理在 [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md)，本地 LSTM 評估結果在 [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md)。
+更完整的作品集評估與優先順序整理在 [`docs/portfolio_assessment.md`](docs/portfolio_assessment.md)，快速 reviewer 導覽在 [`docs/reviewer_quickstart.md`](docs/reviewer_quickstart.md)，後端 / AI 應用定位可參考 [`docs/backend_ai_positioning.md`](docs/backend_ai_positioning.md)，後端 / AI 架構圖在 [`docs/backend_ai_architecture.md`](docs/backend_ai_architecture.md)，demo walkthrough 在 [`docs/demo_walkthrough.md`](docs/demo_walkthrough.md)，API contract walkthrough 在 [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md)，文件語言策略在 [`docs/documentation_language_strategy.md`](docs/documentation_language_strategy.md)，面試說明稿可參考 [`docs/interview_talk_track.md`](docs/interview_talk_track.md)，報告主線整理在 [`docs/project_story.md`](docs/project_story.md)，ML 脈絡與可主張範圍整理在 [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md)，本地 LSTM 評估結果在 [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md)。
 
 1. 若要深化 ML，再補齊 weather history 與更完整的 lag features。
 2. 若要強化求職材料，可錄一段 60-90 秒 demo 影片。
