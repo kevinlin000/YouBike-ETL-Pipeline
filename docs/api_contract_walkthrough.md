@@ -57,6 +57,12 @@
 
 - `503`：模型、scaler、站點 mapping 或站點 metadata 任一項尚未載入。Response `detail` 會包含同一組 resource state 並標示 `ready: false`。
 
+## Request Tracing
+
+所有 API response 都會帶 `X-Request-ID`。如果呼叫端已經傳入這個 header，API 會原樣回傳；如果沒有傳入，API 會自動產生一組 request id。
+
+服務 log 會記錄 request id、HTTP method、path、status code 與處理時間。這個設計讓 dashboard 或其他呼叫端回報錯誤時，可以用同一組 request id 對應到後端 log。
+
 ## 站點清單
 
 `GET /stations`

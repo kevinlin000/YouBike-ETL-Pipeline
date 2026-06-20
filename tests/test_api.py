@@ -63,6 +63,27 @@ def test_home_returns_service_metadata(client):
     assert "Bikes" in body["features"]
 
 
+def test_response_includes_generated_request_id(client):
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.headers[api_main.REQUEST_ID_HEADER]
+
+
+def test_response_preserves_incoming_request_id(client):
+    response = client.get("/health", headers={api_main.REQUEST_ID_HEADER: "trace-123"})
+
+    assert response.status_code == 200
+    assert response.headers[api_main.REQUEST_ID_HEADER] == "trace-123"
+
+
+def test_error_response_includes_request_id(client):
+    response = client.get("/ready")
+
+    assert response.status_code == 503
+    assert response.headers[api_main.REQUEST_ID_HEADER]
+
+
 def test_health_returns_service_state_without_ready_model(client):
     response = client.get("/health")
 

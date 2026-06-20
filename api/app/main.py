@@ -5,7 +5,10 @@ import pandas as pd
 import numpy as np
 import os
 import logging
-from fastapi import FastAPI, HTTPException
+import time
+from uuid import uuid4
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, field_validator
 from contextlib import asynccontextmanager
 from sqlalchemy import create_engine, text
@@ -20,6 +23,7 @@ MODEL_FORECAST_HORIZON_DESCRIPTION = (
     "uses horizon_steps=1, meaning the next observation rather than a guaranteed "
     "one-hour forecast."
 )
+REQUEST_ID_HEADER = "X-Request-ID"
 
 # --- 1. 定義資料格式 ---
 class RecentObservation(BaseModel):
@@ -252,6 +256,39 @@ async def lifespan(app: FastAPI):
     logger.info("模型資源已釋放。")
 
 app = FastAPI(lifespan=lifespan, title="YouBike LSTM Prediction API")
+
+@app.middleware("http")
+async def add_request_context(request: Request, call_next):
+    request_id = request.headers.get(REQUEST_ID_HEADER, "").strip() or str(uuid4())
+    start_time = time.perf_counter()
+    try:
+        response = await call_next(request)
+    except Exception:
+        duration_ms = (time.perf_counter() - start_time) * 1000
+        logger.exception(
+            "request_failed request_id=%s method=%s path=%s duration_ms=%.2f",
+            request_id,
+            request.method,
+            request.url.path,
+            duration_ms,
+        )
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "Internal Server Error"},
+            headers={REQUEST_ID_HEADER: request_id},
+        )
+
+    duration_ms = (time.perf_counter() - start_time) * 1000
+    response.headers[REQUEST_ID_HEADER] = request_id
+    logger.info(
+        "request_completed request_id=%s method=%s path=%s status_code=%s duration_ms=%.2f",
+        request_id,
+        request.method,
+        request.url.path,
+        response.status_code,
+        duration_ms,
+    )
+    return response
 
 # --- 5. API 路由設定 ---
 
