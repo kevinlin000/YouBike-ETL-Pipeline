@@ -1,25 +1,32 @@
-# Backend / AI Architecture
+# 後端與模型服務架構
 
-This diagram reframes the project for backend and AI application engineering roles.
+本文件說明本專案中資料管線、模型 artifact、FastAPI 服務與 Streamlit dashboard 的關係。
 
 ![Backend / AI Application Architecture](images/backend_ai_architecture.svg)
 
-## How To Read It
+## 架構重點
 
-- **FastAPI is the backend core.** It owns request validation, model readiness checks, station support checks, forecast-horizon metadata, and the prediction/risk-ranking API contracts.
-- **Streamlit is a client/demo layer.** It consumes API-shaped responses and demonstrates the workflow; it is not the production frontend claim.
-- **Model artifacts are a runtime dependency.** PyTorch weights, scaler, station mapping, and metadata are loaded by the API service.
-- **Airflow and MySQL are supporting data infrastructure.** They explain where the historical station data comes from, but they are not the main story for backend / AI application roles.
-- **Demo mode and CI make the project interview-safe.** The dashboard can be shown without live infrastructure, while tests cover API behavior, dashboard client behavior, ETL transforms, model-training metadata, and dbt parsing/building.
+- **FastAPI 是模型服務核心。** API 負責 request validation、模型載入狀態檢查、站點支援範圍檢查、forecast horizon metadata，以及單站預測與多站風險排序 endpoint。
+- **模型 artifact 是 runtime dependency。** PyTorch 權重、scaler、站點 mapping 與站點 metadata 由 API service 啟動時載入。
+- **Streamlit 是資料應用介面。** Dashboard 消費 API 形狀一致的 response，顯示單站預測與多站缺車、滿站風險排序。
+- **Airflow 與 MySQL 是資料基礎。** Airflow 負責定期擷取站點狀態，MySQL 保存站點維度表與狀態事實表，提供分析與模型訓練資料來源。
+- **Demo mode 是展示與本地檢視用途。** 它使用固定範例資料與模擬推論結果，不代表模型評估結果。
+- **CI 覆蓋主要邊界。** 測試涵蓋 ETL transform、API contract、dashboard client、training metadata 與 dbt scaffold。
 
-## Interview Framing
+## 資料流
 
-Use this phrasing:
+1. Airflow 呼叫 YouBike 開放資料 API。
+2. ETL 將站點靜態資訊寫入 `station_info`，將站點狀態寫入 `station_status`。
+3. Notebook 與訓練程式使用歷史站點狀態和天氣資料進行分析與模型訓練。
+4. FastAPI 載入模型 artifact，提供 `/predict` 與 `/stations/risk`。
+5. Streamlit dashboard 呼叫 API 或 demo client，呈現預測與風險排序結果。
 
-> The center of the application is the FastAPI model-serving boundary. The API validates station inputs, loads model artifacts, returns forecast-horizon metadata, and exposes both single-station prediction and multi-station risk ranking. Streamlit is a demo client for the same workflow, while Airflow and MySQL provide the data foundation behind the model.
+## 邊界說明
 
-Avoid this phrasing:
+- Dashboard demo mode 只保證介面流程與 response shape 可檢視。
+- 模型準確率需以 [`lstm_evaluation_report.md`](lstm_evaluation_report.md) 的 baseline 評估為準。
+- 目前 API 的 warehouse fallback 可查近期可借車數，但尚未查詢對齊時間的 weather history。
 
-> Streamlit is the production frontend.
+## English Summary
 
-> The LSTM is already a proven production forecaster.
+FastAPI is the model-serving boundary. It loads model artifacts, validates station inputs, exposes prediction and risk-ranking endpoints, and returns forecast-horizon metadata. Streamlit consumes the same response shape as a dashboard layer, while Airflow and MySQL provide the data foundation for analysis and model training.

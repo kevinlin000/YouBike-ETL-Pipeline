@@ -1,14 +1,12 @@
-# API Contract Walkthrough
+# API Contract 說明
 
-This walkthrough positions the project as a backend / AI application: the backend validates station inputs, wraps model artifacts, and turns raw predictions into an operational risk-ranking contract.
+本文件整理 FastAPI 服務的 endpoint、request/response 形狀與錯誤邊界。API 實作位於 `api/app/main.py`，dashboard client 位於 `dashboard/api_client.py`。
 
-The API is implemented in `api/app/main.py`. The dashboard client in `dashboard/api_client.py` consumes the same contract, while demo mode returns deterministic mock responses with the same response shape.
-
-## Service Readiness
+## 服務狀態
 
 `GET /`
 
-Example response:
+範例 response：
 
 ```json
 {
@@ -18,13 +16,13 @@ Example response:
 }
 ```
 
-This endpoint checks that the web service is reachable. It does not prove model accuracy.
+這個 endpoint 只表示 Web service 可連線，不代表模型已完成評估或具備正式預測品質。
 
-## Station Catalog
+## 站點清單
 
 `GET /stations`
 
-Example response:
+範例 response：
 
 ```json
 {
@@ -35,20 +33,20 @@ Example response:
 }
 ```
 
-Failure behavior:
+錯誤行為：
 
-- `503 Model information not initialized`: station metadata was not loaded.
+- `503 Model information not initialized`：站點 metadata 尚未載入。
 
-Backend relevance:
+用途：
 
-- The dashboard uses this endpoint to build station display options.
-- Station IDs are constrained to the model artifact's supported station mapping.
+- Dashboard 使用此 endpoint 產生站點選單。
+- API 會依模型 artifact 的 station mapping 限制可支援站點。
 
-## Single-Station Prediction
+## 單站預測
 
 `POST /predict`
 
-Minimal request:
+最小 request：
 
 ```json
 {
@@ -59,7 +57,7 @@ Minimal request:
 }
 ```
 
-Request with explicit lag window:
+含近期觀測值的 request：
 
 ```json
 {
@@ -75,7 +73,7 @@ Request with explicit lag window:
 }
 ```
 
-Example response:
+範例 response：
 
 ```json
 {
@@ -86,31 +84,26 @@ Example response:
 }
 ```
 
-Important behavior:
+重要行為：
 
-- `recent_observations` must contain exactly 3 rows because the current model artifacts use `MODEL_TIME_STEPS = 3`.
-- If `recent_observations` is omitted and database credentials are configured, the API attempts to load the latest 3 `bikes_available` rows from `station_status`.
-- The warehouse fallback does not currently load historical weather; it reuses the request's current temperature and rain for each lag row.
-- If no lag window is available, the API preserves the original demo-compatible behavior by repeating the current state 3 times.
+- 目前模型 artifact 使用 `MODEL_TIME_STEPS = 3`，因此 `recent_observations` 必須剛好 3 筆。
+- 若 request 沒有提供 `recent_observations`，且 DB credentials 存在，API 會嘗試從 MySQL `station_status` 查詢最近 3 筆 `bikes_available`。
+- warehouse fallback 目前沒有查詢歷史天氣，因此會沿用 request 中的 `temperature` 與 `rain`。
+- 若沒有可用 lag window，API 會沿用早期 demo 行為，將目前狀態重複 3 次後推論。
+- Response 保留 `predicted_bikes_next_hour` 欄位名稱是為了相容舊 demo；實際預測時窗需看 `forecast_horizon` metadata。
 
-Failure behavior:
+錯誤行為：
 
-- `422`: invalid payload, such as negative `bikes_available`, unreasonable `temperature`, negative `rain`, or a lag window with the wrong length.
-- `503 Model is not ready`: model or scaler was not loaded.
-- `404 Station ID not supported by model`: request station is not in the artifact's station mapping.
-- `500 Internal Prediction Error`: unexpected inference failure.
+- `422`：payload 不合法，例如負數車輛數、不合理氣溫、負數雨量、lag window 長度錯誤。
+- `503 Model is not ready`：模型或 scaler 尚未載入。
+- `404 Station ID not supported by model`：站點不在模型 artifact 支援範圍內。
+- `500 Internal Prediction Error`：推論過程發生未預期錯誤。
 
-Backend relevance:
-
-- The endpoint is a model-serving boundary, not a notebook shortcut.
-- The request contract separates current station state from optional historical observations.
-- The response includes forecast-horizon metadata so clients do not overinterpret legacy `next_hour` field names.
-
-## Multi-Station Risk Ranking
+## 多站風險排序
 
 `POST /stations/risk`
 
-Example request:
+範例 request：
 
 ```json
 {
@@ -131,7 +124,7 @@ Example request:
 }
 ```
 
-Example response:
+範例 response：
 
 ```json
 {
@@ -153,9 +146,9 @@ Example response:
 }
 ```
 
-Risk rules:
+風險規則：
 
-| Condition | `risk_level` | `suggested_action` |
+| 條件 | `risk_level` | `suggested_action` |
 | --- | --- | --- |
 | predicted bikes <= 2 | `stock_out` | `rebalance_in` |
 | predicted spaces <= 2 | `full_load` | `rebalance_out` |
@@ -163,28 +156,23 @@ Risk rules:
 | predicted spaces <= 5 | `low_dock` | `monitor_docks` |
 | otherwise | `normal` | `monitor` |
 
-Important behavior:
+重要行為：
 
-- Results are sorted by highest `risk_score`, then by `station_no`.
-- Each station may provide its own `recent_observations` lag window.
-- Predicted empty docks are derived from observed capacity: `bikes_available + spaces_available - predicted_bikes`.
+- 結果會依 `risk_score` 由高到低排序，同分時再依 `station_no` 排序。
+- 每個站點可各自提供 `recent_observations`。
+- 預測空位數由觀測容量推估：`bikes_available + spaces_available - predicted_bikes`。
+- Dashboard 可直接消費 response 中的 `risk_level`、`risk_score` 與 `suggested_action`。
 
-Failure behavior:
+錯誤行為：
 
-- `422`: invalid request, such as empty `stations`, negative availability values, invalid weather values, or wrong lag-window length.
-- `503 Model is not ready`: model or scaler was not loaded.
-- `404 Station ID not supported by model`: at least one station is not in the artifact's station mapping.
-- `500 Internal Risk Ranking Error`: unexpected inference/ranking failure.
-
-Backend relevance:
-
-- This endpoint turns model output into an application workflow.
-- The API response is directly consumable by dashboard cards, labels, and action text.
-- This is the strongest AI-application story: prediction is not the product; decision support is the product.
+- `422`：request 不合法，例如空的 `stations`、負數車輛/空位、不合法天氣值、lag window 長度錯誤。
+- `503 Model is not ready`：模型或 scaler 尚未載入。
+- `404 Station ID not supported by model`：至少一個站點不在模型支援範圍內。
+- `500 Internal Risk Ranking Error`：推論或排序過程發生未預期錯誤。
 
 ## Demo Mode Contract
 
-Dashboard demo mode does not call FastAPI. It uses deterministic mock station data and mock predictions in `dashboard/api_client.py`, but keeps the same API-shaped fields:
+Dashboard demo mode 不會呼叫 FastAPI，而是在 `dashboard/api_client.py` 使用固定站點資料與模擬推論結果。它保留與 API 相同的主要欄位：
 
 - `predicted_bikes_next_hour`
 - `forecast_horizon`
@@ -192,10 +180,8 @@ Dashboard demo mode does not call FastAPI. It uses deterministic mock station da
 - `risk_score`
 - `suggested_action`
 
-This makes interviews reliable without Docker Compose, a running FastAPI server, database credentials, or model artifacts. Demo output must not be described as model-performance evidence.
+這個設計讓 dashboard 可以在沒有 FastAPI、模型檔、資料庫或 Docker Compose 的情況下檢視流程。Demo mode 只代表介面與資料形狀，不代表模型表現。
 
-## Interview Summary
+## English Summary
 
-Use this framing:
-
-> The backend exposes validated model-serving contracts, not just a notebook prediction. `/predict` handles single-station inference and lag-window inputs; `/stations/risk` turns model outputs into ranked operational actions. The dashboard consumes the same response shape, and demo mode preserves that contract without depending on live infrastructure.
+The FastAPI service exposes a station catalog, single-station prediction, and multi-station risk-ranking endpoint. Requests are validated with Pydantic, model readiness is handled explicitly, unsupported stations return clear errors, and response metadata clarifies the forecast horizon. Dashboard demo mode keeps the same response shape but uses deterministic mock data, so it should not be treated as model-performance evidence.

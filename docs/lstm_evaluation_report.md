@@ -1,35 +1,33 @@
-# LSTM Evaluation Report
+# LSTM 評估報告
 
-This note records local evaluation runs of `scripts/train_multistation_lstm.py` against the processed YouBike/weather CSV available in the maintainer workspace.
+本文件記錄 `scripts/train_multistation_lstm.py` 在本機 processed YouBike/weather CSV 上的評估結果。這些結果用來界定目前模型證據，不會直接替換 `api/model_files/` 中的服務 artifact。
 
-The results are intentionally documented as model evidence, not promoted as new production artifacts. The served API artifacts were not replaced.
+訓練程式會在 `model_metadata.json` 輸出 `model_selection` 摘要。替換服務 artifact 的標準採保守規則：候選 LSTM 需要在 test split 同時打敗最佳 baseline 的 MAE 與 RMSE。
 
-New training runs write a `model_selection` summary into `model_metadata.json`. The promotion rule is intentionally conservative: a candidate LSTM should beat the best available baseline on the test split for both MAE and RMSE before replacing served artifacts.
+## 執行背景
 
-## Run Context
-
-| Item | Value |
+| 項目 | 值 |
 | --- | --- |
-| Generated at | `2026-06-19T19:23:29Z` and `2026-06-19T19:24:56Z` |
-| Command | `python scripts/train_multistation_lstm.py --data-path data/processed/.ipynb_checkpoints/youbike_weather_merged-checkpoint.csv --output-dir .scratch/model_training_baseline_suite_with_ridge` |
-| One-hour command | `python scripts/train_multistation_lstm.py --data-path data/processed/.ipynb_checkpoints/youbike_weather_merged-checkpoint.csv --output-dir .scratch/model_training_one_hour_horizon_with_ridge --horizon-steps 6` |
-| Source data | Local notebook checkpoint CSV, not committed to the public repo |
+| 產生時間 | `2026-06-19T19:23:29Z` 與 `2026-06-19T19:24:56Z` |
+| 下一筆 observation 指令 | `python scripts/train_multistation_lstm.py --data-path data/processed/.ipynb_checkpoints/youbike_weather_merged-checkpoint.csv --output-dir .scratch/model_training_baseline_suite_with_ridge` |
+| 近似一小時指令 | `python scripts/train_multistation_lstm.py --data-path data/processed/.ipynb_checkpoints/youbike_weather_merged-checkpoint.csv --output-dir .scratch/model_training_one_hour_horizon_with_ridge --horizon-steps 6` |
+| 資料來源 | 本機 notebook checkpoint CSV，未提交到公開 repo |
 | Notebook lineage | `notebooks/05_multistation_lstm.ipynb` |
-| Station selection | `district-representative` |
-| Selected stations | 13 |
+| 站點選擇 | `district-representative` |
+| 站點數 | 13 |
 | Time steps | 3 observations |
-| Forecast horizons evaluated | 1 observation and 6 observations |
+| 評估 horizon | 1 observation 與 6 observations |
 | Split | 70% train / 15% validation / 15% test |
 | Epochs | 100 |
 | Seed | 42 |
 
-The local source CSV contained 947,940 data rows. The training script selected one representative station per district-like grouping. The next-observation run produced 5,005 training sequences, 1,079 validation sequences, and 1,092 test sequences; the six-step run produced 4,940 training sequences, 1,079 validation sequences, and 1,092 test sequences.
+本機來源 CSV 有 947,940 筆資料列。訓練程式會從各 district-like group 選一個代表站點。下一筆 observation 實驗產生 5,005 筆 training sequences、1,079 筆 validation sequences、1,092 筆 test sequences；六步 horizon 實驗產生 4,940 筆 training sequences、1,079 筆 validation sequences、1,092 筆 test sequences。
 
-The selected-station rows have a median sampling interval of 10 minutes, with the 25th to 75th percentile ranging from roughly 9.98 to 10.02 minutes. For that local dataset, `horizon_steps=6` is a reasonable approximation of a one-hour target.
+選出的站點資料列中位數取樣間隔為 10 分鐘，25th 到 75th percentile 約為 9.98 到 10.02 分鐘。因此在這份本機資料上，`horizon_steps=6` 可視為近似一小時目標。
 
-## Next-Observation Metrics
+## 下一筆 Observation 評估
 
-Lower is better.
+數值越低越好。
 
 | Split | Model / baseline | N | MAE | RMSE | LSTM MAE delta | LSTM RMSE delta |
 | --- | --- | ---: | ---: | ---: | ---: | ---: |
@@ -49,11 +47,11 @@ Lower is better.
 | Test | Same-time previous-day | 1,092 | 7.261 | 9.347 | 6.240 | 7.445 |
 | Test | Ridge lag regression | 1,092 | 0.992 | 1.871 | -0.029 | -0.031 |
 
-`LSTM MAE delta` and `LSTM RMSE delta` are computed as baseline metric minus LSTM metric. Positive means the LSTM improved over that baseline. Negative means the baseline was better.
+`LSTM MAE delta` 與 `LSTM RMSE delta` 的計算方式是 baseline metric 減 LSTM metric。正值代表 LSTM 優於該 baseline；負值代表 baseline 較好。
 
-## One-Hour Horizon Experiment
+## 近似一小時 Horizon 實驗
 
-This run used `--horizon-steps 6`, which is approximately one hour on the local 10-minute data.
+此實驗使用 `--horizon-steps 6`，在本機 10 分鐘間隔資料上約等於一小時。
 
 | Split | Model / baseline | N | MAE | RMSE | LSTM MAE delta | LSTM RMSE delta |
 | --- | --- | ---: | ---: | ---: | ---: | ---: |
@@ -73,34 +71,30 @@ This run used `--horizon-steps 6`, which is approximately one hour on the local 
 | Test | Same-time previous-day | 1,092 | 7.261 | 9.347 | 4.017 | 4.833 |
 | Test | Ridge lag regression | 1,092 | 3.034 | 4.280 | -0.210 | -0.234 |
 
-## Interpretation
+## 結果解讀
 
-The current-value baseline is strong for this short-horizon task: predicting the next observation as the latest observed bike count is hard to beat when station status changes gradually between adjacent records.
+短 horizon 任務中，current-value baseline 很強。當相鄰資料列之間變化不大時，直接用最新可借車數預測下一筆狀態，是不容易被複雜模型打敗的基準。
 
-This run shows:
+這次評估結果顯示：
 
-- The LSTM trains and produces stable, API-compatible artifacts.
-- The served model architecture is useful as a model-serving prototype.
-- For the next-observation target, the LSTM beats rolling mean and same-time previous-day baselines, but not current value or Ridge lag regression on the test split.
-- For the approximate one-hour target, the LSTM still does not beat the best test baselines: current value is best by MAE, and Ridge lag regression is best by RMSE.
-- The R-squared result in the original analysis still belongs to regression/lag-feature evidence, not LSTM test performance.
+- LSTM 可以完成訓練並輸出 API 可載入的 artifact。
+- 目前 LSTM 架構可作為模型服務化 prototype。
+- 在下一筆 observation 目標下，LSTM 優於 rolling mean 與 same-time previous-day，但未打敗 current-value 或 Ridge lag-regression。
+- 在近似一小時目標下，LSTM 仍未打敗 test split 中最強 baseline：MAE 最佳為 current-value，RMSE 最佳為 Ridge lag-regression。
+- 原分析中的 R-squared 結果屬於迴歸與 lag-feature 證據，不是 LSTM test performance。
 
-## Portfolio Claim Boundary
+## 目前結論
 
-Safe claim:
+本專案已具備可重現 LSTM 訓練流程與 baseline suite，但目前 LSTM prototype 沒有打敗最強 baseline。因此，合理結論是「已完成模型 artifact 與服務化流程」，而不是「已得到高準確度預測模型」。
 
-> The project includes a reproducible LSTM training pipeline and a documented baseline suite that includes naive and Ridge lag-regression baselines. In the current local evaluation, the LSTM prototype does not beat the strongest baseline on either the next-observation run or the approximate one-hour run, so I treat it as model-serving evidence rather than a proven production forecasting model.
+## 後續模型工作
 
-Avoid:
+1. 在 `model_selection.recommendation` 顯示候選模型同時打敗最佳 test baseline 的 MAE 與 RMSE 前，不替換服務中的 artifact。
+2. 在調整 LSTM 前，先補齊 aligned weather history 與更完整的 lag features。
+3. 持續強化簡單 tabular/time-series baseline，避免只增加神經網路複雜度。
+4. 將 aligned weather history 補到 API inference path，再討論 production-style forecasting。
+5. 未來若保存新的 `model_metadata.json`，需明確記錄資料來源、指令、split 與 baseline 結果。
 
-> The LSTM achieved strong production forecasting performance.
+## English Summary
 
-## Next Modeling Work
-
-The next modeling iteration should focus on improving feature history and baselines before replacing the served artifacts:
-
-1. Keep the served artifacts unchanged until `model_selection.recommendation` says the candidate beats the best test baseline on both MAE and RMSE.
-2. Add aligned weather history and richer lag features to the training/evaluation dataset before tuning the LSTM further.
-3. Improve or expand the simple tabular/time-series baselines before adding more neural-network complexity.
-4. Add aligned weather history to the inference path before production-style claims.
-5. Preserve future `model_metadata.json` outputs under `docs/` only when the source data and command are clearly documented.
+The local evaluation shows that the LSTM training pipeline is reproducible and can produce API-compatible artifacts, but the current LSTM does not beat the strongest baseline on either the next-observation or approximate one-hour horizon. The model should therefore be treated as model-serving evidence, not as proof of production forecasting accuracy.

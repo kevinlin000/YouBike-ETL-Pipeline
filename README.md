@@ -14,19 +14,9 @@
 2. **統計分析層**：使用描述統計、t 檢定、K-Means、ANOVA、卡方檢定與迴歸模型，分析站點失衡、土地使用型態與尖峰波動。
 3. **應用服務層**：將 PyTorch LSTM 模型封裝為 FastAPI 推論服務，並以 Streamlit 建立單站預測與多站風險排序介面。
 
-此 repo 目前定位為 **portfolio showcase**，用於展示資料管線設計、資料建模、統計分析與模型服務化能力；不是目前仍在線上營運的 production service。
+本專案目前作為作品集展示，用來呈現資料管線設計、資料建模、統計分析、模型訓練與模型服務化能力；不是目前仍在線上營運的服務。
 
-若只想快速判斷這個 repo 的作品集價值，先看 [`docs/reviewer_quickstart.md`](docs/reviewer_quickstart.md)。若想理解完整報告脈絡，再看 [`docs/project_story.md`](docs/project_story.md)。它把問題、資料、分析、LSTM prototype、FastAPI、dashboard、限制與下一步串成一條主線。
-
-## 快速導覽
-
-如果你是面試官或 reviewer，建議用這條路線看：
-
-1. **3 分鐘版本**：先看 [`docs/reviewer_quickstart.md`](docs/reviewer_quickstart.md)，再看下方 backend / AI 架構圖與 dashboard GIF。
-2. **後端重點**：看 [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md)、`api/app/main.py` 和 `tests/test_api.py`，確認 FastAPI contract、validation、model readiness 和風險排序。
-3. **AI 應用重點**：看 [`docs/demo_walkthrough.md`](docs/demo_walkthrough.md) 和 [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md)，確認 demo workflow 與模型 claim boundary。
-
-英文 README 是輔助掃描版本；中文 README 是主要敘事版本。文件語言策略見 [`docs/documentation_language_strategy.md`](docs/documentation_language_strategy.md)。
+完整專案脈絡整理在 [`docs/project_story.md`](docs/project_story.md)。API 行為可參考 [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md)，模型評估邊界則整理在 [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md) 與 [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md)。
 
 ## 核心成果
 
@@ -68,7 +58,7 @@ flowchart LR
 
 後端 / AI 應用視角的架構圖：
 
-![Backend / AI Application Architecture](docs/images/backend_ai_architecture.svg)
+![後端與模型服務架構](docs/images/backend_ai_architecture.svg)
 
 說明文件：[`docs/backend_ai_architecture.md`](docs/backend_ai_architecture.md)
 
@@ -163,7 +153,16 @@ dbt profiles 使用 `profiles.example.yml` 作為範本。實際 `profiles.yml` 
 - 降雨分級 `Rain_Cat`
 - 站點 ID embedding
 
-目前 repo 中可被嚴謹主張的是「完成 LSTM prototype 與 FastAPI 模型服務化流程」。Notebook 記錄 training loss 與 artifact 產出，`scripts/train_multistation_lstm.py` 則將多站訓練流程整理成可重現 CLI，會輸出模型權重、scaler、站點 mapping 與 `model_metadata.json`。metadata 會同時記錄 LSTM 指標、current-value、rolling mean、same-time previous-day、Ridge lag regression baseline 指標、LSTM 相對各 baseline 的 MAE/RMSE 改善量，以及是否打敗 test split 最佳 baseline 的 `model_selection` 摘要。本地 checkpoint-data 評估整理在 [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md)：下一筆 observation 目標下，LSTM 有打敗 rolling mean 與 same-time previous-day，但沒有打敗 current-value 或 Ridge；近似一小時目標（`horizon_steps=6`）下，LSTM 仍未打敗最強 baseline。因此應定位為 model-serving prototype，而不是已驗證的準確預測模型。完整脈絡整理在 [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md)。
+目前可嚴謹主張的是：專案已完成 LSTM prototype、模型 artifact 輸出與 FastAPI 模型服務化流程。
+
+`scripts/train_multistation_lstm.py` 將多站點訓練流程整理成可重現 CLI，輸出模型權重、scaler、站點 mapping 與 `model_metadata.json`。metadata 會記錄：
+
+- LSTM 的 train / validation / test 指標。
+- current-value、rolling mean、same-time previous-day 與 Ridge lag-regression baseline。
+- LSTM 相對各 baseline 的 MAE / RMSE 差異。
+- 是否打敗 test split 最佳 baseline 的 `model_selection` 摘要。
+
+本地 checkpoint-data 評估整理在 [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md)。結果顯示，LSTM 在下一筆 observation 目標下有打敗 rolling mean 與 same-time previous-day，但沒有打敗 current-value 或 Ridge；近似一小時目標（`horizon_steps=6`）下仍未打敗最強 baseline。因此目前模型應定位為 model-serving prototype，而不是已驗證的高準確度預測模型。完整脈絡見 [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md)。
 
 ```bash
 make train-lstm
@@ -262,15 +261,11 @@ Streamlit dashboard 目前分成兩個頁籤：
 
 ## Dashboard Demo
 
-Dashboard 提供 demo mode，可在不啟動 FastAPI、模型檔或 Docker Compose 的情況下展示單站預測與多站風險排序流程。下圖使用 deterministic mock data，適合面試或作品集展示；它不是模型評估結果。
+Dashboard 提供 demo mode，可在不啟動 FastAPI、模型檔或 Docker Compose 的情況下檢視單站預測與多站風險排序流程。下圖使用固定範例資料與模擬推論結果，只用來展示介面流程與 API 回應形狀，不代表模型評估結果。
 
-![Dashboard Demo Walkthrough](docs/images/dashboard_demo_walkthrough.gif)
+![Dashboard Demo 流程](docs/images/dashboard_demo_walkthrough.gif)
 
 靜態截圖備份：[`docs/images/dashboard_demo_risk_ranking.png`](docs/images/dashboard_demo_risk_ranking.png)
-
-無旁白預覽影片：[`docs/videos/youbike_backend_ai_demo_preview.mp4`](docs/videos/youbike_backend_ai_demo_preview.mp4)
-
-面試展示腳本：[`docs/demo_walkthrough.md`](docs/demo_walkthrough.md)
 
 ## 部署與歷史展示
 
@@ -380,7 +375,7 @@ make up
 - Streamlit dashboard: http://localhost:8501
 - MySQL: localhost:3306
 
-如果只需要面試展示 dashboard，不想依賴真實 FastAPI、模型檔或 Docker Compose，可啟用 demo mode：
+如果只需要本機檢視 dashboard 流程，不想依賴真實 FastAPI、模型檔或 Docker Compose，可啟用 demo mode：
 
 ```bash
 make install-app
@@ -398,7 +393,7 @@ make install-dev
 make test
 ```
 
-測試涵蓋 ETL transform、FastAPI 基礎行為、dashboard client 與 LSTM training script 的小型 fixture，不需要連線到 MySQL 或 GCP，也不會載入真實模型檔。
+測試涵蓋 ETL transform、FastAPI 基礎行為、dashboard client 與 LSTM 訓練程式的小型 fixture，不需要連線到 MySQL 或 GCP，也不會載入真實模型檔。
 
 GitHub Actions 會在 push / pull request 時自動執行 Python 測試，並啟動 MySQL service 執行 dbt seed/build。
 
@@ -434,7 +429,7 @@ make dbt-build
 - `/predict` request validation、`recent_observations` lag-window 與 warehouse lookup fallback 行為
 - `/stations/risk` 批次風險排序、request validation、unknown station 與 per-station `recent_observations` 行為
 - dashboard API client payload、demo mode、錯誤處理與顯示 label mapping
-- LSTM training script 的站點選擇、序列切分、baseline 評估、artifact 與 metadata 輸出
+- LSTM 訓練程式的站點選擇、序列切分、baseline 評估、artifact 與 metadata 輸出
 - unknown station 錯誤處理
 - mocked model prediction response
 - dbt seed fixtures、source/model tests、staging/mart build
@@ -449,25 +444,34 @@ CI 設定位於 `.github/workflows/ci.yml`。
 - ETL validation gate 預設採 strict mode；若真實 API 短暫異常不希望中斷流程，可用 `ETL_VALIDATION_MODE=warn` 改成只記錄警告。
 - dbt analytics layer 目前使用 seed fixtures 驗證模型結構；若要分析完整資料，需要連接實際 MySQL warehouse。
 - `/predict` 可手動傳入 `recent_observations`，也可在 DB credentials 存在時自動從 MySQL `station_status` 查最近 3 筆可借車數；但目前 warehouse 沒有 weather history，因此自動查詢路徑會沿用 request 中的 temperature / rain。API 保留 `next_hour` 欄位名稱作相容用途，實際 horizon 需看 response metadata。
-- LSTM 訓練流程已提供 script、baseline suite、Ridge lag-regression baseline 與小型測試；本地 checkpoint-data 評估顯示目前 LSTM 在下一筆 observation 與近似一小時 horizon 下，都沒有打敗最強 baseline。由於完整 processed training CSV 未提交，fresh clone 無法直接重現完整資料評估。
-- Dashboard demo mode 是面試展示用的 deterministic mock，不代表真實模型評估表現。
+- LSTM 訓練流程已提供可重現程式、baseline suite、Ridge lag-regression baseline 與小型測試；本地 checkpoint-data 評估顯示目前 LSTM 在下一筆 observation 與近似一小時 horizon 下，都沒有打敗最強 baseline。由於完整 processed training CSV 未提交，fresh clone 無法直接重現完整資料評估。
+- Dashboard demo mode 使用固定範例資料與模擬推論結果，只代表介面流程，不代表真實模型評估表現。
 
-## 與職缺能力的對應
+## 技術能力對應
 
-若以求職定位來看，這個專案最適合主打「後端 / AI 應用工程師」，資料工程能力作為支撐脈絡：
+這個專案的核心能力落在後端與資料應用整合，資料工程則提供資料來源與分析脈絡：
 
-- 後端 / AI 應用：FastAPI、Pydantic validation、模型推論 API、risk-ranking workflow、Docker Compose
+- 後端 / AI 應用：FastAPI、Pydantic validation、模型推論 API、風險排序流程、Docker Compose
 - 數據應用工程：資料分析、特徵工程、模型服務化、Dashboard 支援
 - 資料工程：ETL、Airflow、MySQL schema、批次資料擷取、資料品質測試
 
-它不主張涵蓋完整大數據平台能力，例如 Spark、Kafka、Data Lake、Kubernetes 或完整 MLOps；dbt 目前是輕量 analytics scaffold，而不是完整企業資料倉儲落地。若要投遞偏中高階資料平台職缺，仍需要其他作品或後續擴充。若投遞後端 / AI 應用職缺，建議使用 [`docs/backend_ai_positioning.md`](docs/backend_ai_positioning.md) 的說法。
+它不主張涵蓋完整大數據平台能力，例如 Spark、Kafka、Data Lake、Kubernetes 或完整 MLOps；dbt 目前是輕量 analytics scaffold，而不是完整企業資料倉儲落地。
 
 ## 後續維護方向
 
-更完整的作品集評估與優先順序整理在 [`docs/portfolio_assessment.md`](docs/portfolio_assessment.md)，快速 reviewer 導覽在 [`docs/reviewer_quickstart.md`](docs/reviewer_quickstart.md)，後端 / AI 應用定位可參考 [`docs/backend_ai_positioning.md`](docs/backend_ai_positioning.md)，後端 / AI 架構圖在 [`docs/backend_ai_architecture.md`](docs/backend_ai_architecture.md)，demo walkthrough 在 [`docs/demo_walkthrough.md`](docs/demo_walkthrough.md)，API contract walkthrough 在 [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md)，文件語言策略在 [`docs/documentation_language_strategy.md`](docs/documentation_language_strategy.md)，面試說明稿可參考 [`docs/interview_talk_track.md`](docs/interview_talk_track.md)，報告主線整理在 [`docs/project_story.md`](docs/project_story.md)，ML 脈絡與可主張範圍整理在 [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md)，本地 LSTM 評估結果在 [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md)。
+補充技術文件：
 
-1. 若要深化 ML，再補齊 weather history 與更完整的 lag features。
-2. 若要強化求職材料，可錄一段 60-90 秒 demo 影片。
+- [`docs/project_story.md`](docs/project_story.md)：專案問題、資料、分析、模型與服務化流程。
+- [`docs/backend_ai_architecture.md`](docs/backend_ai_architecture.md)：後端與模型服務架構圖說明。
+- [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md)：FastAPI endpoint、request/response 與錯誤邊界。
+- [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md)：機器學習部分的可主張範圍與限制。
+- [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md)：本地 LSTM baseline 評估結果。
+
+後續若要繼續深化，優先順序如下：
+
+1. 補齊 weather history，讓推論路徑能使用與訓練資料一致的天氣時間序列。
+2. 加強 lag features 與簡單 baseline，再決定是否替換目前服務中的 LSTM artifact。
+3. 若要重新錄製 dashboard 展示素材，應以實際操作流程為主，不使用重複片段包裝成 demo 影片。
 
 ## 作者
 

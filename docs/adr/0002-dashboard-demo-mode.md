@@ -1,29 +1,43 @@
-# ADR 0002: Keep Dashboard Demo Mode Deterministic
+# ADR 0002: Dashboard Demo Mode 採固定範例資料
 
-## Status
+## 狀態
 
 Accepted
 
-## Context
+## 背景
 
-The Streamlit dashboard is useful in interviews, but requiring FastAPI, model artifacts, Docker Compose, and local service orchestration makes the demo fragile. This repository is a portfolio showcase, so the dashboard should be easy to run when the goal is to demonstrate the workflow.
+Streamlit dashboard 原本依賴 FastAPI、模型檔、Docker Compose 與本機服務啟動順序。若只是要檢視 dashboard 的操作流程，這些依賴會讓本地展示與截圖重現變得不穩定。
 
-## Decision
+因此 dashboard 需要一個不依賴 live service 的 demo mode，用固定站點資料與模擬推論結果呈現單站預測與多站風險排序流程。
 
-Keep a deterministic dashboard demo mode enabled by `DASHBOARD_DEMO_MODE=true` or `make dashboard-demo`.
+## 決策
 
-Demo mode uses fixed station fixtures and mock predictions to show:
+保留 deterministic dashboard demo mode，可透過以下方式啟用：
 
-- single-station prediction flow,
-- multi-station risk ranking,
-- stock-out and full-load action labels,
-- the dashboard's decision-support interaction model.
+```bash
+DASHBOARD_DEMO_MODE=true streamlit run dashboard/app.py
+```
 
-Demo mode must remain clearly documented as a presentation workflow, not as model-performance evidence.
+或：
 
-## Consequences
+```bash
+make dashboard-demo
+```
 
-- The dashboard can be shown without live API services, model files, Docker Compose, or cloud resources.
-- README screenshots and interview demos can be reproduced locally with stable data.
-- Any future dashboard changes should preserve the distinction between deterministic demo output and real FastAPI/model output.
-- Model evaluation claims must come from training/evaluation artifacts, not from demo mode.
+Demo mode 會使用固定 station fixtures 與 mock prediction，呈現：
+
+- 單站預測流程。
+- 多站缺車與滿站風險排序。
+- `stock_out`、`full_load` 等風險標籤。
+- `rebalance_in`、`rebalance_out` 等建議動作。
+
+## 後果
+
+- Dashboard 可以在沒有 FastAPI、模型檔、Docker Compose 或 cloud resources 的情況下檢視。
+- README 中的 GIF 與截圖可以用穩定資料重現。
+- Demo mode 必須明確標示為流程展示，不可作為模型表現證據。
+- 模型表現仍以 training/evaluation artifact 和 [`../lstm_evaluation_report.md`](../lstm_evaluation_report.md) 為準。
+
+## English Summary
+
+Dashboard demo mode uses fixed sample data and mock predictions so the UI flow can be inspected without live FastAPI, model files, Docker Compose, or cloud resources. It is a workflow demo, not model-performance evidence.

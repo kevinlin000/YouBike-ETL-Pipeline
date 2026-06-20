@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1180" height="680" viewBox="0 0 1180 680" role="img" aria-labelledby="title desc">
-  <title id="title">Backend and AI application architecture</title>
-  <desc id="desc">Architecture diagram centered on FastAPI model-serving APIs, Streamlit dashboard client, model artifacts, and the Airflow MySQL data pipeline.</desc>
+  <title id="title">後端與模型服務架構</title>
+  <desc id="desc">以 FastAPI 模型服務 API、Streamlit dashboard、模型 artifact，以及 Airflow 與 MySQL 資料管線為核心的架構圖。</desc>
   <defs>
     <style>
       .bg { fill: #f8fafc; }
@@ -25,67 +25,67 @@
 
   <rect class="bg" x="0" y="0" width="1180" height="680" />
 
-  <text class="label" x="48" y="50">Backend / AI Application Architecture</text>
-  <text class="body" x="48" y="76">FastAPI owns the model-serving contract; Streamlit is a demo/client layer; Airflow and MySQL provide data context.</text>
+  <text class="label" x="48" y="50">後端與模型服務架構</text>
+  <text class="body" x="48" y="76">FastAPI 負責模型服務 contract；Streamlit 呈現資料應用流程；Airflow 與 MySQL 提供資料基礎。</text>
 
   <rect class="panel" x="40" y="105" width="300" height="455" rx="8" />
-  <text class="h2" x="64" y="138">Data Foundation</text>
+  <text class="h2" x="64" y="138">資料基礎</text>
   <line class="divider" x1="64" y1="152" x2="316" y2="152" />
 
   <rect class="data" x="68" y="178" width="244" height="74" rx="8" />
-  <text class="h2" x="88" y="207">YouBike / Weather APIs</text>
-  <text class="small" x="88" y="229">External station and weather signals</text>
+  <text class="h2" x="88" y="207">YouBike / 天氣 API</text>
+  <text class="small" x="88" y="229">站點狀態與天氣訊號</text>
 
   <rect class="data" x="68" y="286" width="244" height="82" rx="8" />
   <text class="h2" x="88" y="316">Airflow ETL</text>
-  <text class="small" x="88" y="338">Scheduled ingestion</text>
-  <text class="small" x="88" y="356">Validation gate</text>
+  <text class="small" x="88" y="338">定期擷取</text>
+  <text class="small" x="88" y="356">資料驗證</text>
 
   <rect class="data" x="68" y="402" width="244" height="92" rx="8" />
   <text class="h2" x="88" y="432">MySQL Warehouse</text>
-  <text class="small" x="88" y="454">station_info dimension</text>
-  <text class="small" x="88" y="472">station_status facts</text>
+  <text class="small" x="88" y="454">station_info 維度表</text>
+  <text class="small" x="88" y="472">station_status 事實表</text>
 
   <rect class="panel" x="390" y="105" width="390" height="455" rx="8" />
-  <text class="h2" x="414" y="138">FastAPI Backend Core</text>
+  <text class="h2" x="414" y="138">FastAPI 後端核心</text>
   <line class="divider" x1="414" y1="152" x2="756" y2="152" />
 
   <rect class="api" x="424" y="178" width="322" height="98" rx="8" />
-  <text class="h2" x="448" y="208">Model-Serving API</text>
+  <text class="h2" x="448" y="208">模型服務 API</text>
   <text class="small" x="448" y="232">GET /stations</text>
   <text class="small" x="448" y="250">POST /predict</text>
   <text class="small" x="448" y="268">POST /stations/risk</text>
 
   <rect class="api" x="424" y="306" width="322" height="102" rx="8" />
-  <text class="h2" x="448" y="336">Contract and Runtime Boundaries</text>
-  <text class="small" x="448" y="360">Pydantic validation</text>
-  <text class="small" x="448" y="378">503 model readiness, 404 station support</text>
+  <text class="h2" x="448" y="336">Contract 與 Runtime 邊界</text>
+  <text class="small" x="448" y="360">Pydantic 驗證</text>
+  <text class="small" x="448" y="378">503 模型狀態、404 站點支援範圍</text>
   <text class="small" x="448" y="396">forecast_horizon metadata</text>
 
   <rect class="api" x="424" y="438" width="322" height="82" rx="8" />
-  <text class="h2" x="448" y="468">Risk Translation</text>
+  <text class="h2" x="448" y="468">風險轉換</text>
   <text class="small" x="448" y="492">stock_out / full_load / low_supply</text>
-  <text class="small" x="448" y="510">ranked rebalance actions</text>
+  <text class="small" x="448" y="510">排序後的調度建議</text>
 
   <rect class="panel" x="830" y="105" width="310" height="455" rx="8" />
-  <text class="h2" x="854" y="138">AI and Client Layers</text>
+  <text class="h2" x="854" y="138">模型與介面層</text>
   <line class="divider" x1="854" y1="152" x2="1116" y2="152" />
 
   <rect class="model" x="858" y="178" width="250" height="98" rx="8" />
-  <text class="h2" x="878" y="208">Model Artifacts</text>
-  <text class="small" x="878" y="232">PyTorch LSTM weights</text>
-  <text class="small" x="878" y="250">scaler and station mapping</text>
-  <text class="small" x="878" y="268">metadata and baseline evaluation</text>
+  <text class="h2" x="878" y="208">模型 Artifact</text>
+  <text class="small" x="878" y="232">PyTorch LSTM 權重</text>
+  <text class="small" x="878" y="250">scaler 與 station mapping</text>
+  <text class="small" x="878" y="268">metadata 與 baseline 評估</text>
 
   <rect class="client" x="858" y="316" width="250" height="92" rx="8" />
   <text class="h2" x="878" y="346">Streamlit Dashboard</text>
-  <text class="small" x="878" y="370">single-station prediction</text>
-  <text class="small" x="878" y="388">multi-station risk ranking</text>
+  <text class="small" x="878" y="370">單站預測</text>
+  <text class="small" x="878" y="388">多站風險排序</text>
 
   <rect class="test" x="858" y="438" width="250" height="82" rx="8" />
-  <text class="h2" x="878" y="468">Demo and CI Safety</text>
-  <text class="small" x="878" y="492">deterministic mock mode</text>
-  <text class="small" x="878" y="510">API, dashboard, ETL, dbt tests</text>
+  <text class="h2" x="878" y="468">Demo 與 CI</text>
+  <text class="small" x="878" y="492">固定範例 demo mode</text>
+  <text class="small" x="878" y="510">API、dashboard、ETL、dbt tests</text>
 
   <path class="arrow" d="M190 252 L190 286" />
   <path class="arrow" d="M190 368 L190 402" />
@@ -96,5 +96,5 @@
   <path class="dash" d="M983 276 L983 316" />
   <path class="dash" d="M983 408 L983 438" />
 
-  <text class="small" x="360" y="612">Backend emphasis: validated API contracts, inference boundaries, risk-ranking workflow, and demoable AI application behavior.</text>
+  <text class="small" x="360" y="612">重點：API contract、推論邊界、風險排序流程，以及可檢視的資料應用介面。</text>
 </svg>

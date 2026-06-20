@@ -14,19 +14,9 @@ The project has three layers:
 2. **Statistical analysis**: Descriptive statistics, t-tests, K-Means, ANOVA, chi-square testing, and regression are used to analyze station imbalance and regional behavior.
 3. **Application serving**: A PyTorch LSTM model is served through FastAPI, with a Streamlit interface for single-station prediction and multi-station risk ranking.
 
-This repository is a **portfolio showcase**, not an actively operated production service.
+This repository is a portfolio project rather than an actively operated production service. The Chinese README is the primary project narrative; this English README is a concise companion.
 
-For a quick reviewer path, start with [`docs/reviewer_quickstart.md`](docs/reviewer_quickstart.md). For the shortest end-to-end project narrative, continue with [`docs/project_story.md`](docs/project_story.md). It connects the problem, data pipeline, analysis, LSTM prototype, FastAPI service, dashboard, limitations, and next steps.
-
-## Quick Review Path
-
-If you are reviewing this as a portfolio project:
-
-1. **3-minute scan**: read [`docs/reviewer_quickstart.md`](docs/reviewer_quickstart.md), then inspect the backend / AI architecture diagram and dashboard GIF below.
-2. **Backend focus**: read [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md), `api/app/main.py`, and `tests/test_api.py` for FastAPI contracts, validation, readiness handling, and risk ranking.
-3. **AI application focus**: read [`docs/demo_walkthrough.md`](docs/demo_walkthrough.md) and [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md) for the demo workflow and model-claim boundaries.
-
-The Chinese README is the primary narrative. This English README is the supporting scan version.
+For the end-to-end project narrative, see [`docs/project_story.md`](docs/project_story.md). API behavior is documented in [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md), and model evaluation boundaries are documented in [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md) and [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md).
 
 ## Key Results
 
@@ -253,15 +243,11 @@ The Streamlit dashboard now has two tabs:
 
 ## Dashboard Demo
 
-The dashboard includes demo mode, so the single-station prediction and multi-station risk-ranking flow can be shown without starting FastAPI, loading model files, or running Docker Compose. The walkthrough below uses deterministic mock data for interview and portfolio demos; it is not a model evaluation result.
+The dashboard includes demo mode, so the single-station prediction and multi-station risk-ranking flow can be inspected without starting FastAPI, loading model files, or running Docker Compose. The walkthrough below uses fixed sample data and simulated prediction output. It shows the UI flow and API-shaped response fields; it is not a model evaluation result.
 
 ![Dashboard Demo Walkthrough](docs/images/dashboard_demo_walkthrough.gif)
 
 Static screenshot fallback: [`docs/images/dashboard_demo_risk_ranking.png`](docs/images/dashboard_demo_risk_ranking.png)
-
-Silent preview video: [`docs/videos/youbike_backend_ai_demo_preview.mp4`](docs/videos/youbike_backend_ai_demo_preview.mp4)
-
-Interview demo script: [`docs/demo_walkthrough.md`](docs/demo_walkthrough.md)
 
 ## Historical Deployment
 
@@ -371,7 +357,7 @@ Default services:
 - Streamlit dashboard: http://localhost:8501
 - MySQL: localhost:3306
 
-For interview demos where you only need the dashboard and do not want to depend on live FastAPI services, model files, or Docker Compose, enable demo mode:
+For local dashboard inspection without live FastAPI services, model files, or Docker Compose, enable demo mode:
 
 ```bash
 make install-app
@@ -441,24 +427,33 @@ CI configuration lives in `.github/workflows/ci.yml`.
 - The dbt analytics layer currently uses seed fixtures for model validation; full analysis requires connecting to the real MySQL warehouse.
 - `/predict` accepts manual `recent_observations` and can query the latest three bike counts from MySQL `station_status` when DB credentials are configured; the automatic lookup still reuses the request temperature / rain because the warehouse does not currently store weather history. The API keeps `next_hour` response keys for compatibility, but the actual horizon should be read from response metadata.
 - The LSTM training flow now has a script, a baseline suite, a Ridge lag-regression baseline, and small tests; local checkpoint-data evaluations show the current LSTM does not beat the strongest baseline for either the next-observation or approximate one-hour horizon. Because the full processed training CSV is not committed, fresh clones cannot directly reproduce the full-data evaluation.
-- Dashboard demo mode is a deterministic mock for interviews, not a real model-performance result.
+- Dashboard demo mode is a deterministic mock for UI inspection, not a real model-performance result.
 
 ## Role Relevance
 
-For job-search positioning, this project is strongest for backend / AI application engineering, with data engineering as the supporting context:
+The project is strongest as a backend and data-application integration project, with data engineering as supporting context:
 
 - Backend / AI application engineering: FastAPI, Pydantic validation, inference APIs, risk-ranking workflows, Docker Compose
 - Data application engineering: analytics, feature engineering, model serving, dashboard support
 - Data engineering: ETL, Airflow, MySQL schema design, batch ingestion, data-quality testing
 
-It does not claim to cover full-scale big-data platform work such as Spark, Kafka, Data Lake, Kubernetes, or complete MLOps. The dbt layer is a lightweight analytics scaffold, not a full enterprise warehouse implementation. For backend / AI application roles, use the framing in [`docs/backend_ai_positioning.md`](docs/backend_ai_positioning.md).
+It does not claim to cover full-scale big-data platform work such as Spark, Kafka, Data Lake, Kubernetes, or complete MLOps. The dbt layer is a lightweight analytics scaffold, not a full enterprise warehouse implementation.
 
 ## Maintenance Roadmap
 
-A fuller portfolio assessment and prioritization note is available in [`docs/portfolio_assessment.md`](docs/portfolio_assessment.md), the reviewer quickstart is in [`docs/reviewer_quickstart.md`](docs/reviewer_quickstart.md), backend / AI application framing is in [`docs/backend_ai_positioning.md`](docs/backend_ai_positioning.md), the backend / AI architecture diagram is in [`docs/backend_ai_architecture.md`](docs/backend_ai_architecture.md), the demo walkthrough is in [`docs/demo_walkthrough.md`](docs/demo_walkthrough.md), the API contract walkthrough is in [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md), the documentation language strategy is in [`docs/documentation_language_strategy.md`](docs/documentation_language_strategy.md), the interview script is in [`docs/interview_talk_track.md`](docs/interview_talk_track.md), the report storyline is in [`docs/project_story.md`](docs/project_story.md), the ML modeling boundary is documented in [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md), and the local LSTM evaluation is in [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md).
+Supporting technical notes:
 
-1. If deepening ML, add aligned weather history and richer lag features.
-2. If improving job-search materials, record a 60-90 second demo video.
+- [`docs/project_story.md`](docs/project_story.md): end-to-end project narrative.
+- [`docs/backend_ai_architecture.md`](docs/backend_ai_architecture.md): backend and model-serving architecture.
+- [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md): FastAPI endpoints, request/response shapes, and error boundaries.
+- [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md): machine-learning scope and limitations.
+- [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md): local baseline evaluation results.
+
+Next technical improvements:
+
+1. Add weather history so inference can use time-aligned weather features.
+2. Improve lag features and simpler baselines before replacing the served LSTM artifact.
+3. If dashboard media is refreshed, record the actual interaction flow rather than stitching repeated preview clips.
 
 ## Author
 
