@@ -157,6 +157,8 @@ FastAPI endpoints:
 | Method | Path | Description |
 | --- | --- | --- |
 | GET | `/` | Service status |
+| GET | `/health` | Process-level health check with model and data-resource load state |
+| GET | `/ready` | Inference-readiness check; returns 200 only when model, scaler, and station metadata are loaded |
 | GET | `/stations` | Supported station list |
 | POST | `/predict` | Predicts available bikes for the model horizon |
 | POST | `/stations/risk` | Ranks multi-station stock-out / full-load risk |
@@ -408,7 +410,7 @@ Current tests cover:
 - ETL empty-input and missing-column handling
 - ETL successful transform behavior, station deduplication, and Taipei-time to UTC conversion
 - ETL post-transform validation for duplicate status keys, negative availability, and non-numeric availability fields
-- FastAPI health endpoint
+- FastAPI `/health` liveness and `/ready` inference-readiness endpoints
 - `/stations` model-not-ready behavior
 - `/predict` request validation, `recent_observations` lag-window behavior, and warehouse lookup fallback behavior
 - `/stations/risk` batch ranking, request validation, unknown station behavior, and per-station `recent_observations`

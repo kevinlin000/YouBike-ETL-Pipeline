@@ -161,6 +161,18 @@ class StationsResponse(BaseModel):
     # 改為回傳字典：{ "station_no": "中文名稱 (行政區)", ... }
     stations: dict 
 
+class HealthResponse(BaseModel):
+    status: str
+    model_loaded: bool
+    scaler_loaded: bool
+    station_mapping_loaded: bool
+    station_catalog_loaded: bool
+    warehouse_lookup_enabled: bool
+    forecast_horizon: str
+
+class ReadinessResponse(HealthResponse):
+    ready: bool
+
 # --- 2. 全域變數 ---
 model = None
 scaler = None
@@ -259,6 +271,30 @@ def ensure_model_ready() -> None:
 def ensure_station_supported(station_no: str) -> None:
     if station_mapping is None or station_no not in station_mapping:
         raise HTTPException(status_code=404, detail="Station ID not supported by model")
+
+def service_state() -> dict:
+    model_loaded = model is not None
+    scaler_loaded = scaler is not None
+    station_mapping_loaded = station_mapping is not None
+    station_catalog_loaded = station_info_map is not None
+    return {
+        "status": "online",
+        "model_loaded": model_loaded,
+        "scaler_loaded": scaler_loaded,
+        "station_mapping_loaded": station_mapping_loaded,
+        "station_catalog_loaded": station_catalog_loaded,
+        "warehouse_lookup_enabled": db_engine is not None,
+        "forecast_horizon": MODEL_FORECAST_HORIZON,
+    }
+
+def inference_ready() -> bool:
+    state = service_state()
+    return (
+        state["model_loaded"]
+        and state["scaler_loaded"]
+        and state["station_mapping_loaded"]
+        and state["station_catalog_loaded"]
+    )
 
 def create_optional_db_engine() -> Engine | None:
     db_password = os.getenv("DB_PASSWORD")
@@ -409,6 +445,27 @@ def classify_station_risk(predicted_bikes: int, predicted_spaces: int) -> tuple[
 @app.get("/")
 def home():
     return {"status": "online", "model": "LSTM Multi-Station", "features": ["Bikes", "Temp", "Rain", "Rain_Cat"]}
+
+@app.get("/health", response_model=HealthResponse)
+def health():
+    return service_state()
+
+@app.get("/ready", response_model=ReadinessResponse)
+def readiness():
+    state = service_state()
+    ready = inference_ready()
+    if not ready:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                **state,
+                "ready": False,
+            },
+        )
+    return {
+        **state,
+        "ready": True,
+    }
 
 @app.get("/stations", response_model=StationsResponse)
 def get_stations():

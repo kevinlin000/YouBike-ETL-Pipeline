@@ -175,6 +175,8 @@ FastAPI endpoint：
 | Method | Path | 說明 |
 | --- | --- | --- |
 | GET | `/` | 服務狀態 |
+| GET | `/health` | 服務行程健康檢查，回傳模型與資料資源載入狀態 |
+| GET | `/ready` | 推論 readiness 檢查，模型、scaler 與站點 metadata 都載入才回 200 |
 | GET | `/stations` | 回傳模型支援的站點清單 |
 | POST | `/predict` | 預測指定站點在模型時窗內的可借車數 |
 | POST | `/stations/risk` | 批次評估多站點缺車 / 滿站風險並排序 |
@@ -426,7 +428,7 @@ make dbt-build
 - ETL 空資料與缺欄位錯誤處理
 - ETL 正常轉換、站點去重與台北時間轉 UTC
 - ETL transform 後的重複 status key、負值與非數值 availability validation
-- FastAPI health endpoint
+- FastAPI `/health` liveness 與 `/ready` inference-readiness endpoint
 - `/stations` model-not-ready 行為
 - `/predict` request validation、`recent_observations` lag-window 與 warehouse lookup fallback 行為
 - `/stations/risk` 批次風險排序、request validation、unknown station 與 per-station `recent_observations` 行為

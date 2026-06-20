@@ -2,7 +2,7 @@
 
 本文件整理 FastAPI 服務的 endpoint、request/response 形狀與錯誤邊界。API 實作位於 `api/app/main.py`，dashboard client 位於 `dashboard/api_client.py`。
 
-## 服務狀態
+## 服務狀態與 Readiness
 
 `GET /`
 
@@ -17,6 +17,45 @@
 ```
 
 這個 endpoint 只表示 Web service 可連線，不代表模型已完成評估或具備正式預測品質。
+
+`GET /health`
+
+範例 response：
+
+```json
+{
+  "status": "online",
+  "model_loaded": true,
+  "scaler_loaded": true,
+  "station_mapping_loaded": true,
+  "station_catalog_loaded": true,
+  "warehouse_lookup_enabled": false,
+  "forecast_horizon": "model_artifact_horizon"
+}
+```
+
+`/health` 是 liveness check：只要 API process 可回應就回 `200`，同時揭露模型、scaler、站點 mapping、站點 metadata 與 warehouse fallback 是否已啟用。
+
+`GET /ready`
+
+成功 response：
+
+```json
+{
+  "status": "online",
+  "model_loaded": true,
+  "scaler_loaded": true,
+  "station_mapping_loaded": true,
+  "station_catalog_loaded": true,
+  "warehouse_lookup_enabled": false,
+  "forecast_horizon": "model_artifact_horizon",
+  "ready": true
+}
+```
+
+錯誤行為：
+
+- `503`：模型、scaler、站點 mapping 或站點 metadata 任一項尚未載入。Response `detail` 會包含同一組 resource state 並標示 `ready: false`。
 
 ## 站點清單
 
@@ -184,4 +223,4 @@ Dashboard 固定範例資料模式不會呼叫 FastAPI，而是在 `dashboard/ap
 
 ## English Summary
 
-The FastAPI service exposes a station catalog, single-station prediction, and multi-station risk-ranking endpoint. Requests are validated with Pydantic, model readiness is handled explicitly, unsupported stations return clear errors, and response metadata clarifies the forecast horizon. The dashboard fixed-sample-data mode keeps the same response shape but uses reproducible simulated data, so it should not be treated as model-performance evidence.
+The FastAPI service exposes health/readiness checks, a station catalog, single-station prediction, and multi-station risk-ranking endpoints. Requests are validated with Pydantic, model readiness is handled explicitly, unsupported stations return clear errors, and response metadata clarifies the forecast horizon. The dashboard fixed-sample-data mode keeps the same response shape but uses reproducible simulated data, so it should not be treated as model-performance evidence.

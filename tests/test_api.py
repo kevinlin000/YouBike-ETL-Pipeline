@@ -63,6 +63,58 @@ def test_home_returns_service_metadata(client):
     assert "Bikes" in body["features"]
 
 
+def test_health_returns_service_state_without_ready_model(client):
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "online",
+        "model_loaded": False,
+        "scaler_loaded": False,
+        "station_mapping_loaded": False,
+        "station_catalog_loaded": False,
+        "warehouse_lookup_enabled": False,
+        "forecast_horizon": api_main.MODEL_FORECAST_HORIZON,
+    }
+
+
+def test_ready_reports_unavailable_when_model_resources_missing(client):
+    response = client.get("/ready")
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == {
+        "status": "online",
+        "model_loaded": False,
+        "scaler_loaded": False,
+        "station_mapping_loaded": False,
+        "station_catalog_loaded": False,
+        "warehouse_lookup_enabled": False,
+        "forecast_horizon": api_main.MODEL_FORECAST_HORIZON,
+        "ready": False,
+    }
+
+
+def test_ready_returns_ok_when_model_resources_loaded(client, monkeypatch):
+    monkeypatch.setattr(api_main, "model", FakeModel())
+    monkeypatch.setattr(api_main, "scaler", FakeScaler())
+    monkeypatch.setattr(api_main, "station_mapping", {"500101001": 0})
+    monkeypatch.setattr(api_main, "station_info_map", {"500101001": "測試站 (中正區)"})
+
+    response = client.get("/ready")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "online",
+        "model_loaded": True,
+        "scaler_loaded": True,
+        "station_mapping_loaded": True,
+        "station_catalog_loaded": True,
+        "warehouse_lookup_enabled": False,
+        "forecast_horizon": api_main.MODEL_FORECAST_HORIZON,
+        "ready": True,
+    }
+
+
 def test_get_stations_requires_model_information(client):
     response = client.get("/stations")
 
