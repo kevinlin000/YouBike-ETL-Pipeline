@@ -61,7 +61,7 @@ Avoid bullets like:
 
 For backend / AI application roles, the highest-value next improvements are:
 
-1. Add a short demo walkthrough video or GIF that starts from the dashboard and maps back to API contracts.
+1. Record a short demo video or GIF that starts from the dashboard and maps back to API contracts.
 2. Add weather-history alignment only after deciding to deepen the model-serving story.
 
 Do not lead with larger infrastructure rewrites unless the target role is data platform engineering.

@@ -13,7 +13,9 @@ This repository is best positioned as a backend / AI application portfolio proje
 - `docs/interview_talk_track.md` provides a concise interview script, demo flow, and claim boundaries.
 - `docs/backend_ai_positioning.md` frames the project for backend / AI application engineering roles.
 - `docs/backend_ai_architecture.md` provides a backend-centered architecture diagram for reviewers.
+- `docs/demo_walkthrough.md` provides a Chinese-first interview demo script that maps dashboard behavior back to API contracts.
 - `docs/api_contract_walkthrough.md` documents the model-serving API contract, validation behavior, risk-ranking response shape, and demo-mode contract.
+- `docs/documentation_language_strategy.md` documents why Chinese is the primary explanation language and English is supporting material.
 - `docs/project_story.md` provides a report-style storyline that connects the operational problem, data pipeline, statistical evidence, LSTM prototype, API, dashboard, limitations, and next steps.
 - `docs/ml_modeling_audit.md` clarifies the ML notebook lineage, served LSTM artifacts, evaluation gaps, and interview-safe claims.
 - `docs/lstm_evaluation_report.md` records local checkpoint-data training runs and documents that the current LSTM does not beat the strongest baseline on either next-observation or approximate one-hour forecasting.
@@ -26,9 +28,9 @@ This repository is best positioned as a backend / AI application portfolio proje
 
 ## Highest-Value Improvements
 
-1. Add a short demo walkthrough.
-   - Value: shows the backend / AI application flow quickly.
-   - Scope: start from dashboard demo mode, then map single-station prediction and risk ranking back to API contracts.
+1. Record a short demo walkthrough.
+   - Value: shows the backend / AI application flow quickly in a recruiter-friendly format.
+   - Scope: use `docs/demo_walkthrough.md` as the script, start from dashboard demo mode, then map single-station prediction and risk ranking back to API contracts.
    - Risk: low. Keep demo-mode limitations explicit.
 
 2. Improve model features before more LSTM tuning.
@@ -63,4 +65,4 @@ Also be explicit that the regression R-squared improvement is not the LSTM evalu
 
 ## Recommendation
 
-For the next engineering iteration, add a short demo walkthrough if the target is backend / AI application engineering. Improve model features only after the application story is easy to review. The API now exposes forecast-horizon metadata, and documented local runs show the current LSTM does not beat the strongest baseline on tested horizons, so model-accuracy claims should remain conservative.
+For the next engineering iteration, record a short demo walkthrough if the target is backend / AI application engineering. Improve model features only after the application story is easy to review. The API now exposes forecast-horizon metadata, and documented local runs show the current LSTM does not beat the strongest baseline on tested horizons, so model-accuracy claims should remain conservative.

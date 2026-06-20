@@ -2,7 +2,7 @@
 
 Use this as a concise script for explaining the project in interviews. For backend / AI application roles, present the repo as a tested model-serving and decision-workflow application with a real data pipeline behind it, not as a currently operated production service.
 
-For a fuller report-style storyline, use [`docs/project_story.md`](project_story.md). For role-specific backend / AI application positioning, use [`docs/backend_ai_positioning.md`](backend_ai_positioning.md). For endpoint-level detail, use [`docs/api_contract_walkthrough.md`](api_contract_walkthrough.md).
+For a fuller report-style storyline, use [`docs/project_story.md`](project_story.md). For role-specific backend / AI application positioning, use [`docs/backend_ai_positioning.md`](backend_ai_positioning.md). For the live demo script, use [`docs/demo_walkthrough.md`](demo_walkthrough.md). For endpoint-level detail, use [`docs/api_contract_walkthrough.md`](api_contract_walkthrough.md).
 
 ## 30-Second Version
 

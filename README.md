@@ -258,6 +258,8 @@ Dashboard 提供 demo mode，可在不啟動 FastAPI、模型檔或 Docker Compo
 
 靜態截圖備份：[`docs/images/dashboard_demo_risk_ranking.png`](docs/images/dashboard_demo_risk_ranking.png)
 
+面試展示腳本：[`docs/demo_walkthrough.md`](docs/demo_walkthrough.md)
+
 ## 部署與歷史展示
 
 本專案曾部署於 GCP VM，透過 Docker Compose 管理 Airflow、MySQL、FastAPI 與 Streamlit。原本的 Tableau dashboard 與 Streamlit 預測網站屬於課程展示用雲端 demo，目前不保證仍在線上，因此 README 不公開舊 VM IP 或失效連結。
@@ -450,10 +452,10 @@ CI 設定位於 `.github/workflows/ci.yml`。
 
 ## 後續維護方向
 
-更完整的作品集評估與優先順序整理在 [`docs/portfolio_assessment.md`](docs/portfolio_assessment.md)，後端 / AI 應用定位可參考 [`docs/backend_ai_positioning.md`](docs/backend_ai_positioning.md)，後端 / AI 架構圖在 [`docs/backend_ai_architecture.md`](docs/backend_ai_architecture.md)，API contract walkthrough 在 [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md)，面試說明稿可參考 [`docs/interview_talk_track.md`](docs/interview_talk_track.md)，報告主線整理在 [`docs/project_story.md`](docs/project_story.md)，ML 脈絡與可主張範圍整理在 [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md)，本地 LSTM 評估結果在 [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md)。
+更完整的作品集評估與優先順序整理在 [`docs/portfolio_assessment.md`](docs/portfolio_assessment.md)，後端 / AI 應用定位可參考 [`docs/backend_ai_positioning.md`](docs/backend_ai_positioning.md)，後端 / AI 架構圖在 [`docs/backend_ai_architecture.md`](docs/backend_ai_architecture.md)，demo walkthrough 在 [`docs/demo_walkthrough.md`](docs/demo_walkthrough.md)，API contract walkthrough 在 [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md)，文件語言策略在 [`docs/documentation_language_strategy.md`](docs/documentation_language_strategy.md)，面試說明稿可參考 [`docs/interview_talk_track.md`](docs/interview_talk_track.md)，報告主線整理在 [`docs/project_story.md`](docs/project_story.md)，ML 脈絡與可主張範圍整理在 [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md)，本地 LSTM 評估結果在 [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md)。
 
-1. 補一份短 demo walkthrough，從 dashboard 對應回 API contract。
-2. 若要深化 ML，再補齊 weather history 與更完整的 lag features。
+1. 若要深化 ML，再補齊 weather history 與更完整的 lag features。
+2. 若要強化求職材料，可錄一段 60-90 秒 demo 影片。
 
 ## 作者
 

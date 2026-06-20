@@ -249,6 +249,8 @@ The dashboard includes demo mode, so the single-station prediction and multi-sta
 
 Static screenshot fallback: [`docs/images/dashboard_demo_risk_ranking.png`](docs/images/dashboard_demo_risk_ranking.png)
 
+Interview demo script: [`docs/demo_walkthrough.md`](docs/demo_walkthrough.md)
+
 ## Historical Deployment
 
 This project was previously deployed on a GCP VM with Docker Compose. The original Tableau dashboard and Streamlit cloud demo were created for course presentation purposes and may no longer be online. For that reason, this README does not publish old VM IPs or expired demo links.
@@ -441,10 +443,10 @@ It does not claim to cover full-scale big-data platform work such as Spark, Kafk
 
 ## Maintenance Roadmap
 
-A fuller portfolio assessment and prioritization note is available in [`docs/portfolio_assessment.md`](docs/portfolio_assessment.md), backend / AI application framing is in [`docs/backend_ai_positioning.md`](docs/backend_ai_positioning.md), the backend / AI architecture diagram is in [`docs/backend_ai_architecture.md`](docs/backend_ai_architecture.md), the API contract walkthrough is in [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md), the interview script is in [`docs/interview_talk_track.md`](docs/interview_talk_track.md), the report storyline is in [`docs/project_story.md`](docs/project_story.md), the ML modeling boundary is documented in [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md), and the local LSTM evaluation is in [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md).
+A fuller portfolio assessment and prioritization note is available in [`docs/portfolio_assessment.md`](docs/portfolio_assessment.md), backend / AI application framing is in [`docs/backend_ai_positioning.md`](docs/backend_ai_positioning.md), the backend / AI architecture diagram is in [`docs/backend_ai_architecture.md`](docs/backend_ai_architecture.md), the demo walkthrough is in [`docs/demo_walkthrough.md`](docs/demo_walkthrough.md), the API contract walkthrough is in [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md), the documentation language strategy is in [`docs/documentation_language_strategy.md`](docs/documentation_language_strategy.md), the interview script is in [`docs/interview_talk_track.md`](docs/interview_talk_track.md), the report storyline is in [`docs/project_story.md`](docs/project_story.md), the ML modeling boundary is documented in [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md), and the local LSTM evaluation is in [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md).
 
-1. Add a short demo walkthrough that maps dashboard behavior back to API contracts.
-2. If deepening ML, add aligned weather history and richer lag features.
+1. If deepening ML, add aligned weather history and richer lag features.
+2. If improving job-search materials, record a 60-90 second demo video.
 
 ## Author
 
