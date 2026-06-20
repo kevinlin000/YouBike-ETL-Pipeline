@@ -259,13 +259,11 @@ Streamlit dashboard 目前分成兩個頁籤：
 - 單站預測：選擇站點、輸入目前車輛數與天氣條件，呼叫 `/predict` 取得模型時窗預測。
 - 多站風險排序：以可編輯表格輸入多個站點的目前車輛與空位，呼叫 `/stations/risk` 取得風險排序與建議動作。
 
-## Dashboard Demo
+## Dashboard 工作台預覽
 
-Dashboard 提供 demo mode，可在不啟動 FastAPI、模型檔或 Docker Compose 的情況下檢視單站預測與多站風險排序流程。下圖使用固定範例資料與模擬推論結果，只用來展示介面流程與 API 回應形狀，不代表模型評估結果。
+Dashboard 提供固定範例資料模式，可在不啟動 FastAPI、模型檔或 Docker Compose 的情況下檢視單站預測與多站風險排序流程。下方預覽圖對應目前的工作台設計；固定範例資料只用來展示介面流程與 API 回應形狀，不代表模型評估結果。
 
-![Dashboard Demo 流程](docs/images/dashboard_demo_walkthrough.gif)
-
-靜態截圖備份：[`docs/images/dashboard_demo_risk_ranking.png`](docs/images/dashboard_demo_risk_ranking.png)
+![YouBike 調度風險工作台預覽](docs/images/dashboard_product_preview.svg)
 
 ## 部署與歷史展示
 
@@ -379,14 +377,14 @@ make up
 - Streamlit dashboard: http://localhost:8501
 - MySQL: localhost:3306
 
-如果只需要本機檢視 dashboard 流程，不想依賴真實 FastAPI、模型檔或 Docker Compose，可啟用 demo mode：
+如果只需要本機檢視 dashboard 流程，不想依賴真實 FastAPI、模型檔或 Docker Compose，可啟用固定範例資料模式：
 
 ```bash
 make install-app
 make dashboard-demo
 ```
 
-這等同於執行 `DASHBOARD_DEMO_MODE=true streamlit run dashboard/app.py`。Demo mode 使用固定範例站點與 deterministic mock prediction，方便展示單站預測與多站風險排序流程；它不是模型效果評估結果。
+這等同於執行 `DASHBOARD_DEMO_MODE=true streamlit run dashboard/app.py`。此模式使用固定範例站點與可重現的模擬推論結果，方便檢視單站預測與多站風險排序流程；它不是模型效果評估結果。
 
 ETL load 前會執行資料品質 validation。預設 `ETL_VALIDATION_MODE=strict`，遇到重複 status key、負值或非數值 availability 會中止；若只想記錄警告並繼續，可設定 `ETL_VALIDATION_MODE=warn`。
 
@@ -432,7 +430,7 @@ make dbt-build
 - `/stations` model-not-ready 行為
 - `/predict` request validation、`recent_observations` lag-window 與 warehouse lookup fallback 行為
 - `/stations/risk` 批次風險排序、request validation、unknown station 與 per-station `recent_observations` 行為
-- dashboard API client payload、demo mode、錯誤處理與顯示 label mapping
+- dashboard API client payload、固定範例資料模式、錯誤處理與顯示 label mapping
 - LSTM 訓練程式的站點選擇、序列切分、baseline 評估、artifact 與 metadata 輸出
 - unknown station 錯誤處理
 - mocked model prediction response
@@ -449,7 +447,7 @@ CI 設定位於 `.github/workflows/ci.yml`。
 - dbt analytics layer 目前使用 seed fixtures 驗證模型結構；若要分析完整資料，需要連接實際 MySQL warehouse。
 - `/predict` 可手動傳入 `recent_observations`，也可在 DB credentials 存在時自動從 MySQL `station_status` 查最近 3 筆可借車數；但目前 warehouse 沒有 weather history，因此自動查詢路徑會沿用 request 中的 temperature / rain。API 保留 `next_hour` 欄位名稱作相容用途，實際 horizon 需看 response metadata。
 - LSTM 訓練流程已提供可重現程式、baseline suite、Ridge lag-regression baseline 與小型測試；本地 checkpoint-data 評估顯示目前 LSTM 在下一筆 observation 與近似一小時 horizon 下，都沒有打敗最強 baseline。由於完整 processed training CSV 未提交，fresh clone 無法直接重現完整資料評估。
-- Dashboard demo mode 使用固定範例資料與模擬推論結果，只代表介面流程，不代表真實模型評估表現。
+- Dashboard 固定範例資料模式只代表介面流程與 response shape，不代表真實模型評估表現。
 
 ## 技術能力對應
 

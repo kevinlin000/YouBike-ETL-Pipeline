@@ -241,13 +241,11 @@ The Streamlit dashboard now has two tabs:
 - Single-station prediction: select one station, enter current availability and weather, then call `/predict` for the model-horizon forecast.
 - Multi-station risk ranking: edit current bike / dock availability for multiple stations, then call `/stations/risk` to produce ranked operational actions.
 
-## Dashboard Demo
+## Dashboard Preview
 
-The dashboard includes demo mode, so the single-station prediction and multi-station risk-ranking flow can be inspected without starting FastAPI, loading model files, or running Docker Compose. The walkthrough below uses fixed sample data and simulated prediction output. It shows the UI flow and API-shaped response fields; it is not a model evaluation result.
+The dashboard includes a fixed-sample-data mode, so the single-station prediction and multi-station risk-ranking flow can be inspected without starting FastAPI, loading model files, or running Docker Compose. The preview below reflects the current dashboard design. The fixed sample data shows the UI flow and API-shaped response fields; it is not a model evaluation result.
 
-![Dashboard Demo Walkthrough](docs/images/dashboard_demo_walkthrough.gif)
-
-Static screenshot fallback: [`docs/images/dashboard_demo_risk_ranking.png`](docs/images/dashboard_demo_risk_ranking.png)
+![YouBike dispatch risk dashboard preview](docs/images/dashboard_product_preview.svg)
 
 ## Historical Deployment
 
@@ -361,14 +359,14 @@ Default services:
 - Streamlit dashboard: http://localhost:8501
 - MySQL: localhost:3306
 
-For local dashboard inspection without live FastAPI services, model files, or Docker Compose, enable demo mode:
+For local dashboard inspection without live FastAPI services, model files, or Docker Compose, enable fixed-sample-data mode:
 
 ```bash
 make install-app
 make dashboard-demo
 ```
 
-This is equivalent to running `DASHBOARD_DEMO_MODE=true streamlit run dashboard/app.py`. Demo mode uses fixed sample stations and deterministic mock prediction. It is useful for demonstrating the single-station prediction and multi-station risk-ranking flow; it is not a model evaluation result.
+This is equivalent to running `DASHBOARD_DEMO_MODE=true streamlit run dashboard/app.py`. This mode uses fixed sample stations and reproducible simulated predictions. It is useful for inspecting the single-station prediction and multi-station risk-ranking flow; it is not a model evaluation result.
 
 ETL runs data-quality validation before loading. The default `ETL_VALIDATION_MODE=strict` fails on duplicate status keys, negative availability, or non-numeric availability fields. Set `ETL_VALIDATION_MODE=warn` to log validation failures and continue.
 
@@ -414,7 +412,7 @@ Current tests cover:
 - `/stations` model-not-ready behavior
 - `/predict` request validation, `recent_observations` lag-window behavior, and warehouse lookup fallback behavior
 - `/stations/risk` batch ranking, request validation, unknown station behavior, and per-station `recent_observations`
-- dashboard API client payloads, demo mode, error handling, and display label mapping
+- dashboard API client payloads, fixed-sample-data mode, error handling, and display label mapping
 - LSTM training script station selection, sequence splitting, baseline evaluation, artifact output, and metadata output
 - unknown station handling
 - mocked model prediction response
@@ -431,7 +429,7 @@ CI configuration lives in `.github/workflows/ci.yml`.
 - The dbt analytics layer currently uses seed fixtures for model validation; full analysis requires connecting to the real MySQL warehouse.
 - `/predict` accepts manual `recent_observations` and can query the latest three bike counts from MySQL `station_status` when DB credentials are configured; the automatic lookup still reuses the request temperature / rain because the warehouse does not currently store weather history. The API keeps `next_hour` response keys for compatibility, but the actual horizon should be read from response metadata.
 - The LSTM training flow now has a script, a baseline suite, a Ridge lag-regression baseline, and small tests; local checkpoint-data evaluations show the current LSTM does not beat the strongest baseline for either the next-observation or approximate one-hour horizon. Because the full processed training CSV is not committed, fresh clones cannot directly reproduce the full-data evaluation.
-- Dashboard demo mode is a deterministic mock for UI inspection, not a real model-performance result.
+- The dashboard fixed-sample-data mode is for UI inspection and response-shape validation, not real model-performance evidence.
 
 ## Role Relevance
 

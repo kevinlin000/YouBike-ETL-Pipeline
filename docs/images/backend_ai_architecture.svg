@@ -84,7 +84,7 @@
 
   <rect class="test" x="858" y="438" width="250" height="82" rx="8" />
   <text class="h2" x="878" y="468">Demo 與 CI</text>
-  <text class="small" x="878" y="492">固定範例 demo mode</text>
+  <text class="small" x="878" y="492">固定範例資料模式</text>
   <text class="small" x="878" y="510">API、dashboard、ETL、dbt tests</text>
 
   <path class="arrow" d="M190 252 L190 286" />

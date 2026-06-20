@@ -172,7 +172,7 @@
 
 ## Demo Mode Contract
 
-Dashboard demo mode 不會呼叫 FastAPI，而是在 `dashboard/api_client.py` 使用固定站點資料與模擬推論結果。它保留與 API 相同的主要欄位：
+Dashboard 固定範例資料模式不會呼叫 FastAPI，而是在 `dashboard/api_client.py` 使用固定站點資料與模擬推論結果。它保留與 API 相同的主要欄位：
 
 - `predicted_bikes_next_hour`
 - `forecast_horizon`
@@ -180,8 +180,8 @@ Dashboard demo mode 不會呼叫 FastAPI，而是在 `dashboard/api_client.py` �
 - `risk_score`
 - `suggested_action`
 
-這個設計讓 dashboard 可以在沒有 FastAPI、模型檔、資料庫或 Docker Compose 的情況下檢視流程。Demo mode 只代表介面與資料形狀，不代表模型表現。
+這個設計讓 dashboard 可以在沒有 FastAPI、模型檔、資料庫或 Docker Compose 的情況下檢視流程。固定範例資料模式只代表介面與資料形狀，不代表模型表現。
 
 ## English Summary
 
-The FastAPI service exposes a station catalog, single-station prediction, and multi-station risk-ranking endpoint. Requests are validated with Pydantic, model readiness is handled explicitly, unsupported stations return clear errors, and response metadata clarifies the forecast horizon. Dashboard demo mode keeps the same response shape but uses deterministic mock data, so it should not be treated as model-performance evidence.
+The FastAPI service exposes a station catalog, single-station prediction, and multi-station risk-ranking endpoint. Requests are validated with Pydantic, model readiness is handled explicitly, unsupported stations return clear errors, and response metadata clarifies the forecast horizon. The dashboard fixed-sample-data mode keeps the same response shape but uses reproducible simulated data, so it should not be treated as model-performance evidence.

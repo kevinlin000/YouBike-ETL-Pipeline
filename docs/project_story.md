@@ -61,7 +61,7 @@ YouBike 的營運問題不只是全市車輛總數，而是站點與時間之間
 | --- | --- | --- |
 | LSTM 未打敗最強 baseline | 模型可作為服務化 prototype，不適合作為準確率主張。 | 先補齊特徵與 baseline，再考慮替換服務中的 artifact。 |
 | warehouse 查詢缺少 weather history | API 自動查詢近期狀態時，只能取得車輛數，無法取得對齊時間的天氣特徵。 | 增加天氣觀測表或 feature join。 |
-| Dashboard demo 使用固定範例資料 | 可穩定檢視介面流程，但不是模型評估結果。 | 保持 demo mode 標示清楚，模型表現仍以 evaluation report 為準。 |
+| Dashboard 固定範例資料模式 | 可穩定檢視介面流程，但不是模型評估結果。 | 在介面與文件中清楚標示用途，模型表現仍以 evaluation report 為準。 |
 | dbt layer 仍是輕量 scaffold | 可驗證 analytics model 形狀，但不是完整企業資料倉儲。 | 若目標轉向 analytics engineering，再擴充 marts 與資料品質規則。 |
 
 ## English Summary

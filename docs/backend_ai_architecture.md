@@ -10,7 +10,7 @@
 - **模型 artifact 是 runtime dependency。** PyTorch 權重、scaler、站點 mapping 與站點 metadata 由 API service 啟動時載入。
 - **Streamlit 是資料應用介面。** Dashboard 消費 API 形狀一致的 response，顯示單站預測與多站缺車、滿站風險排序。
 - **Airflow 與 MySQL 是資料基礎。** Airflow 負責定期擷取站點狀態，MySQL 保存站點維度表與狀態事實表，提供分析與模型訓練資料來源。
-- **Demo mode 是展示與本地檢視用途。** 它使用固定範例資料與模擬推論結果，不代表模型評估結果。
+- **固定範例資料模式是展示與本地檢視用途。** 它使用固定站點資料與可重現的模擬推論結果，不代表模型評估結果。
 - **CI 覆蓋主要邊界。** 測試涵蓋 ETL transform、API contract、dashboard client、training metadata 與 dbt scaffold。
 
 ## 資料流
@@ -23,7 +23,7 @@
 
 ## 邊界說明
 
-- Dashboard demo mode 只保證介面流程與 response shape 可檢視。
+- Dashboard 固定範例資料模式只保證介面流程與 response shape 可檢視。
 - 模型準確率需以 [`lstm_evaluation_report.md`](lstm_evaluation_report.md) 的 baseline 評估為準。
 - 目前 API 的 warehouse fallback 可查近期可借車數，但尚未查詢對齊時間的 weather history。
 
