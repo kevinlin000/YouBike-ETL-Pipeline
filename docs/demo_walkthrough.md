@@ -33,6 +33,9 @@ http://localhost:8501
 
 - `docs/images/dashboard_demo_walkthrough.gif`
 - `docs/images/dashboard_demo_risk_ranking.png`
+- `docs/videos/youbike_backend_ai_demo_preview.mp4`
+
+`docs/videos/youbike_backend_ai_demo_preview.mp4` 是無旁白 preview，適合快速掃描；正式求職版本建議再用自己的聲音錄 60-90 秒旁白。
 
 ## Step 1: 先看 Demo Mode
 

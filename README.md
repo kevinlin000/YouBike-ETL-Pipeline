@@ -268,6 +268,8 @@ Dashboard 提供 demo mode，可在不啟動 FastAPI、模型檔或 Docker Compo
 
 靜態截圖備份：[`docs/images/dashboard_demo_risk_ranking.png`](docs/images/dashboard_demo_risk_ranking.png)
 
+無旁白預覽影片：[`docs/videos/youbike_backend_ai_demo_preview.mp4`](docs/videos/youbike_backend_ai_demo_preview.mp4)
+
 面試展示腳本：[`docs/demo_walkthrough.md`](docs/demo_walkthrough.md)
 
 ## 部署與歷史展示

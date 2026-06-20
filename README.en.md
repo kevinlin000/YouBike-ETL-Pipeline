@@ -259,6 +259,8 @@ The dashboard includes demo mode, so the single-station prediction and multi-sta
 
 Static screenshot fallback: [`docs/images/dashboard_demo_risk_ranking.png`](docs/images/dashboard_demo_risk_ranking.png)
 
+Silent preview video: [`docs/videos/youbike_backend_ai_demo_preview.mp4`](docs/videos/youbike_backend_ai_demo_preview.mp4)
+
 Interview demo script: [`docs/demo_walkthrough.md`](docs/demo_walkthrough.md)
 
 ## Historical Deployment

@@ -22,6 +22,7 @@ This repository is best positioned as a backend / AI application portfolio proje
 - `docs/lstm_evaluation_report.md` records local checkpoint-data training runs and documents that the current LSTM does not beat the strongest baseline on either next-observation or approximate one-hour forecasting.
 - `docs/adr/0002-dashboard-demo-mode.md` records why demo mode is deterministic and what it should not be used to claim.
 - `docs/images/dashboard_demo_walkthrough.gif` provides a compact visual walkthrough for README scanning.
+- `docs/videos/youbike_backend_ai_demo_preview.mp4` provides a silent preview video for quick portfolio review.
 - `dags/youbike_transform.py` centralizes transform behavior used by both the standalone ETL job and the Airflow DAG.
 - `validate_transformed_data_for_load()` wires tested data-quality checks into the pre-load ETL path, with strict and warn modes.
 - `mart_district_peak_hour_health` adds district-hour analytics with peak/off-peak labeling to the dbt layer.
@@ -31,7 +32,7 @@ This repository is best positioned as a backend / AI application portfolio proje
 
 1. Record a short demo walkthrough video.
    - Value: shows the backend / AI application flow quickly in a recruiter-friendly format after the reviewer quickstart has established what to look for.
-   - Scope: use `docs/demo_walkthrough.md` as the script, start from dashboard demo mode, then map single-station prediction and risk ranking back to API contracts.
+   - Scope: use `docs/demo_walkthrough.md` as the script, start from dashboard demo mode, then map single-station prediction and risk ranking back to API contracts. The existing silent preview video is a draft asset, not a substitute for a voiced walkthrough.
    - Risk: low. Keep demo-mode limitations explicit.
 
 2. Improve model features before more LSTM tuning.
