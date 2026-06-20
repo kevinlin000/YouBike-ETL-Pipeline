@@ -483,6 +483,7 @@ CI 設定位於 `.github/workflows/ci.yml`。
 補充技術文件：
 
 - [`docs/project_story.md`](docs/project_story.md)：專案問題、資料、分析、模型與服務化流程。
+- [`docs/system_design.md`](docs/system_design.md)：後端與 AI 應用系統設計、API 邊界、demo mode、failure modes 與擴展方向。
 - [`docs/backend_ai_architecture.md`](docs/backend_ai_architecture.md)：後端與模型服務架構圖說明。
 - [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md)：FastAPI endpoint、request/response 與錯誤邊界。
 - [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md)：機器學習部分的可主張範圍與限制。

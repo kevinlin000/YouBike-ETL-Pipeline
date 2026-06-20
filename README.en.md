@@ -465,6 +465,7 @@ It does not claim to cover full-scale big-data platform work such as Spark, Kafk
 Supporting technical notes:
 
 - [`docs/project_story.md`](docs/project_story.md): end-to-end project narrative.
+- [`docs/system_design.md`](docs/system_design.md): system design note for backend / AI application boundaries, demo modes, failure modes, and extension paths. The main content is in Chinese with a short English summary.
 - [`docs/backend_ai_architecture.md`](docs/backend_ai_architecture.md): backend and model-serving architecture.
 - [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md): FastAPI endpoints, request/response shapes, and error boundaries.
 - [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md): machine-learning scope and limitations.
