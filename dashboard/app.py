@@ -33,6 +33,12 @@ RISK_CLASS_MAP = {
     "供需穩定": "risk-normal",
 }
 
+PREDICTION_RISK_LABELS = {
+    "risk-critical": "嚴重缺車",
+    "risk-warning": "車輛偏低",
+    "risk-normal": "供需穩定",
+}
+
 DEMO_RISK_DEFAULTS = {
     "500101001": (4, 16),
     "500101002": (5, 15),
@@ -84,6 +90,10 @@ def apply_dashboard_styles() -> None:
 
         #MainMenu, footer, [data-testid="stDecoration"], .stAppDeployButton {
             visibility: hidden;
+        }
+
+        [data-testid="stMarkdownContainer"] a[href^="#"] {
+            display: none;
         }
 
         .dashboard-hero {
@@ -144,6 +154,42 @@ def apply_dashboard_styles() -> None:
             margin-top: -0.25rem;
             margin-bottom: 0.9rem;
             line-height: 1.5;
+        }
+
+        .overview-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 0.75rem;
+            margin: 0.25rem 0 1.2rem;
+        }
+
+        .overview-item {
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--panel);
+            padding: 0.7rem 0.8rem;
+            min-height: 76px;
+        }
+
+        .overview-item span {
+            display: block;
+            color: var(--muted);
+            font-size: 0.76rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .overview-item strong {
+            display: block;
+            color: var(--ink);
+            font-size: 1rem;
+            line-height: 1.3;
+        }
+
+        .overview-item small {
+            display: block;
+            color: var(--muted);
+            margin-top: 0.15rem;
+            line-height: 1.35;
         }
 
         .sidebar-note {
@@ -241,9 +287,15 @@ def apply_dashboard_styles() -> None:
 
         .priority-card .stats {
             display: flex;
+            flex-wrap: wrap;
             gap: 0.75rem;
             color: var(--muted);
             font-size: 0.84rem;
+        }
+
+        .priority-card .stats strong {
+            color: var(--ink);
+            font-weight: 700;
         }
 
         .priority-card .action {
@@ -251,6 +303,139 @@ def apply_dashboard_styles() -> None:
             font-size: 0.9rem;
             font-weight: 700;
             margin-top: 0.45rem;
+        }
+
+        .input-panel,
+        .forecast-panel {
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--panel);
+            padding: 1rem;
+            min-height: 268px;
+        }
+
+        .panel-title {
+            margin: 0 0 0.45rem;
+            color: var(--ink);
+            font-size: 1rem;
+            font-weight: 700;
+            line-height: 1.35;
+        }
+
+        .input-panel p,
+        .forecast-panel p {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.5;
+        }
+
+        .station-readout {
+            border-top: 1px solid var(--line);
+            margin-top: 0.9rem;
+            padding-top: 0.8rem;
+        }
+
+        .station-readout span {
+            display: block;
+            color: var(--muted);
+            font-size: 0.78rem;
+            margin-bottom: 0.18rem;
+        }
+
+        .station-readout strong {
+            display: block;
+            color: var(--ink);
+            font-size: 1rem;
+            line-height: 1.35;
+        }
+
+        .forecast-panel {
+            border-left: 5px solid var(--green);
+        }
+
+        .forecast-panel.risk-critical {
+            border-left-color: var(--red);
+        }
+
+        .forecast-panel.risk-warning {
+            border-left-color: var(--blue);
+        }
+
+        .forecast-number {
+            color: var(--ink);
+            font-size: 2.4rem;
+            font-weight: 750;
+            line-height: 1;
+            margin: 0.75rem 0 0.35rem;
+        }
+
+        .forecast-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.55rem;
+            border-top: 1px solid var(--line);
+            margin-top: 0.85rem;
+            padding-top: 0.75rem;
+        }
+
+        .forecast-grid span {
+            display: block;
+            color: var(--muted);
+            font-size: 0.74rem;
+            margin-bottom: 0.18rem;
+        }
+
+        .forecast-grid strong {
+            color: var(--ink);
+            font-size: 0.96rem;
+        }
+
+        .forecast-action {
+            border-top: 1px solid var(--line);
+            margin-top: 0.85rem;
+            padding-top: 0.75rem;
+            color: var(--ink);
+            font-weight: 700;
+            line-height: 1.45;
+        }
+
+        .forecast-stale {
+            color: var(--amber);
+            font-size: 0.78rem;
+            font-weight: 700;
+            margin-top: 0.45rem;
+        }
+
+        .risk-summary-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 0.65rem;
+            margin: 0.75rem 0 0.9rem;
+        }
+
+        .risk-summary-item {
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--panel);
+            padding: 0.7rem 0.8rem;
+        }
+
+        .risk-summary-item span {
+            display: block;
+            color: var(--muted);
+            font-size: 0.76rem;
+            margin-bottom: 0.22rem;
+        }
+
+        .risk-summary-item strong {
+            color: var(--ink);
+            font-size: 1.05rem;
+        }
+
+        .table-title {
+            color: var(--ink);
+            font-weight: 700;
+            margin: 0.5rem 0 0.35rem;
         }
 
         div.stButton > button[kind="primary"] {
@@ -289,6 +474,12 @@ def apply_dashboard_styles() -> None:
                 gap: 0.9rem;
             }
 
+            .overview-grid,
+            .risk-summary-grid,
+            .forecast-grid {
+                grid-template-columns: 1fr;
+            }
+
             .priority-list {
                 grid-template-columns: 1fr;
             }
@@ -319,6 +510,10 @@ def rain_label(value: float) -> str:
     return "大雨"
 
 
+def display_mode_label(demo_mode: bool) -> str:
+    return "固定範例資料" if demo_mode else "FastAPI 即時服務"
+
+
 def station_name(station_map: dict, station_no: str) -> str:
     return station_map.get(station_no, station_no)
 
@@ -344,11 +539,195 @@ def render_dashboard_header(demo_mode: bool) -> None:
     )
 
 
+def render_overview_grid(
+    demo_mode: bool,
+    station_count: int,
+    selected_station_name: str,
+    temperature: float,
+    rain: float,
+) -> None:
+    st.markdown(
+        f"""
+        <div class="overview-grid">
+            <div class="overview-item">
+                <span>服務狀態</span>
+                <strong>{escape(display_mode_label(demo_mode))}</strong>
+                <small>{escape("不依賴後端服務" if demo_mode else "連線模型 API")}</small>
+            </div>
+            <div class="overview-item">
+                <span>支援站點</span>
+                <strong>{station_count} 站</strong>
+                <small>目前可供工作台檢視</small>
+            </div>
+            <div class="overview-item">
+                <span>單站焦點</span>
+                <strong>{escape(selected_station_name)}</strong>
+                <small>側欄可切換站點</small>
+            </div>
+            <div class="overview-item">
+                <span>天氣條件</span>
+                <strong>{temperature:.1f}°C / {escape(rain_label(rain))}</strong>
+                <small>降雨量 {rain:.1f} mm</small>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def prediction_risk(prediction: int) -> tuple[str, str, str]:
+    if prediction <= 2:
+        return "risk-critical", "建議優先補車", f"預測剩餘 {prediction} 台，短時間內可能影響借車。"
+    if prediction <= 5:
+        return "risk-warning", "列入觀察名單", f"預測剩餘 {prediction} 台，需留意下一輪調度。"
+    return "risk-normal", "維持監控", f"預測剩餘 {prediction} 台，供需暫時穩定。"
+
+
+def render_single_input_panel(selected_station: str, selected_station_name: str, bikes_now: int) -> None:
+    st.markdown(
+        f"""
+        <div class="input-panel">
+            <div class="panel-title">目前站點狀態</div>
+            <p>調整目前可借車輛與天氣條件後，工作台會重新評估模型時窗內的站點水位。</p>
+            <div class="station-readout">
+                <span>站點</span>
+                <strong>{escape(selected_station_name)}</strong>
+            </div>
+            <div class="station-readout">
+                <span>站點編號</span>
+                <strong>{escape(selected_station)}</strong>
+            </div>
+            <div class="station-readout">
+                <span>目前可借車輛</span>
+                <strong>{bikes_now} 台</strong>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_prediction_panel(
+    result: dict | None,
+    bikes_now: int,
+    temperature: float,
+    rain: float,
+    stale: bool = False,
+) -> None:
+    if not result:
+        st.markdown(
+            """
+            <div class="forecast-panel">
+                <div class="panel-title">預測結果</div>
+                <p>尚未取得結果。設定站點與目前車輛後，按下更新即可檢視模型時窗內的供需風險。</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        return
+
+    prediction = int(result["predicted_bikes_next_hour"])
+    delta = prediction - bikes_now
+    tone_class, action, description = prediction_risk(prediction)
+    delta_label = f"+{delta} 台" if delta > 0 else f"{delta} 台"
+    stale_message = (
+        '<div class="forecast-stale">輸入條件已變更，請重新更新結果。</div>' if stale else ""
+    )
+    panel_html = (
+        f'<div class="forecast-panel {tone_class}">'
+        '<div class="panel-title">預測結果</div>'
+        f"<p>{escape(PREDICTION_RISK_LABELS[tone_class])}</p>"
+        f'<div class="forecast-number">{prediction} 台</div>'
+        f"<p>{escape(description)}</p>"
+        f"{stale_message}"
+        '<div class="forecast-grid">'
+        "<div><span>相對目前</span>"
+        f"<strong>{escape(delta_label)}</strong></div>"
+        "<div><span>氣溫</span>"
+        f"<strong>{temperature:.1f}°C</strong></div>"
+        "<div><span>降雨</span>"
+        f"<strong>{rain:.1f} mm</strong></div>"
+        "</div>"
+        f'<div class="forecast-action">{escape(action)}</div>'
+        "</div>"
+    )
+
+    st.markdown(panel_html, unsafe_allow_html=True)
+
+
+def normalize_risk_rows(rows_df: pd.DataFrame) -> list[dict]:
+    rows = rows_df[["station_no", "bikes_available", "spaces_available"]].to_dict("records")
+    return [
+        {
+            "station_no": str(row["station_no"]),
+            "bikes_available": int(row["bikes_available"]),
+            "spaces_available": int(row["spaces_available"]),
+        }
+        for row in rows
+    ]
+
+
+def risk_request_signature(stations: list[dict], temperature: float, rain: float, demo_mode: bool) -> tuple:
+    return (
+        demo_mode,
+        round(float(temperature), 2),
+        round(float(rain), 2),
+        tuple(
+            (
+                station["station_no"],
+                int(station["bikes_available"]),
+                int(station["spaces_available"]),
+            )
+            for station in stations
+        ),
+    )
+
+
+def render_risk_summary(result_df: pd.DataFrame) -> None:
+    severe_count = int(result_df["risk_label"].isin(["嚴重缺車", "滿站風險"]).sum())
+    monitor_count = int(result_df["risk_label"].isin(["車輛偏低", "空位偏低"]).sum())
+    stable_count = int((result_df["risk_label"] == "供需穩定").sum())
+    top_action = str(result_df.iloc[0]["action_label"])
+    avg_score = result_df["risk_score"].mean()
+
+    st.markdown(
+        f"""
+        <div class="risk-summary-grid">
+            <div class="risk-summary-item">
+                <span>高優先處理</span>
+                <strong>{severe_count} 站</strong>
+            </div>
+            <div class="risk-summary-item">
+                <span>觀察名單</span>
+                <strong>{monitor_count} 站</strong>
+            </div>
+            <div class="risk-summary-item">
+                <span>供需穩定</span>
+                <strong>{stable_count} 站</strong>
+            </div>
+            <div class="risk-summary-item">
+                <span>首要動作</span>
+                <strong>{escape(top_action)} / 均分 {avg_score:.0f}</strong>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def render_priority_cards(result_df: pd.DataFrame) -> None:
     top_rows = result_df.head(3).to_dict("records")
     cards = []
     for index, row in enumerate(top_rows, start=1):
         risk_class = RISK_CLASS_MAP.get(row["risk_label"], "risk-normal")
+        bike_flow = (
+            f"{int(row['current_bikes_available'])} → "
+            f"{int(row['predicted_bikes_next_hour'])} 台"
+        )
+        space_flow = (
+            f"{int(row['current_spaces_available'])} → "
+            f"{int(row['predicted_spaces_next_hour'])} 格"
+        )
         cards.append(
             "<div class=\"priority-card "
             f"{risk_class}\">"
@@ -356,8 +735,8 @@ def render_priority_cards(result_df: pd.DataFrame) -> None:
             f"<div class=\"station\">{escape(row['station_name'])}</div>"
             f"<div class=\"risk\">{escape(row['risk_label'])} · {int(row['risk_score'])} 分</div>"
             "<div class=\"stats\">"
-            f"<span>預測車輛 {int(row['predicted_bikes_next_hour'])} 台</span>"
-            f"<span>預測空位 {int(row['predicted_spaces_next_hour'])} 格</span>"
+            f"<span>車輛 <strong>{escape(bike_flow)}</strong></span>"
+            f"<span>空位 <strong>{escape(space_flow)}</strong></span>"
             "</div>"
             f"<div class=\"action\">{escape(row['action_label'])}</div>"
             "</div>"
@@ -382,15 +761,31 @@ def render_single_prediction(
         unsafe_allow_html=True,
     )
 
-    bikes_now = st.slider("目前可借車輛", 0, 100, 15)
-    st.markdown(f"**站點：** {selected_station_name}")
-    st.caption(f"站點編號：{selected_station}")
+    input_col, result_col = st.columns([0.52, 0.48], gap="medium")
 
-    col1, col2 = st.columns(2)
-    col1.metric("目前車輛", bikes_now)
-    col2.metric("天氣", rain_label(rain))
+    with input_col:
+        bikes_now = st.slider("目前可借車輛", 0, 100, 15)
+        single_inputs = (
+            demo_mode,
+            selected_station,
+            int(bikes_now),
+            round(float(temperature), 2),
+            round(float(rain), 2),
+        )
 
-    if st.button("更新單站預測", type="primary", width="stretch"):
+        if demo_mode:
+            st.session_state["single_prediction_result"] = demo_predict_station(
+                selected_station,
+                bikes_now,
+                temperature,
+                rain,
+            )
+            st.session_state["single_prediction_inputs"] = single_inputs
+
+        render_single_input_panel(selected_station, selected_station_name, bikes_now)
+        update_clicked = st.button("更新單站預測", type="primary", width="stretch")
+
+    if update_clicked:
         if demo_mode:
             result = demo_predict_station(selected_station, bikes_now, temperature, rain)
         else:
@@ -406,21 +801,17 @@ def render_single_prediction(
                 st.error(f"API 呼叫失敗：{exc}")
                 return
 
-        prediction = result["predicted_bikes_next_hour"]
-        delta = prediction - bikes_now
-        st.success("預測完成")
+        st.session_state["single_prediction_result"] = result
+        st.session_state["single_prediction_inputs"] = single_inputs
 
-        p1, p2, p3 = st.columns(3)
-        p1.metric("模型時窗預測車輛", f"{prediction} 台", delta=delta)
-        p2.metric("氣溫", f"{temperature:.1f}°C")
-        p3.metric("降雨", f"{rain:.1f} mm")
+    stored_inputs = st.session_state.get("single_prediction_inputs")
+    result = st.session_state.get("single_prediction_result")
+    if stored_inputs and stored_inputs[0] != demo_mode:
+        result = None
 
-        if prediction <= 2:
-            st.error(f"嚴重缺車風險：預測剩餘 {prediction} 台，建議優先補車。")
-        elif prediction <= 5:
-            st.warning(f"車輛偏低：預測剩餘 {prediction} 台，建議持續監控。")
-        else:
-            st.info(f"供需相對穩定：預測剩餘 {prediction} 台。")
+    stale = bool(result and stored_inputs != single_inputs and not demo_mode)
+    with result_col:
+        render_prediction_panel(result, bikes_now, temperature, rain, stale=stale)
 
 
 def default_risk_rows(station_options: list[str]) -> list[dict]:
@@ -479,8 +870,18 @@ def render_risk_ranking(
         },
     )
 
+    stations = normalize_risk_rows(edited_df)
+    current_signature = risk_request_signature(stations, temperature, rain, demo_mode)
+
+    if demo_mode and st.session_state.get("risk_ranking_signature") != current_signature:
+        st.session_state["risk_ranking_result"] = demo_rank_station_risks(
+            stations,
+            temperature,
+            rain,
+        )
+        st.session_state["risk_ranking_signature"] = current_signature
+
     if st.button("更新風險排序", type="primary", width="stretch"):
-        stations = edited_df[["station_no", "bikes_available", "spaces_available"]].to_dict("records")
         if not stations:
             st.warning("請至少選擇一個站點。")
             return
@@ -498,11 +899,24 @@ def render_risk_ranking(
             st.warning("API 未回傳風險排序結果。")
             return
 
+        st.session_state["risk_ranking_result"] = risks
+        st.session_state["risk_ranking_signature"] = current_signature
+
+    risks = st.session_state.get("risk_ranking_result")
+    stored_signature = st.session_state.get("risk_ranking_signature")
+    if stored_signature and stored_signature[0] != demo_mode:
+        risks = None
+
+    if risks:
         result_df = pd.DataFrame(risks)
         result_df["station_name"] = result_df["station_no"].map(lambda sid: station_name(station_map, sid))
         result_df["risk_label"] = result_df["risk_level"].map(risk_level_label)
         result_df["action_label"] = result_df["suggested_action"].map(suggested_action_label)
 
+        if stored_signature != current_signature and not demo_mode:
+            st.warning("輸入條件已變更，請重新更新風險排序。")
+
+        render_risk_summary(result_df)
         render_priority_cards(result_df)
 
         display_df = result_df[
@@ -519,6 +933,7 @@ def render_risk_ranking(
             ]
         ]
 
+        st.markdown('<div class="table-title">完整排序表</div>', unsafe_allow_html=True)
         st.dataframe(
             display_df,
             hide_index=True,
@@ -535,6 +950,8 @@ def render_risk_ranking(
                 "action_label": "建議動作",
             },
         )
+    else:
+        st.info("完成站點與水位設定後，按下更新即可產生調度排序。")
 
 
 apply_dashboard_styles()
@@ -558,8 +975,6 @@ with st.sidebar:
 station_map = load_station_map(API_BASE_URL, demo_mode)
 station_options = station_display_options(station_map)
 
-render_dashboard_header(demo_mode)
-
 with st.sidebar:
 
     if station_options:
@@ -581,6 +996,15 @@ with st.sidebar:
         """,
         unsafe_allow_html=True,
     )
+
+render_dashboard_header(demo_mode)
+render_overview_grid(
+    demo_mode,
+    len(station_options),
+    selected_station_name,
+    temperature,
+    rain,
+)
 
 single_tab, risk_tab = st.tabs(["單站預測", "多站風險排序"])
 
