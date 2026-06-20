@@ -269,7 +269,11 @@ Dashboard 提供 demo mode，可在不啟動 FastAPI、模型檔或 Docker Compo
 
 ## 部署與歷史展示
 
-本專案曾部署於 GCP VM，透過 Docker Compose 管理 Airflow、MySQL、FastAPI 與 Streamlit。原本的 Tableau dashboard 與 Streamlit 預測網站屬於課程展示用雲端 demo，目前不保證仍在線上，因此 README 不公開舊 VM IP 或失效連結。
+本專案曾部署於 GCP VM，透過 Docker Compose 管理 Airflow、MySQL、FastAPI 與 Streamlit。Tableau Public 保留了歷史分析 dashboard，可檢視 13 個代表站點的地圖分佈與 24 小時可用車輛趨勢：
+
+- [Tableau Public：台北市 13 站 YouBike 即時車輛監控與趨勢分析](https://public.tableau.com/app/profile/.40927878/viz/YouBike_17669139069900/1)
+
+舊 Streamlit 雲端 demo 屬於課程展示用途，目前不保證仍在線上，因此 README 不公開舊 VM IP 或失效連結。
 
 保留以下截圖作為歷史部署與資料規模證據：
 
@@ -439,7 +443,7 @@ CI 設定位於 `.github/workflows/ci.yml`。
 ## 已知限制
 
 - 本專案是作品展示，不是目前持續營運的 production service。
-- Tableau dashboard 與舊 Streamlit 雲端 demo 可能已失效，README 不依賴這些連結。
+- Tableau Public dashboard 目前保留歷史分析頁面；舊 Streamlit 雲端 demo 可能已失效，README 不依賴舊服務連結。
 - ETL transform 已抽成共用 module；extract/load 仍保留 standalone job 與 Airflow DAG 各自的執行環境差異。
 - ETL validation gate 預設採 strict mode；若真實 API 短暫異常不希望中斷流程，可用 `ETL_VALIDATION_MODE=warn` 改成只記錄警告。
 - dbt analytics layer 目前使用 seed fixtures 驗證模型結構；若要分析完整資料，需要連接實際 MySQL warehouse。

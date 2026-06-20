@@ -251,7 +251,11 @@ Static screenshot fallback: [`docs/images/dashboard_demo_risk_ranking.png`](docs
 
 ## Historical Deployment
 
-This project was previously deployed on a GCP VM with Docker Compose. The original Tableau dashboard and Streamlit cloud demo were created for course presentation purposes and may no longer be online. For that reason, this README does not publish old VM IPs or expired demo links.
+This project was previously deployed on a GCP VM with Docker Compose. The Tableau Public dashboard is still available and shows the map distribution and 24-hour availability trend for 13 representative stations:
+
+- [Tableau Public: Taipei YouBike 13-station monitoring and trend analysis](https://public.tableau.com/app/profile/.40927878/viz/YouBike_17669139069900/1)
+
+The old Streamlit cloud demo was created for course presentation purposes and may no longer be online. For that reason, this README does not publish old VM IPs or expired demo links.
 
 Evidence screenshots are retained for portfolio context:
 
@@ -421,7 +425,7 @@ CI configuration lives in `.github/workflows/ci.yml`.
 ## Known Limitations
 
 - This repository is a portfolio showcase, not an actively operated production service.
-- The Tableau dashboard and old Streamlit cloud demo may no longer be online.
+- The Tableau Public dashboard is currently available; the old Streamlit cloud demo may no longer be online.
 - ETL transform logic is shared; extract/load code still differs between the standalone job and Airflow DAG because their runtime environments differ.
 - The ETL validation gate defaults to strict mode; use `ETL_VALIDATION_MODE=warn` if transient API anomalies should be logged without interrupting the run.
 - The dbt analytics layer currently uses seed fixtures for model validation; full analysis requires connecting to the real MySQL warehouse.
