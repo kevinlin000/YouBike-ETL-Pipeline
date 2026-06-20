@@ -1,12 +1,12 @@
 # Interview Talk Track
 
-Use this as a concise script for explaining the project in interviews. The goal is to present the repo as a data engineering and analytics portfolio project, not as a currently operated production service.
+Use this as a concise script for explaining the project in interviews. For backend / AI application roles, present the repo as a tested model-serving and decision-workflow application with a real data pipeline behind it, not as a currently operated production service.
 
-For a fuller report-style storyline, use [`docs/project_story.md`](project_story.md).
+For a fuller report-style storyline, use [`docs/project_story.md`](project_story.md). For role-specific backend / AI application positioning, use [`docs/backend_ai_positioning.md`](backend_ai_positioning.md). For endpoint-level detail, use [`docs/api_contract_walkthrough.md`](api_contract_walkthrough.md).
 
 ## 30-Second Version
 
-This project analyzes Taipei YouBike 2.0 station imbalance and turns it into an end-to-end data application. I built scheduled station-status ingestion, normalized MySQL tables, statistical analysis notebooks, a PyTorch LSTM prediction service behind FastAPI, and a Streamlit dashboard for single-station prediction and multi-station risk ranking. The current dashboard has a deterministic demo mode, so I can show the product flow without needing Docker Compose, model files, or live cloud services.
+This project turns Taipei YouBike 2.0 station imbalance into a backend / AI application. I built a FastAPI model-serving layer with validated prediction and risk-ranking requests, a PyTorch LSTM artifact-loading path, and a Streamlit dashboard that demonstrates the decision workflow. The data pipeline behind it uses Airflow and MySQL, and the current dashboard has deterministic demo mode so I can show the product flow without needing Docker Compose, model files, or live cloud services.
 
 ## 2-3 Minute Version
 
@@ -16,7 +16,7 @@ The data engineering layer ingests YouBike station status on a fixed schedule th
 
 The analysis layer uses descriptive statistics, t-tests, ANOVA, clustering, chi-square testing, and regression to explain why station-level monitoring matters. One of the key findings is that lag-style temporal features are much more useful than static location-only features, which supports the decision to collect higher-frequency status data.
 
-The application layer wraps the LSTM inference path with FastAPI. The dashboard turns raw predictions into a decision-support workflow: a user can inspect a single station or rank multiple stations by stock-out and full-load risk. For interviews, demo mode uses deterministic mock data to show the product flow safely. It should be described as a workflow demo, not as model-performance evidence.
+The application layer wraps the LSTM inference path with FastAPI. The backend validates request payloads, handles model-readiness boundaries, exposes forecast-horizon metadata, and supports both single-station prediction and multi-station risk ranking. The dashboard turns those API-shaped responses into a decision-support workflow. For interviews, demo mode uses deterministic mock data to show the product flow safely. It should be described as a workflow demo, not as model-performance evidence.
 
 When discussing the machine-learning portion, be precise: the regression R-squared improvement shows that recent station state has predictive signal, while the LSTM is a served prototype. Local evaluations show the current LSTM does not beat the strongest baseline for either next-observation or approximate one-hour forecasting, so it should not be called production forecasting.
 
@@ -34,6 +34,7 @@ When discussing the machine-learning portion, be precise: the regression R-squar
 - "This is a portfolio showcase of the full path from ingestion to decision-support UI."
 - "The dashboard demo mode is deterministic and intentionally independent from live services."
 - "The model-serving interface is represented through FastAPI endpoints and request validation."
+- "The backend translates model outputs into a user-facing risk-ranking workflow."
 - "The project preserves historical deployment evidence through GCP, Docker, Airflow, and monitoring screenshots."
 - "The strongest engineering story is connecting high-frequency station data to station-level operational decisions."
 - "The LSTM portion is best described as a prototype model-serving layer, not a completed model-evaluation claim."

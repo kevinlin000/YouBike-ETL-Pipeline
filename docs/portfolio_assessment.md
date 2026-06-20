@@ -1,15 +1,18 @@
 # Portfolio Assessment
 
-This repository is best positioned as a maintained data engineering portfolio project, not as a currently operated production service. The strongest story is the breadth across ingestion, orchestration, relational modeling, statistical analysis, model serving, and dashboarding.
+This repository is best positioned as a backend / AI application portfolio project with strong data-engineering support, not as a currently operated production service. The strongest story is the path from real station data to tested FastAPI model-serving contracts, risk-ranking workflow, and demoable dashboard behavior.
 
 ## Current Strengths
 
 - Clear end-to-end architecture: Airflow ingestion, MySQL warehouse tables, analysis notebooks, LSTM model serving, FastAPI API, and Streamlit dashboard.
+- Strong backend / AI application story: validated inference requests, forecast-horizon metadata, risk-ranking responses, demo-mode client behavior, and tests around API/dashboard contracts.
 - Portfolio evidence is preserved: GCP, Docker Compose, Airflow, monitoring, and data-volume screenshots.
 - Demo mode makes the dashboard interview-ready without requiring Docker Compose, model artifacts, or live API services.
 - CI covers ETL behavior, API validation, dashboard client logic, demo mode, and dbt scaffold parsing/build behavior.
 - README now separates current runnable demo material from historical deployment evidence.
 - `docs/interview_talk_track.md` provides a concise interview script, demo flow, and claim boundaries.
+- `docs/backend_ai_positioning.md` frames the project for backend / AI application engineering roles.
+- `docs/api_contract_walkthrough.md` documents the model-serving API contract, validation behavior, risk-ranking response shape, and demo-mode contract.
 - `docs/project_story.md` provides a report-style storyline that connects the operational problem, data pipeline, statistical evidence, LSTM prototype, API, dashboard, limitations, and next steps.
 - `docs/ml_modeling_audit.md` clarifies the ML notebook lineage, served LSTM artifacts, evaluation gaps, and interview-safe claims.
 - `docs/lstm_evaluation_report.md` records local checkpoint-data training runs and documents that the current LSTM does not beat the strongest baseline on either next-observation or approximate one-hour forecasting.
@@ -22,25 +25,25 @@ This repository is best positioned as a maintained data engineering portfolio pr
 
 ## Highest-Value Improvements
 
-1. Improve model features before more LSTM tuning.
-   - Value: strengthens ML engineering credibility.
+1. Add a backend-centered architecture diagram.
+   - Value: helps reviewers see FastAPI, model artifacts, dashboard, and data pipeline boundaries quickly.
+   - Scope: render the existing Airflow/MySQL/FastAPI/Streamlit flow into a static image or concise diagram.
+   - Risk: low. Keep it aligned with README architecture.
+
+2. Add a short demo walkthrough.
+   - Value: shows the backend / AI application flow quickly.
+   - Scope: start from dashboard demo mode, then map single-station prediction and risk ranking back to API contracts.
+   - Risk: low. Keep demo-mode limitations explicit.
+
+3. Improve model features before more LSTM tuning.
+   - Value: strengthens ML engineering credibility after the application story is clear.
    - Scope: keep the current evaluation report as the boundary, then add aligned weather history and richer lag features before replacing served artifacts.
    - Risk: medium. It depends on preserving the processed dataset lineage and matching features to real operations.
 
-2. Add weather-history alignment to inference.
+4. Add weather-history alignment to inference.
    - Value: closes the gap between notebook training and served inference.
    - Scope: extend the warehouse-backed path beyond recent bike counts so it can join aligned weather history before inference.
    - Risk: medium. It touches API behavior and depends on warehouse availability.
-
-3. Add a concise architecture diagram image.
-   - Value: helps non-technical reviewers understand the system faster than Mermaid alone.
-   - Scope: render the existing Airflow/MySQL/FastAPI/Streamlit flow into a static image.
-   - Risk: low. Keep it aligned with the README architecture.
-
-4. Add validation observability examples.
-   - Value: shows how strict/warn validation affects ETL operations.
-   - Scope: document expected log messages and when to use `ETL_VALIDATION_MODE=warn`.
-   - Risk: low. Keep it documentation-only unless the project is revived.
 
 ## Lower-Priority Improvements
 
@@ -50,13 +53,13 @@ This repository is best positioned as a maintained data engineering portfolio pr
 
 ## Interview Positioning
 
-Lead with the operational problem: YouBike imbalance is station-level and time-dependent, not just a city-wide bike-count problem. Then show how the project maps that problem into a data system:
+For backend / AI application roles, lead with the user-facing workflow: a rider or operator needs to identify stations at risk of stock-out or full-load. Then show how the project maps that workflow into backend contracts:
 
-1. high-frequency ingestion for station status,
-2. normalized warehouse tables,
-3. statistical analysis to justify station-level monitoring,
-4. LSTM inference served through FastAPI,
-5. dashboard demo that converts predictions into ranked operational actions.
+1. FastAPI request validation for prediction and risk-ranking payloads,
+2. model artifact loading and readiness boundaries,
+3. forecast-horizon metadata to avoid misleading API semantics,
+4. dashboard demo that converts predictions into ranked operational actions,
+5. Airflow/MySQL data pipeline as the foundation behind the model-serving story.
 
 Be explicit that dashboard demo mode uses deterministic mock data. The correct claim is that demo mode shows the product and API workflow; it is not evidence of model accuracy.
 
@@ -64,4 +67,4 @@ Also be explicit that the regression R-squared improvement is not the LSTM evalu
 
 ## Recommendation
 
-For the next engineering iteration, improve model features if the goal is to strengthen the ML engineering story. The API now exposes forecast-horizon metadata, and documented local runs show the current LSTM does not beat the strongest baseline on tested horizons. Model-accuracy claims should remain conservative. If the goal is recruiter-facing polish, add a static architecture diagram or short deployment walkthrough.
+For the next engineering iteration, add a backend-centered architecture diagram if the target is backend / AI application engineering. Improve model features only after the application story is easy to review. The API now exposes forecast-horizon metadata, and documented local runs show the current LSTM does not beat the strongest baseline on tested horizons, so model-accuracy claims should remain conservative.

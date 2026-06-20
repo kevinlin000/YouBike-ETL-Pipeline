@@ -425,21 +425,21 @@ CI configuration lives in `.github/workflows/ci.yml`.
 
 ## Role Relevance
 
-This project is most relevant to:
+For job-search positioning, this project is strongest for backend / AI application engineering, with data engineering as the supporting context:
 
-- Data engineering: ETL, Airflow, MySQL schema design, batch ingestion, data-quality testing
+- Backend / AI application engineering: FastAPI, Pydantic validation, inference APIs, risk-ranking workflows, Docker Compose
 - Data application engineering: analytics, feature engineering, model serving, dashboard support
-- Backend / AI application engineering: FastAPI, Pydantic validation, inference APIs, Docker Compose
+- Data engineering: ETL, Airflow, MySQL schema design, batch ingestion, data-quality testing
 
-It does not claim to cover full-scale big-data platform work such as Spark, Kafka, Data Lake, Kubernetes, or complete MLOps. The dbt layer is a lightweight analytics scaffold, not a full enterprise warehouse implementation.
+It does not claim to cover full-scale big-data platform work such as Spark, Kafka, Data Lake, Kubernetes, or complete MLOps. The dbt layer is a lightweight analytics scaffold, not a full enterprise warehouse implementation. For backend / AI application roles, use the framing in [`docs/backend_ai_positioning.md`](docs/backend_ai_positioning.md).
 
 ## Maintenance Roadmap
 
-A fuller portfolio assessment and prioritization note is available in [`docs/portfolio_assessment.md`](docs/portfolio_assessment.md), the interview script is in [`docs/interview_talk_track.md`](docs/interview_talk_track.md), the report storyline is in [`docs/project_story.md`](docs/project_story.md), the ML modeling boundary is documented in [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md), and the local LSTM evaluation is in [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md).
+A fuller portfolio assessment and prioritization note is available in [`docs/portfolio_assessment.md`](docs/portfolio_assessment.md), backend / AI application framing is in [`docs/backend_ai_positioning.md`](docs/backend_ai_positioning.md), the API contract walkthrough is in [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md), the interview script is in [`docs/interview_talk_track.md`](docs/interview_talk_track.md), the report storyline is in [`docs/project_story.md`](docs/project_story.md), the ML modeling boundary is documented in [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md), and the local LSTM evaluation is in [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md).
 
-1. Add aligned weather history and richer lag features before tuning the LSTM further.
-2. Replace served artifacts only after a candidate model beats the baseline suite on the target horizon's test split.
-3. Add a short deployment walkthrough recording if more portfolio material is needed.
+1. Add an architecture diagram centered on FastAPI, model artifacts, and the dashboard.
+2. Add a short demo walkthrough that maps dashboard behavior back to API contracts.
+3. If deepening ML, add aligned weather history and richer lag features.
 
 ## Author
 
