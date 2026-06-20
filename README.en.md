@@ -58,6 +58,12 @@ flowchart LR
     B --> S[GCP Secret Manager]
 ```
 
+Backend / AI application view:
+
+![Backend / AI Application Architecture](docs/images/backend_ai_architecture.svg)
+
+Diagram notes: [`docs/backend_ai_architecture.md`](docs/backend_ai_architecture.md)
+
 ## Data Model
 
 The MySQL schema is defined in `sql/init_schema.sql`, and the downstream analytics model is documented in the `analytics/dbt` dbt scaffold. Airflow owns ingestion into raw warehouse tables; dbt owns the staging and mart layer for analysis.
@@ -435,11 +441,10 @@ It does not claim to cover full-scale big-data platform work such as Spark, Kafk
 
 ## Maintenance Roadmap
 
-A fuller portfolio assessment and prioritization note is available in [`docs/portfolio_assessment.md`](docs/portfolio_assessment.md), backend / AI application framing is in [`docs/backend_ai_positioning.md`](docs/backend_ai_positioning.md), the API contract walkthrough is in [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md), the interview script is in [`docs/interview_talk_track.md`](docs/interview_talk_track.md), the report storyline is in [`docs/project_story.md`](docs/project_story.md), the ML modeling boundary is documented in [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md), and the local LSTM evaluation is in [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md).
+A fuller portfolio assessment and prioritization note is available in [`docs/portfolio_assessment.md`](docs/portfolio_assessment.md), backend / AI application framing is in [`docs/backend_ai_positioning.md`](docs/backend_ai_positioning.md), the backend / AI architecture diagram is in [`docs/backend_ai_architecture.md`](docs/backend_ai_architecture.md), the API contract walkthrough is in [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md), the interview script is in [`docs/interview_talk_track.md`](docs/interview_talk_track.md), the report storyline is in [`docs/project_story.md`](docs/project_story.md), the ML modeling boundary is documented in [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md), and the local LSTM evaluation is in [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md).
 
-1. Add an architecture diagram centered on FastAPI, model artifacts, and the dashboard.
-2. Add a short demo walkthrough that maps dashboard behavior back to API contracts.
-3. If deepening ML, add aligned weather history and richer lag features.
+1. Add a short demo walkthrough that maps dashboard behavior back to API contracts.
+2. If deepening ML, add aligned weather history and richer lag features.
 
 ## Author
 

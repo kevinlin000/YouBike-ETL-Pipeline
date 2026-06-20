@@ -56,6 +56,12 @@ flowchart LR
     B --> S[GCP Secret Manager]
 ```
 
+後端 / AI 應用視角的架構圖：
+
+![Backend / AI Application Architecture](docs/images/backend_ai_architecture.svg)
+
+說明文件：[`docs/backend_ai_architecture.md`](docs/backend_ai_architecture.md)
+
 ### 資料流程
 
 1. Airflow DAG 定期呼叫 YouBike 2.0 即時資料 API。
@@ -444,11 +450,10 @@ CI 設定位於 `.github/workflows/ci.yml`。
 
 ## 後續維護方向
 
-更完整的作品集評估與優先順序整理在 [`docs/portfolio_assessment.md`](docs/portfolio_assessment.md)，後端 / AI 應用定位可參考 [`docs/backend_ai_positioning.md`](docs/backend_ai_positioning.md)，API contract walkthrough 在 [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md)，面試說明稿可參考 [`docs/interview_talk_track.md`](docs/interview_talk_track.md)，報告主線整理在 [`docs/project_story.md`](docs/project_story.md)，ML 脈絡與可主張範圍整理在 [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md)，本地 LSTM 評估結果在 [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md)。
+更完整的作品集評估與優先順序整理在 [`docs/portfolio_assessment.md`](docs/portfolio_assessment.md)，後端 / AI 應用定位可參考 [`docs/backend_ai_positioning.md`](docs/backend_ai_positioning.md)，後端 / AI 架構圖在 [`docs/backend_ai_architecture.md`](docs/backend_ai_architecture.md)，API contract walkthrough 在 [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md)，面試說明稿可參考 [`docs/interview_talk_track.md`](docs/interview_talk_track.md)，報告主線整理在 [`docs/project_story.md`](docs/project_story.md)，ML 脈絡與可主張範圍整理在 [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md)，本地 LSTM 評估結果在 [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md)。
 
-1. 補一張以 FastAPI、model artifacts、dashboard 為中心的 architecture diagram。
-2. 補一份短 demo walkthrough，從 dashboard 對應回 API contract。
-3. 若要深化 ML，再補齊 weather history 與更完整的 lag features。
+1. 補一份短 demo walkthrough，從 dashboard 對應回 API contract。
+2. 若要深化 ML，再補齊 weather history 與更完整的 lag features。
 
 ## 作者
 

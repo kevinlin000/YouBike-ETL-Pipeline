@@ -29,6 +29,8 @@ Lead with application behavior:
 
 This makes the project more relevant to AI application roles than a notebook-only ML project.
 
+For a visual version of the same positioning, use [`backend_ai_architecture.md`](backend_ai_architecture.md).
+
 ## Interview Pitch
 
 Short version:
@@ -59,8 +61,7 @@ Avoid bullets like:
 
 For backend / AI application roles, the highest-value next improvements are:
 
-1. Add a concise architecture diagram focused on API/model/dashboard boundaries.
-2. Add a short demo walkthrough video or GIF that starts from the dashboard and maps back to API contracts.
-3. Add weather-history alignment only after deciding to deepen the model-serving story.
+1. Add a short demo walkthrough video or GIF that starts from the dashboard and maps back to API contracts.
+2. Add weather-history alignment only after deciding to deepen the model-serving story.
 
 Do not lead with larger infrastructure rewrites unless the target role is data platform engineering.

@@ -12,6 +12,7 @@ This repository is best positioned as a backend / AI application portfolio proje
 - README now separates current runnable demo material from historical deployment evidence.
 - `docs/interview_talk_track.md` provides a concise interview script, demo flow, and claim boundaries.
 - `docs/backend_ai_positioning.md` frames the project for backend / AI application engineering roles.
+- `docs/backend_ai_architecture.md` provides a backend-centered architecture diagram for reviewers.
 - `docs/api_contract_walkthrough.md` documents the model-serving API contract, validation behavior, risk-ranking response shape, and demo-mode contract.
 - `docs/project_story.md` provides a report-style storyline that connects the operational problem, data pipeline, statistical evidence, LSTM prototype, API, dashboard, limitations, and next steps.
 - `docs/ml_modeling_audit.md` clarifies the ML notebook lineage, served LSTM artifacts, evaluation gaps, and interview-safe claims.
@@ -25,22 +26,17 @@ This repository is best positioned as a backend / AI application portfolio proje
 
 ## Highest-Value Improvements
 
-1. Add a backend-centered architecture diagram.
-   - Value: helps reviewers see FastAPI, model artifacts, dashboard, and data pipeline boundaries quickly.
-   - Scope: render the existing Airflow/MySQL/FastAPI/Streamlit flow into a static image or concise diagram.
-   - Risk: low. Keep it aligned with README architecture.
-
-2. Add a short demo walkthrough.
+1. Add a short demo walkthrough.
    - Value: shows the backend / AI application flow quickly.
    - Scope: start from dashboard demo mode, then map single-station prediction and risk ranking back to API contracts.
    - Risk: low. Keep demo-mode limitations explicit.
 
-3. Improve model features before more LSTM tuning.
+2. Improve model features before more LSTM tuning.
    - Value: strengthens ML engineering credibility after the application story is clear.
    - Scope: keep the current evaluation report as the boundary, then add aligned weather history and richer lag features before replacing served artifacts.
    - Risk: medium. It depends on preserving the processed dataset lineage and matching features to real operations.
 
-4. Add weather-history alignment to inference.
+3. Add weather-history alignment to inference.
    - Value: closes the gap between notebook training and served inference.
    - Scope: extend the warehouse-backed path beyond recent bike counts so it can join aligned weather history before inference.
    - Risk: medium. It touches API behavior and depends on warehouse availability.
@@ -67,4 +63,4 @@ Also be explicit that the regression R-squared improvement is not the LSTM evalu
 
 ## Recommendation
 
-For the next engineering iteration, add a backend-centered architecture diagram if the target is backend / AI application engineering. Improve model features only after the application story is easy to review. The API now exposes forecast-horizon metadata, and documented local runs show the current LSTM does not beat the strongest baseline on tested horizons, so model-accuracy claims should remain conservative.
+For the next engineering iteration, add a short demo walkthrough if the target is backend / AI application engineering. Improve model features only after the application story is easy to review. The API now exposes forecast-horizon metadata, and documented local runs show the current LSTM does not beat the strongest baseline on tested horizons, so model-accuracy claims should remain conservative.
