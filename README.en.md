@@ -68,6 +68,10 @@ Diagram notes: [`docs/backend_ai_architecture.md`](docs/backend_ai_architecture.
 
 The MySQL schema is defined in `sql/init_schema.sql`, and the downstream analytics model is documented in the `analytics/dbt` dbt scaffold. Airflow owns ingestion into raw warehouse tables; dbt owns the staging and mart layer for analysis.
 
+![YouBike data model and analytics layer](docs/images/data_model_er.svg)
+
+The data model follows a simple dimensional pattern: `station_info` stores slowly changing station attributes, while `station_status` stores one station-state observation per timestamp. Downstream dbt models aggregate the raw facts by station-hour and district-hour for analysis, dashboarding, and model feature checks.
+
 ### `station_info`
 
 Station dimension table:

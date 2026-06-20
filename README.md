@@ -75,6 +75,10 @@ flowchart LR
 
 MySQL schema 定義位於 `sql/init_schema.sql`，下游分析模型則以 `analytics/dbt` 的 dbt scaffold 描述。Airflow 負責把資料寫入 raw warehouse tables，dbt 負責將資料整理成分析用 staging / marts layer。
 
+![YouBike 資料模型與分析層](docs/images/data_model_er.svg)
+
+資料模型採用簡單的星型思路：`station_info` 保存站點靜態資訊，`station_status` 保存一站一時間點的狀態紀錄；下游 dbt models 再依站點小時與行政區小時聚合，供分析、dashboard 與模型特徵檢查使用。
+
 ### `station_info`
 
 站點維度表，保存低變動資料：

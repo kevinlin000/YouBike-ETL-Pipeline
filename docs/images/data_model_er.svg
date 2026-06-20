@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="720" viewBox="0 0 1180 720" role="img" aria-labelledby="title desc">
+  <title id="title">YouBike 資料模型與分析層 ER 圖</title>
+  <desc id="desc">station_info 維度表、station_status 事實表、dbt staging 模型與 mart 模型的關聯圖。</desc>
+  <defs>
+    <style>
+      .bg { fill: #f8fafc; }
+      .panel { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.5; }
+      .raw { fill: #eff6ff; stroke: #2563eb; stroke-width: 2; }
+      .staging { fill: #ecfeff; stroke: #0891b2; stroke-width: 2; }
+      .mart { fill: #f0fdf4; stroke: #16a34a; stroke-width: 2; }
+      .note { fill: #fefce8; stroke: #ca8a04; stroke-width: 1.5; }
+      .title { fill: #0f172a; font: 700 26px Arial, sans-serif; }
+      .subtitle { fill: #475569; font: 14px Arial, sans-serif; }
+      .section { fill: #0f172a; font: 700 17px Arial, sans-serif; }
+      .entity { fill: #0f172a; font: 700 18px Arial, sans-serif; }
+      .entity-small { fill: #0f172a; font: 700 14px Arial, sans-serif; }
+      .field { fill: #334155; font: 13px Arial, sans-serif; }
+      .key { fill: #0f766e; font: 700 13px Arial, sans-serif; }
+      .muted { fill: #64748b; font: 12px Arial, sans-serif; }
+      .arrow { stroke: #475569; stroke-width: 2.2; fill: none; marker-end: url(#arrowhead); }
+      .line { stroke: #64748b; stroke-width: 2; fill: none; }
+      .divider { stroke: #cbd5e1; stroke-width: 1; }
+    </style>
+    <marker id="arrowhead" markerWidth="12" markerHeight="8" refX="10" refY="4" orient="auto">
+      <path d="M0,0 L12,4 L0,8 Z" fill="#475569" />
+    </marker>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1180" height="720" />
+
+  <text class="title" x="48" y="48">YouBike 資料模型與分析層</text>
+  <text class="subtitle" x="48" y="74">核心設計：站點靜態資訊作為維度表，站點狀態作為高頻時間序列事實表，dbt 再整理成分析用 marts。</text>
+
+  <rect class="panel" x="40" y="108" width="515" height="520" rx="8" />
+  <text class="section" x="64" y="140">MySQL Raw Warehouse</text>
+  <line class="divider" x1="64" y1="154" x2="531" y2="154" />
+
+  <rect class="raw" x="72" y="182" width="420" height="172" rx="8" />
+  <text class="entity" x="96" y="214">station_info</text>
+  <text class="muted" x="96" y="236">站點維度表；一個 station_no 對應一個站點</text>
+  <line class="divider" x1="96" y1="250" x2="468" y2="250" />
+  <text class="key" x="96" y="276">PK</text><text class="field" x="134" y="276">station_no</text>
+  <text class="field" x="134" y="300">name_tw</text>
+  <text class="field" x="134" y="324">district, lat, lng</text>
+  <text class="field" x="134" y="348">total_spaces</text>
+
+  <rect class="raw" x="72" y="396" width="420" height="184" rx="8" />
+  <text class="entity" x="96" y="428">station_status</text>
+  <text class="muted" x="96" y="450">站點狀態事實表；一列代表一站一時間點</text>
+  <line class="divider" x1="96" y1="464" x2="468" y2="464" />
+  <text class="key" x="96" y="490">PK</text><text class="field" x="134" y="490">id</text>
+  <text class="key" x="96" y="514">FK</text><text class="field" x="134" y="514">station_no -> station_info.station_no</text>
+  <text class="field" x="134" y="538">bikes_available, spaces_available</text>
+  <text class="field" x="134" y="562">record_time</text>
+
+  <rect class="note" x="72" y="596" width="420" height="42" rx="8" />
+  <text class="muted" x="96" y="622">Unique: station_status(station_no, record_time)</text>
+
+  <path class="line" d="M282 354 L282 396" />
+  <text class="muted" x="300" y="380">1-to-many</text>
+
+  <rect class="panel" x="625" y="108" width="515" height="520" rx="8" />
+  <text class="section" x="649" y="140">dbt Analytics Layer</text>
+  <line class="divider" x1="649" y1="154" x2="1116" y2="154" />
+
+  <rect class="staging" x="660" y="182" width="198" height="150" rx="8" />
+  <text class="entity" x="684" y="214">stg_station_info</text>
+  <line class="divider" x1="684" y1="230" x2="834" y2="230" />
+  <text class="key" x="684" y="256">unique</text>
+  <text class="field" x="744" y="256">station_no</text>
+  <text class="field" x="684" y="280">district</text>
+  <text class="field" x="684" y="304">total_spaces</text>
+
+  <rect class="staging" x="900" y="182" width="198" height="150" rx="8" />
+  <text class="entity" x="924" y="214">stg_station_status</text>
+  <line class="divider" x1="924" y1="230" x2="1074" y2="230" />
+  <text class="key" x="924" y="256">FK</text>
+  <text class="field" x="960" y="256">station_no</text>
+  <text class="field" x="924" y="280">record_time</text>
+  <text class="field" x="924" y="304">risk flags</text>
+
+  <rect class="mart" x="660" y="400" width="198" height="154" rx="8" />
+  <text class="entity-small" x="684" y="426">mart_station</text>
+  <text class="entity-small" x="684" y="444">hourly_health</text>
+  <line class="divider" x1="684" y1="448" x2="834" y2="448" />
+  <text class="field" x="684" y="474">station_no</text>
+  <text class="field" x="684" y="498">record_hour</text>
+  <text class="field" x="684" y="522">avg_filling_rate</text>
+  <text class="field" x="684" y="546">risk observations</text>
+
+  <rect class="mart" x="900" y="400" width="198" height="154" rx="8" />
+  <text class="entity-small" x="924" y="426">mart_district</text>
+  <text class="entity-small" x="924" y="444">peak_hour_health</text>
+  <line class="divider" x1="924" y1="448" x2="1074" y2="448" />
+  <text class="key" x="924" y="474">PK</text>
+  <text class="field" x="960" y="474">district_hour_key</text>
+  <text class="field" x="924" y="498">district, record_hour</text>
+  <text class="field" x="924" y="522">period_type</text>
+  <text class="field" x="924" y="546">stations_observed</text>
+
+  <path class="arrow" d="M492 260 C555 260 588 236 660 236" />
+  <path class="arrow" d="M492 498 C555 498 586 260 900 260" />
+  <path class="arrow" d="M759 332 L759 400" />
+  <path class="arrow" d="M999 332 L999 400" />
+  <path class="arrow" d="M858 260 L900 260" />
+  <path class="arrow" d="M858 476 C878 476 878 476 900 476" />
+
+  <text class="muted" x="660" y="610">面試說法：這不是複雜度展示，而是把資料粒度、主外鍵、去重策略與分析輸出邊界講清楚。</text>
+</svg>
