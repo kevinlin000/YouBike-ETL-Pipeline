@@ -20,7 +20,7 @@ from api_client import (
 )
 
 
-st.set_page_config(page_title="YouBike Prediction Dashboard", layout="wide")
+st.set_page_config(page_title="YouBike 調度風險工作台", layout="wide")
 
 API_BASE_URL = os.getenv("API_BASE_URL", "http://api:8000")
 DEMO_MODE_DEFAULT = os.getenv("DASHBOARD_DEMO_MODE", "").lower() in {"1", "true", "yes", "on"}
@@ -53,6 +53,7 @@ def apply_dashboard_styles() -> None:
             --line: #dbe3ed;
             --panel: #ffffff;
             --soft: #f8fafc;
+            --soft-blue: #eef6ff;
             --teal: #0f766e;
             --blue: #2563eb;
             --amber: #b45309;
@@ -60,20 +61,25 @@ def apply_dashboard_styles() -> None:
             --green: #15803d;
         }
 
+        .stApp {
+            background: #ffffff;
+        }
+
         .block-container {
-            max-width: 1180px;
-            padding-top: 2rem;
-            padding-bottom: 3rem;
+            max-width: 1220px;
+            padding-top: 1.2rem;
+            padding-bottom: 2.4rem;
         }
 
         [data-testid="stSidebar"] {
-            background: #f8fafc;
+            background: #f6f8fb;
             border-right: 1px solid var(--line);
         }
 
         [data-testid="stSidebar"] h2 {
             color: var(--ink);
-            font-size: 1.2rem;
+            font-size: 1.12rem;
+            margin-bottom: 0.6rem;
         }
 
         #MainMenu, footer, [data-testid="stDecoration"], .stAppDeployButton {
@@ -82,63 +88,98 @@ def apply_dashboard_styles() -> None:
 
         .dashboard-hero {
             display: flex;
-            align-items: flex-end;
+            align-items: flex-start;
             justify-content: space-between;
             gap: 1.5rem;
-            padding: 1.15rem 0 1.25rem;
+            padding: 0.8rem 0 1rem;
             border-bottom: 1px solid var(--line);
-            margin-bottom: 1.1rem;
+            margin-bottom: 0.9rem;
         }
 
         .dashboard-hero h1 {
-            margin: 0.1rem 0 0.35rem;
+            margin: 0.15rem 0 0.35rem;
             color: var(--ink);
-            font-size: clamp(2rem, 3vw, 2.7rem);
-            line-height: 1.05;
+            font-size: clamp(1.8rem, 2.4vw, 2.35rem);
+            line-height: 1.12;
             letter-spacing: 0;
         }
 
         .dashboard-hero p {
             color: var(--muted);
             margin: 0;
-            max-width: 720px;
-            font-size: 1rem;
-            line-height: 1.6;
+            max-width: 780px;
+            font-size: 0.98rem;
+            line-height: 1.55;
         }
 
         .eyebrow {
             color: var(--teal) !important;
-            font-size: 0.78rem !important;
+            font-size: 0.82rem !important;
             font-weight: 700;
-            text-transform: uppercase;
             letter-spacing: 0;
         }
 
         .run-state {
-            min-width: 210px;
+            min-width: 190px;
             border: 1px solid var(--line);
             border-radius: 8px;
-            padding: 0.85rem 1rem;
-            background: var(--soft);
+            padding: 0.7rem 0.85rem;
+            background: #ffffff;
         }
 
         .run-state span {
             display: block;
             color: var(--muted);
-            font-size: 0.78rem;
-            margin-bottom: 0.25rem;
+            font-size: 0.76rem;
+            margin-bottom: 0.2rem;
         }
 
         .run-state strong {
             color: var(--ink);
-            font-size: 1.05rem;
+            font-size: 0.98rem;
         }
 
         .section-note {
             color: var(--muted);
-            margin-top: -0.4rem;
-            margin-bottom: 1rem;
+            margin-top: -0.25rem;
+            margin-bottom: 0.9rem;
             line-height: 1.5;
+        }
+
+        .sidebar-note {
+            border: 1px solid #bfdbfe;
+            background: var(--soft-blue);
+            color: #1e3a8a;
+            border-radius: 8px;
+            padding: 0.75rem 0.85rem;
+            font-size: 0.9rem;
+            line-height: 1.55;
+            margin: 0.35rem 0 1rem;
+        }
+
+        .sidebar-note strong {
+            display: block;
+            color: #172554;
+            margin-bottom: 0.18rem;
+        }
+
+        .sidebar-status {
+            border: 1px solid var(--line);
+            background: #ffffff;
+            border-radius: 8px;
+            padding: 0.65rem 0.75rem;
+            margin-top: 0.9rem;
+        }
+
+        .sidebar-status span {
+            display: block;
+            color: var(--muted);
+            font-size: 0.78rem;
+        }
+
+        .sidebar-status strong {
+            color: var(--ink);
+            font-size: 1rem;
         }
 
         .priority-list {
@@ -152,8 +193,8 @@ def apply_dashboard_styles() -> None:
             border: 1px solid var(--line);
             border-radius: 8px;
             background: var(--panel);
-            padding: 0.9rem;
-            min-height: 148px;
+            padding: 0.85rem;
+            min-height: 136px;
         }
 
         .priority-card.risk-critical {
@@ -177,19 +218,19 @@ def apply_dashboard_styles() -> None:
             color: var(--muted);
             font-size: 0.78rem;
             font-weight: 700;
-            margin-bottom: 0.35rem;
+            margin-bottom: 0.32rem;
         }
 
         .priority-card .station {
             color: var(--ink);
-            font-weight: 750;
+            font-weight: 700;
             line-height: 1.35;
             min-height: 2.7rem;
         }
 
         .priority-card .risk {
             display: inline-block;
-            margin: 0.6rem 0 0.5rem;
+            margin: 0.5rem 0 0.45rem;
             padding: 0.2rem 0.55rem;
             border-radius: 999px;
             background: #f1f5f9;
@@ -218,6 +259,7 @@ def apply_dashboard_styles() -> None:
             color: white;
             border-radius: 8px;
             font-weight: 700;
+            min-height: 2.55rem;
         }
 
         div.stButton > button[kind="primary"]:hover {
@@ -227,7 +269,7 @@ def apply_dashboard_styles() -> None:
         }
 
         [data-baseweb="tag"] {
-            background: #e0f2fe !important;
+            background: #eaf5ff !important;
             color: #0f172a !important;
             border-radius: 7px !important;
         }
@@ -244,6 +286,7 @@ def apply_dashboard_styles() -> None:
             .dashboard-hero {
                 align-items: stretch;
                 flex-direction: column;
+                gap: 0.9rem;
             }
 
             .priority-list {
@@ -268,12 +311,12 @@ def load_station_map(api_base_url: str, demo_mode: bool) -> dict:
 
 def rain_label(value: float) -> str:
     if value == 0:
-        return "Dry"
+        return "無雨"
     if value <= 2:
-        return "Drizzle"
+        return "小雨"
     if value <= 10:
-        return "Rain"
-    return "Heavy rain"
+        return "降雨"
+    return "大雨"
 
 
 def station_name(station_map: dict, station_no: str) -> str:
@@ -281,15 +324,15 @@ def station_name(station_map: dict, station_no: str) -> str:
 
 
 def render_dashboard_header(demo_mode: bool) -> None:
-    mode_label = "Demo mode" if demo_mode else "Live API mode"
-    source_label = "Mock prediction ready" if demo_mode else f"API: {API_BASE_URL}"
+    mode_label = "資料來源"
+    source_label = "固定範例資料" if demo_mode else f"FastAPI：{API_BASE_URL}"
     st.markdown(
         f"""
         <div class="dashboard-hero">
             <div>
-                <p class="eyebrow">YouBike 2.0 decision support</p>
-                <h1>YouBike 2.0 預測與調度輔助</h1>
-                <p>台北市站點模型時窗可借車預測，搭配多站缺車與滿站風險排序，將模型輸出轉成面試展示可操作的調度流程。</p>
+                <p class="eyebrow">站點供需監控</p>
+                <h1>YouBike 調度風險工作台</h1>
+                <p>整合模型時窗預測與規則化風險分數，檢視單站水位、多站缺車風險與滿站風險，協助排序調度處理順序。</p>
             </div>
             <div class="run-state">
                 <span>{escape(mode_label)}</span>
@@ -309,7 +352,7 @@ def render_priority_cards(result_df: pd.DataFrame) -> None:
         cards.append(
             "<div class=\"priority-card "
             f"{risk_class}\">"
-            f"<div class=\"rank\">Priority {index}</div>"
+            f"<div class=\"rank\">調度順位 {index}</div>"
             f"<div class=\"station\">{escape(row['station_name'])}</div>"
             f"<div class=\"risk\">{escape(row['risk_label'])} · {int(row['risk_score'])} 分</div>"
             "<div class=\"stats\">"
@@ -333,13 +376,13 @@ def render_single_prediction(
     rain: float,
     demo_mode: bool,
 ) -> None:
-    st.subheader("單站模型時窗預測")
+    st.subheader("單站水位預測")
     st.markdown(
-        '<p class="section-note">輸入目前水位與天氣條件，快速檢查指定站點在模型預測時窗內的供需狀態。</p>',
+        '<p class="section-note">依目前車輛數與天氣條件，檢查指定站點在模型時窗內的供需狀態。</p>',
         unsafe_allow_html=True,
     )
 
-    bikes_now = st.slider("目前可借車輛數", 0, 100, 15)
+    bikes_now = st.slider("目前可借車輛", 0, 100, 15)
     st.markdown(f"**站點：** {selected_station_name}")
     st.caption(f"站點編號：{selected_station}")
 
@@ -347,7 +390,7 @@ def render_single_prediction(
     col1.metric("目前車輛", bikes_now)
     col2.metric("天氣", rain_label(rain))
 
-    if st.button("執行單站預測", type="primary", width="stretch"):
+    if st.button("更新單站預測", type="primary", width="stretch"):
         if demo_mode:
             result = demo_predict_station(selected_station, bikes_now, temperature, rain)
         else:
@@ -403,7 +446,7 @@ def render_risk_ranking(
     rain: float,
     demo_mode: bool,
 ) -> None:
-    st.subheader("多站點風險排序")
+    st.subheader("多站風險排序")
     st.markdown(
         '<p class="section-note">比較多個站點的預測水位，將缺車、滿站與觀察名單依風險分數排序。</p>',
         unsafe_allow_html=True,
@@ -436,7 +479,7 @@ def render_risk_ranking(
         },
     )
 
-    if st.button("評估多站點風險", type="primary", width="stretch"):
+    if st.button("更新風險排序", type="primary", width="stretch"):
         stations = edited_df[["station_no", "bikes_available", "spaces_available"]].to_dict("records")
         if not stations:
             st.warning("請至少選擇一個站點。")
@@ -497,12 +540,20 @@ def render_risk_ranking(
 apply_dashboard_styles()
 
 with st.sidebar:
-    st.header("輸入參數")
-    demo_mode = st.checkbox("Demo mode", value=DEMO_MODE_DEFAULT)
+    st.header("條件設定")
+    demo_mode = st.checkbox("使用固定範例資料", value=DEMO_MODE_DEFAULT)
     if demo_mode:
-        st.info("Demo mode 使用固定範例站點與模擬預測，不需要 FastAPI 或模型檔。")
+        st.markdown(
+            """
+            <div class="sidebar-note">
+                <strong>本機檢視模式</strong>
+                使用固定站點與模擬推論結果，不需要啟動 FastAPI 或載入模型檔。
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
     else:
-        st.caption(f"API: {API_BASE_URL}")
+        st.caption(f"FastAPI：{API_BASE_URL}")
 
 station_map = load_station_map(API_BASE_URL, demo_mode)
 station_options = station_display_options(station_map)
@@ -512,7 +563,7 @@ render_dashboard_header(demo_mode)
 with st.sidebar:
 
     if station_options:
-        selected_option = st.selectbox("單站預測站點", station_options)
+        selected_option = st.selectbox("單站檢視站點", station_options)
         selected_station, selected_station_name = parse_station_option(selected_option)
     else:
         st.error("無法連線至 API 或模型尚未載入")
@@ -521,7 +572,15 @@ with st.sidebar:
 
     temperature = st.slider("氣溫 (°C)", 10.0, 40.0, 25.0)
     rain = st.slider("降雨量 (mm)", 0.0, 50.0, 0.0)
-    st.info(f"天氣狀態：{rain_label(rain)}")
+    st.markdown(
+        f"""
+        <div class="sidebar-status">
+            <span>天氣狀態</span>
+            <strong>{escape(rain_label(rain))}</strong>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 single_tab, risk_tab = st.tabs(["單站預測", "多站風險排序"])
 
