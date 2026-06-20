@@ -14,6 +14,7 @@ from api.app import main as api_main  # noqa: E402
 @pytest.fixture(autouse=True)
 def reset_model_resources(monkeypatch):
     """Keep API tests independent from real model artifacts."""
+    monkeypatch.delenv(api_main.API_DEMO_MODE_ENV, raising=False)
     monkeypatch.setattr(api_main, "model", None)
     monkeypatch.setattr(api_main, "scaler", None)
     monkeypatch.setattr(api_main, "station_mapping", None)
@@ -90,6 +91,7 @@ def test_health_returns_service_state_without_ready_model(client):
     assert response.status_code == 200
     assert response.json() == {
         "status": "online",
+        "demo_mode": False,
         "model_loaded": False,
         "scaler_loaded": False,
         "station_mapping_loaded": False,
@@ -105,6 +107,7 @@ def test_ready_reports_unavailable_when_model_resources_missing(client):
     assert response.status_code == 503
     assert response.json()["detail"] == {
         "status": "online",
+        "demo_mode": False,
         "model_loaded": False,
         "scaler_loaded": False,
         "station_mapping_loaded": False,
@@ -126,6 +129,7 @@ def test_ready_returns_ok_when_model_resources_loaded(client, monkeypatch):
     assert response.status_code == 200
     assert response.json() == {
         "status": "online",
+        "demo_mode": False,
         "model_loaded": True,
         "scaler_loaded": True,
         "station_mapping_loaded": True,
@@ -134,6 +138,95 @@ def test_ready_returns_ok_when_model_resources_loaded(client, monkeypatch):
         "forecast_horizon": api_main.MODEL_FORECAST_HORIZON,
         "ready": True,
     }
+
+
+def test_demo_mode_reports_ready_without_model_artifacts(client, monkeypatch):
+    monkeypatch.setenv(api_main.API_DEMO_MODE_ENV, "true")
+    api_main.load_demo_resources()
+
+    response = client.get("/ready")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "online",
+        "demo_mode": True,
+        "model_loaded": False,
+        "scaler_loaded": False,
+        "station_mapping_loaded": True,
+        "station_catalog_loaded": True,
+        "warehouse_lookup_enabled": False,
+        "forecast_horizon": api_main.MODEL_FORECAST_HORIZON,
+        "ready": True,
+    }
+
+
+def test_demo_mode_serves_station_catalog(client, monkeypatch):
+    monkeypatch.setenv(api_main.API_DEMO_MODE_ENV, "true")
+    api_main.load_demo_resources()
+
+    response = client.get("/stations")
+
+    assert response.status_code == 200
+    assert response.json()["stations"] == {
+        station_no: fixture["name"]
+        for station_no, fixture in api_main.DEMO_STATION_FIXTURES.items()
+    }
+
+
+def test_demo_mode_predicts_without_model_artifacts(client, monkeypatch):
+    monkeypatch.setenv(api_main.API_DEMO_MODE_ENV, "true")
+    api_main.load_demo_resources()
+
+    response = client.post(
+        "/predict",
+        json={
+            "station_no": "500101002",
+            "bikes_available": 8,
+            "temperature": 33,
+            "rain": 3,
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "station_no": "500101002",
+        "predicted_bikes_next_hour": 1,
+        "forecast_horizon": api_main.MODEL_FORECAST_HORIZON,
+        "forecast_horizon_description": api_main.MODEL_FORECAST_HORIZON_DESCRIPTION,
+    }
+
+
+def test_demo_mode_ranks_station_risks_without_model_artifacts(client, monkeypatch):
+    monkeypatch.setenv(api_main.API_DEMO_MODE_ENV, "true")
+    api_main.load_demo_resources()
+
+    response = client.post(
+        "/stations/risk",
+        json={
+            "temperature": 25,
+            "rain": 0,
+            "stations": [
+                {
+                    "station_no": "500101002",
+                    "bikes_available": 5,
+                    "spaces_available": 15,
+                },
+                {
+                    "station_no": "500101003",
+                    "bikes_available": 18,
+                    "spaces_available": 2,
+                },
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    risks = response.json()["risks"]
+    assert [risk["station_no"] for risk in risks] == ["500101002", "500101003"]
+    assert risks[0]["risk_level"] == "stock_out"
+    assert risks[0]["suggested_action"] == "rebalance_in"
+    assert risks[1]["risk_level"] == "full_load"
+    assert risks[1]["suggested_action"] == "rebalance_out"
 
 
 def test_get_stations_requires_model_information(client):

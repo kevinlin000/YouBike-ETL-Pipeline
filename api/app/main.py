@@ -24,6 +24,15 @@ MODEL_FORECAST_HORIZON_DESCRIPTION = (
     "one-hour forecast."
 )
 REQUEST_ID_HEADER = "X-Request-ID"
+API_DEMO_MODE_ENV = "API_DEMO_MODE"
+TRUTHY_VALUES = {"1", "true", "yes", "on"}
+DEMO_STATION_FIXTURES = {
+    "500101001": {"name": "捷運公館站 (大安區)", "capacity": 20, "station_bias": -1},
+    "500101002": {"name": "臺大資訊大樓 (大安區)", "capacity": 20, "station_bias": -4},
+    "500101003": {"name": "捷運市政府站 (信義區)", "capacity": 20, "station_bias": 3},
+    "500101004": {"name": "捷運西門站 (萬華區)", "capacity": 20, "station_bias": 1},
+    "500101005": {"name": "捷運士林站 (士林區)", "capacity": 20, "station_bias": 4},
+}
 
 # --- 1. 定義資料格式 ---
 class RecentObservation(BaseModel):
@@ -167,6 +176,7 @@ class StationsResponse(BaseModel):
 
 class HealthResponse(BaseModel):
     status: str
+    demo_mode: bool
     model_loaded: bool
     scaler_loaded: bool
     station_mapping_loaded: bool
@@ -183,6 +193,19 @@ scaler = None
 station_mapping = None
 station_info_map = None  # 新增：站點資訊對照表
 db_engine: Engine | None = None
+
+
+def api_demo_mode_enabled() -> bool:
+    return os.getenv(API_DEMO_MODE_ENV, "").strip().lower() in TRUTHY_VALUES
+
+
+def load_demo_resources() -> None:
+    global station_mapping, station_info_map
+    station_mapping = {station_no: index for index, station_no in enumerate(DEMO_STATION_FIXTURES)}
+    station_info_map = {
+        station_no: fixture["name"]
+        for station_no, fixture in DEMO_STATION_FIXTURES.items()
+    }
 
 # --- 3. 定義模型架構 (必須與訓練程式碼完全同步) ---
 class MultiStationLSTM(nn.Module):
@@ -223,6 +246,19 @@ class MultiStationLSTM(nn.Module):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global model, scaler, station_mapping, station_info_map, db_engine
+
+    if api_demo_mode_enabled():
+        load_demo_resources()
+        db_engine = None
+        logger.info("%s is enabled; using deterministic API demo fixtures.", API_DEMO_MODE_ENV)
+        yield
+        model = None
+        scaler = None
+        station_mapping = None
+        station_info_map = None
+        db_engine = None
+        logger.info("API demo resources released.")
+        return
     
     # 模型檔案路徑
     # 取得目前 main.py 的所在目錄 (api/app)
@@ -252,6 +288,8 @@ async def lifespan(app: FastAPI):
     yield
     model = None
     scaler = None
+    station_mapping = None
+    station_info_map = None
     db_engine = None
     logger.info("模型資源已釋放。")
 
@@ -302,6 +340,8 @@ def get_rain_cat(rain: float) -> int:
     return 3
 
 def ensure_model_ready() -> None:
+    if api_demo_mode_enabled():
+        return
     if model is None or scaler is None:
         raise HTTPException(status_code=503, detail="Model is not ready")
 
@@ -310,12 +350,14 @@ def ensure_station_supported(station_no: str) -> None:
         raise HTTPException(status_code=404, detail="Station ID not supported by model")
 
 def service_state() -> dict:
+    demo_mode = api_demo_mode_enabled()
     model_loaded = model is not None
     scaler_loaded = scaler is not None
     station_mapping_loaded = station_mapping is not None
     station_catalog_loaded = station_info_map is not None
     return {
         "status": "online",
+        "demo_mode": demo_mode,
         "model_loaded": model_loaded,
         "scaler_loaded": scaler_loaded,
         "station_mapping_loaded": station_mapping_loaded,
@@ -325,6 +367,8 @@ def service_state() -> dict:
     }
 
 def inference_ready() -> bool:
+    if api_demo_mode_enabled():
+        return station_mapping is not None and station_info_map is not None
     state = service_state()
     return (
         state["model_loaded"]
@@ -435,6 +479,34 @@ def build_feature_sequence(
 
     return np.array([observation_features(observation) for observation in recent_observations])
 
+
+def demo_predict_bikes(
+    station_no: str,
+    bikes_available: int,
+    temperature: float,
+    rain: float,
+    recent_observations: list[RecentObservation] | None,
+) -> int:
+    fixture = DEMO_STATION_FIXTURES[station_no]
+    capacity = int(fixture["capacity"])
+    if recent_observations:
+        baseline = sum(observation.bikes_available for observation in recent_observations) / len(recent_observations)
+    else:
+        baseline = bikes_available
+
+    rain_penalty = 0
+    if rain > 10:
+        rain_penalty = 3
+    elif rain > 2:
+        rain_penalty = 2
+    elif rain > 0:
+        rain_penalty = 1
+
+    heat_penalty = 1 if temperature >= 32 else 0
+    raw_prediction = baseline + int(fixture["station_bias"]) - rain_penalty - heat_penalty
+    return min(capacity, max(0, int(round(raw_prediction))))
+
+
 def predict_bikes_next_hour(
     station_no: str,
     bikes_available: int,
@@ -442,6 +514,15 @@ def predict_bikes_next_hour(
     rain: float,
     recent_observations: list[RecentObservation] | None = None,
 ) -> int:
+    if api_demo_mode_enabled():
+        return demo_predict_bikes(
+            station_no,
+            bikes_available,
+            temperature,
+            rain,
+            recent_observations,
+        )
+
     # 特徵工程與模型輸入必須與訓練流程保持一致。
     raw_features = build_feature_sequence(
         station_no,

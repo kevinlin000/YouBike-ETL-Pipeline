@@ -6,7 +6,7 @@
 
 ## 架構重點
 
-- **FastAPI 是模型服務核心。** API 負責 request validation、health/readiness 檢查、request id tracing、模型載入狀態、站點支援範圍檢查、forecast horizon metadata，以及單站預測與多站風險排序 endpoint。
+- **FastAPI 是模型服務核心。** API 負責 request validation、health/readiness 檢查、request id tracing、模型載入狀態、站點支援範圍檢查、forecast horizon metadata，以及單站預測與多站風險排序 endpoint；API demo mode 可在沒有模型檔與 MySQL 時展示同一組 contract。
 - **模型 artifact 是 runtime dependency。** PyTorch 權重、scaler、站點 mapping 與站點 metadata 由 API service 啟動時載入。
 - **Streamlit 是資料應用介面。** Dashboard 消費 API 形狀一致的 response，顯示單站預測與多站缺車、滿站風險排序。
 - **Airflow 與 MySQL 是資料基礎。** Airflow 負責定期擷取站點狀態，MySQL 保存站點維度表與狀態事實表，提供分析與模型訓練資料來源。

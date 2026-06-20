@@ -25,6 +25,7 @@
 ```json
 {
   "status": "online",
+  "demo_mode": false,
   "model_loaded": true,
   "scaler_loaded": true,
   "station_mapping_loaded": true,
@@ -34,7 +35,7 @@
 }
 ```
 
-`/health` 是 liveness check：只要 API process 可回應就回 `200`，同時揭露模型、scaler、站點 mapping、站點 metadata 與 warehouse fallback 是否已啟用。
+`/health` 是 liveness check：只要 API process 可回應就回 `200`，同時揭露是否為 demo mode、模型、scaler、站點 mapping、站點 metadata 與 warehouse fallback 是否已啟用。
 
 `GET /ready`
 
@@ -43,6 +44,7 @@
 ```json
 {
   "status": "online",
+  "demo_mode": false,
   "model_loaded": true,
   "scaler_loaded": true,
   "station_mapping_loaded": true,
@@ -55,7 +57,19 @@
 
 錯誤行為：
 
-- `503`：模型、scaler、站點 mapping 或站點 metadata 任一項尚未載入。Response `detail` 會包含同一組 resource state 並標示 `ready: false`。
+- `503`：正式模式下，模型、scaler、站點 mapping 或站點 metadata 任一項尚未載入。Response `detail` 會包含同一組 resource state 並標示 `ready: false`。
+
+## API Demo Mode
+
+若設定 `API_DEMO_MODE=true`，FastAPI 會載入固定範例站點資料，不讀取模型檔、不連接 MySQL，也不需要 Docker Compose。此時 `/ready` 會回 `200`，`/predict` 與 `/stations/risk` 會回傳可重現的模擬結果。
+
+啟動方式：
+
+```bash
+make api-demo
+```
+
+這個模式用於檢視 API contract、request validation、readiness、request tracing 與 dashboard 對接流程，不代表模型效果評估。
 
 ## Request Tracing
 

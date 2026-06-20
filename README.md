@@ -180,12 +180,14 @@ FastAPI endpoint：
 | --- | --- | --- |
 | GET | `/` | 服務狀態 |
 | GET | `/health` | 服務行程健康檢查，回傳模型與資料資源載入狀態 |
-| GET | `/ready` | 推論 readiness 檢查，模型、scaler 與站點 metadata 都載入才回 200 |
+| GET | `/ready` | 推論 readiness 檢查；正式模式需模型、scaler 與站點 metadata 都載入才回 200，API demo mode 則使用固定範例資料 |
 | GET | `/stations` | 回傳模型支援的站點清單 |
 | POST | `/predict` | 預測指定站點在模型時窗內的可借車數 |
 | POST | `/stations/risk` | 批次評估多站點缺車 / 滿站風險並排序 |
 
 `/predict` 與 `/stations/risk` 支援可選的 `recent_observations`，可傳入 3 筆近期觀測值作為 LSTM lag window。若未提供，API 會在 DB credentials 存在時嘗試從 MySQL `station_status` 查詢最近 3 筆 `bikes_available`；查不到完整 3 筆或未設定 DB 時，會維持展示相容模式：使用目前狀態重複成短序列。
+
+若只要檢視 FastAPI contract，可用 `API_DEMO_MODE=true` 或 `make api-demo` 啟動固定範例 API。此模式不載入模型檔、不連 MySQL，`/ready` 會回 200，`/predict` 與 `/stations/risk` 會回傳可重現的模擬結果；它只用於展示 API 行為，不代表模型評估結果。
 
 API 回應會帶 `X-Request-ID`。呼叫端若有傳入同名 header，服務會沿用；若未傳入，服務會自動產生一組 request id，並在 log 中記錄 request id、method、path、status code 與處理時間，方便追查單次推論請求。
 
@@ -394,6 +396,15 @@ make dashboard-demo
 
 這等同於執行 `DASHBOARD_DEMO_MODE=true streamlit run dashboard/app.py`。此模式使用固定範例站點與可重現的模擬推論結果，方便檢視單站預測與多站風險排序流程；它不是模型效果評估結果。
 
+如果想直接展示 FastAPI，而不依賴模型檔、MySQL 或 Docker Compose，可啟動 API demo mode：
+
+```bash
+make install-app
+make api-demo
+```
+
+啟動後可開啟 http://localhost:8000/docs。此模式會提供固定站點 catalog、`/health`、`/ready`、`/predict` 與 `/stations/risk`，適合面試時展示 API contract、request validation、readiness 與 request tracing。
+
 ETL load 前會執行資料品質 validation。預設 `ETL_VALIDATION_MODE=strict`，遇到重複 status key、負值或非數值 availability 會中止；若只想記錄警告並繼續，可設定 `ETL_VALIDATION_MODE=warn`。
 
 ### 3. 執行測試
@@ -434,7 +445,7 @@ make dbt-build
 - ETL 空資料與缺欄位錯誤處理
 - ETL 正常轉換、站點去重與台北時間轉 UTC
 - ETL transform 後的重複 status key、負值與非數值 availability validation
-- FastAPI `/health` liveness、`/ready` inference-readiness endpoint 與 `X-Request-ID` response tracing
+- FastAPI `/health` liveness、`/ready` inference-readiness、API demo mode 與 `X-Request-ID` response tracing
 - `/stations` model-not-ready 行為
 - `/predict` request validation、`recent_observations` lag-window 與 warehouse lookup fallback 行為
 - `/stations/risk` 批次風險排序、request validation、unknown station 與 per-station `recent_observations` 行為

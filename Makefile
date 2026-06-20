@@ -2,7 +2,7 @@ DBT_PYTHON ?= python3.11
 DBT_VENV ?= .venv-dbt
 DBT_BIN := $(DBT_VENV)/bin/dbt
 
-.PHONY: help install-dev install-test install-app install-dbt test dbt-parse dbt-build train-lstm dashboard-demo up down logs ps
+.PHONY: help install-dev install-test install-app install-dbt test dbt-parse dbt-build train-lstm api-demo dashboard-demo up down logs ps
 
 help:
 	@echo "Available commands:"
@@ -14,6 +14,7 @@ help:
 	@echo "  make dbt-parse    Parse the dbt analytics project"
 	@echo "  make dbt-build    Run dbt build for the analytics project"
 	@echo "  make train-lstm   Train LSTM artifacts into .scratch/model_training"
+	@echo "  make api-demo     Run FastAPI with deterministic demo responses"
 	@echo "  make dashboard-demo Run Streamlit dashboard in deterministic demo mode"
 	@echo "  make up           Build and start Docker Compose services"
 	@echo "  make down         Stop Docker Compose services"
@@ -48,6 +49,9 @@ dbt-build:
 
 train-lstm:
 	python scripts/train_multistation_lstm.py --data-path data/processed/youbike_weather_merged.csv --output-dir .scratch/model_training
+
+api-demo:
+	API_DEMO_MODE=true python -m uvicorn api.app.main:app --reload --port 8000
 
 dashboard-demo:
 	DASHBOARD_DEMO_MODE=true streamlit run dashboard/app.py
