@@ -2,7 +2,7 @@ DBT_PYTHON ?= python3.11
 DBT_VENV ?= .venv-dbt
 DBT_BIN := $(DBT_VENV)/bin/dbt
 
-.PHONY: help install-dev install-test install-app install-dbt test dbt-parse dbt-build train-lstm api-demo dashboard-demo up down logs ps
+.PHONY: help install-dev install-test install-app install-dbt test dbt-parse dbt-build train-lstm api-demo api-benchmark dashboard-demo up down logs ps
 
 help:
 	@echo "Available commands:"
@@ -15,6 +15,7 @@ help:
 	@echo "  make dbt-build    Run dbt build for the analytics project"
 	@echo "  make train-lstm   Train LSTM artifacts into .scratch/model_training"
 	@echo "  make api-demo     Run FastAPI with deterministic demo responses"
+	@echo "  make api-benchmark Run a small sequential API latency smoke test"
 	@echo "  make dashboard-demo Run Streamlit dashboard in deterministic demo mode"
 	@echo "  make up           Build and start Docker Compose services"
 	@echo "  make down         Stop Docker Compose services"
@@ -52,6 +53,9 @@ train-lstm:
 
 api-demo:
 	API_DEMO_MODE=true python -m uvicorn api.app.main:app --reload --port 8000
+
+api-benchmark:
+	python scripts/benchmark_api.py --base-url http://127.0.0.1:8000 --requests 20 --warmup 2
 
 dashboard-demo:
 	DASHBOARD_DEMO_MODE=true streamlit run dashboard/app.py

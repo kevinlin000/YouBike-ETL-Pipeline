@@ -232,14 +232,51 @@ API 回傳排序後的風險清單，dashboard 可以直接呈現調度順位，
 - dashboard client live/demo path。
 - LSTM training script 的小型 fixture、baseline suite 與 artifact 輸出。
 - dbt seed / source / model tests。
+- API latency smoke test 的統計摘要輸出。
 
 CI 會在 push / pull request 時跑 Python tests 與 dbt seed/build。這讓作品不是只靠手動展示，也能用自動化測試證明主要 contract 沒有破掉。
+
+## 效能 smoke test
+
+專案提供一個零新增依賴的 API latency smoke test：
+
+```bash
+make api-demo
+```
+
+另開一個 terminal：
+
+```bash
+make api-benchmark
+```
+
+benchmark 會依序呼叫：
+
+- `GET /ready`
+- `POST /predict`
+- `POST /stations/risk`
+
+輸出欄位包含：
+
+- requests
+- errors
+- min / avg / p50 / p95 / max latency
+
+本機 API demo mode 範例輸出如下；這只是開發機上的 sequential smoke test，不代表 production SLO：
+
+| endpoint | requests | errors | min ms | avg ms | p50 ms | p95 ms | max ms |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| predict | 20 | 0 | 2.17 | 2.47 | 2.37 | 2.82 | 2.89 |
+| ready | 20 | 0 | 1.89 | 2.30 | 2.18 | 3.05 | 3.15 |
+| risk | 20 | 0 | 2.28 | 2.57 | 2.50 | 2.84 | 3.33 |
+
+這個 benchmark 是 sequential smoke test，不是正式 load test。它的定位是檢查本機 demo API 的基本可用性、latency 量級與錯誤率；若要討論高併發，下一步應補 k6 / Locust、concurrency、ramp-up、SLO 與機器規格。
 
 ## 擴展方向
 
 如果要把這個作品往更高階後端 / AI 應用作品推進，優先順序如下：
 
-1. **效能與負載測試**：用 k6 或 Locust 測 `/predict`、`/stations/risk` 的 latency、throughput 與錯誤率。
+1. **正式負載測試**：在目前 API latency smoke test 之外，用 k6 或 Locust 測 `/predict`、`/stations/risk` 的 concurrency、throughput 與錯誤率。
 2. **結構化 observability**：輸出 JSON log、加入 metrics endpoint，並建立簡單 dashboard。
 3. **模型版本管理**：在 response 加 model version / artifact hash，讓 prediction 可追溯。
 4. **Feature store-lite**：補 weather history table，讓 warehouse fallback 能查對齊時間的天氣特徵。
