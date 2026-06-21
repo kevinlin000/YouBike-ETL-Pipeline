@@ -181,6 +181,7 @@ FastAPI endpoint：
 | GET | `/` | 服務狀態 |
 | GET | `/health` | 服務行程健康檢查，回傳模型與資料資源載入狀態 |
 | GET | `/ready` | 推論 readiness 檢查；正式模式需模型、scaler 與站點 metadata 都載入才回 200，API demo mode 則使用固定範例資料 |
+| GET | `/metrics` | Prometheus-style 文字指標，回傳 request count、5xx error count 與 latency summary |
 | GET | `/stations` | 回傳模型支援的站點清單 |
 | POST | `/predict` | 預測指定站點在模型時窗內的可借車數 |
 | POST | `/stations/risk` | 批次評估多站點缺車 / 滿站風險並排序 |
@@ -190,6 +191,8 @@ FastAPI endpoint：
 若只要檢視 FastAPI contract，可用 `API_DEMO_MODE=true` 或 `make api-demo` 啟動固定範例 API。此模式不載入模型檔、不連 MySQL，`/ready` 會回 200，`/predict` 與 `/stations/risk` 會回傳可重現的模擬結果；它只用於展示 API 行為，不代表模型評估結果。
 
 API 回應會帶 `X-Request-ID`。呼叫端若有傳入同名 header，服務會沿用；若未傳入，服務會自動產生一組 request id，並在 log 中記錄 request id、method、path、status code 與處理時間，方便追查單次推論請求。
+
+`/metrics` 會輸出輕量 Prometheus-style 指標，包含各 endpoint 的 request count、5xx error count、duration sum/count/max。這是本機與展示用的基礎 observability，不等同於完整 production monitoring。
 
 注意：API 仍保留 `predicted_bikes_next_hour` / `predicted_spaces_next_hour` 這組早期 demo 欄位名稱以維持相容性；實際 horizon 應以 response 中的 `forecast_horizon` 與 `forecast_horizon_description` 判讀。目前本地評估使用 `horizon_steps=1`，代表下一筆 observation，而不是已驗證的一小時預測。
 
@@ -453,7 +456,7 @@ make dbt-build
 - ETL 空資料與缺欄位錯誤處理
 - ETL 正常轉換、站點去重與台北時間轉 UTC
 - ETL transform 後的重複 status key、負值與非數值 availability validation
-- FastAPI `/health` liveness、`/ready` inference-readiness、API demo mode 與 `X-Request-ID` response tracing
+- FastAPI `/health` liveness、`/ready` inference-readiness、`/metrics` observability、API demo mode 與 `X-Request-ID` response tracing
 - API latency smoke test 的統計摘要輸出
 - `/stations` model-not-ready 行為
 - `/predict` request validation、`recent_observations` lag-window 與 warehouse lookup fallback 行為

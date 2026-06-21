@@ -6,9 +6,10 @@ import numpy as np
 import os
 import logging
 import time
+from threading import Lock
 from uuid import uuid4
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 from pydantic import BaseModel, field_validator
 from contextlib import asynccontextmanager
 from sqlalchemy import create_engine, text
@@ -25,6 +26,7 @@ MODEL_FORECAST_HORIZON_DESCRIPTION = (
 )
 REQUEST_ID_HEADER = "X-Request-ID"
 API_DEMO_MODE_ENV = "API_DEMO_MODE"
+METRICS_PATH = "/metrics"
 TRUTHY_VALUES = {"1", "true", "yes", "on"}
 DEMO_STATION_FIXTURES = {
     "500101001": {"name": "捷運公館站 (大安區)", "capacity": 20, "station_bias": -1},
@@ -193,6 +195,8 @@ scaler = None
 station_mapping = None
 station_info_map = None  # 新增：站點資訊對照表
 db_engine: Engine | None = None
+request_metrics: dict[tuple[str, str], dict[str, float | int]] = {}
+request_metrics_lock = Lock()
 
 
 def api_demo_mode_enabled() -> bool:
@@ -206,6 +210,75 @@ def load_demo_resources() -> None:
         station_no: fixture["name"]
         for station_no, fixture in DEMO_STATION_FIXTURES.items()
     }
+
+
+def reset_request_metrics() -> None:
+    with request_metrics_lock:
+        request_metrics.clear()
+
+
+def record_request_metric(
+    method: str,
+    path: str,
+    status_code: int,
+    duration_ms: float,
+) -> None:
+    if path == METRICS_PATH:
+        return
+
+    key = (method, path)
+    with request_metrics_lock:
+        metric = request_metrics.setdefault(
+            key,
+            {
+                "requests": 0,
+                "errors": 0,
+                "duration_ms_sum": 0.0,
+                "duration_ms_max": 0.0,
+            },
+        )
+        metric["requests"] = int(metric["requests"]) + 1
+        if status_code >= 500:
+            metric["errors"] = int(metric["errors"]) + 1
+        metric["duration_ms_sum"] = float(metric["duration_ms_sum"]) + duration_ms
+        metric["duration_ms_max"] = max(float(metric["duration_ms_max"]), duration_ms)
+
+
+def label_value(value: str) -> str:
+    return value.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
+
+
+def render_metrics() -> str:
+    with request_metrics_lock:
+        snapshot = {
+            key: dict(value)
+            for key, value in sorted(request_metrics.items())
+        }
+
+    lines = [
+        "# HELP youbike_api_requests_total Total HTTP requests handled by the API.",
+        "# TYPE youbike_api_requests_total counter",
+        "# HELP youbike_api_request_errors_total HTTP 5xx responses handled by the API.",
+        "# TYPE youbike_api_request_errors_total counter",
+        "# HELP youbike_api_request_duration_ms_sum Total request duration in milliseconds.",
+        "# TYPE youbike_api_request_duration_ms_sum counter",
+        "# HELP youbike_api_request_duration_ms_count Number of measured request durations.",
+        "# TYPE youbike_api_request_duration_ms_count counter",
+        "# HELP youbike_api_request_duration_ms_max Maximum observed request duration in milliseconds.",
+        "# TYPE youbike_api_request_duration_ms_max gauge",
+    ]
+    for (method, path), metric in snapshot.items():
+        labels = f'method="{label_value(method)}",path="{label_value(path)}"'
+        lines.extend(
+            [
+                f"youbike_api_requests_total{{{labels}}} {int(metric['requests'])}",
+                f"youbike_api_request_errors_total{{{labels}}} {int(metric['errors'])}",
+                f"youbike_api_request_duration_ms_sum{{{labels}}} {float(metric['duration_ms_sum']):.6f}",
+                f"youbike_api_request_duration_ms_count{{{labels}}} {int(metric['requests'])}",
+                f"youbike_api_request_duration_ms_max{{{labels}}} {float(metric['duration_ms_max']):.6f}",
+            ]
+        )
+    return "\n".join(lines) + "\n"
 
 # --- 3. 定義模型架構 (必須與訓練程式碼完全同步) ---
 class MultiStationLSTM(nn.Module):
@@ -303,6 +376,7 @@ async def add_request_context(request: Request, call_next):
         response = await call_next(request)
     except Exception:
         duration_ms = (time.perf_counter() - start_time) * 1000
+        record_request_metric(request.method, request.url.path, 500, duration_ms)
         logger.exception(
             "request_failed request_id=%s method=%s path=%s duration_ms=%.2f",
             request_id,
@@ -317,6 +391,7 @@ async def add_request_context(request: Request, call_next):
         )
 
     duration_ms = (time.perf_counter() - start_time) * 1000
+    record_request_metric(request.method, request.url.path, response.status_code, duration_ms)
     response.headers[REQUEST_ID_HEADER] = request_id
     logger.info(
         "request_completed request_id=%s method=%s path=%s status_code=%s duration_ms=%.2f",
@@ -567,6 +642,10 @@ def home():
 @app.get("/health", response_model=HealthResponse)
 def health():
     return service_state()
+
+@app.get(METRICS_PATH)
+def metrics():
+    return PlainTextResponse(render_metrics(), media_type="text/plain")
 
 @app.get("/ready", response_model=ReadinessResponse)
 def readiness():

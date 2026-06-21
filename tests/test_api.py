@@ -15,6 +15,7 @@ from api.app import main as api_main  # noqa: E402
 def reset_model_resources(monkeypatch):
     """Keep API tests independent from real model artifacts."""
     monkeypatch.delenv(api_main.API_DEMO_MODE_ENV, raising=False)
+    api_main.reset_request_metrics()
     monkeypatch.setattr(api_main, "model", None)
     monkeypatch.setattr(api_main, "scaler", None)
     monkeypatch.setattr(api_main, "station_mapping", None)
@@ -99,6 +100,30 @@ def test_health_returns_service_state_without_ready_model(client):
         "warehouse_lookup_enabled": False,
         "forecast_horizon": api_main.MODEL_FORECAST_HORIZON,
     }
+
+
+def test_metrics_endpoint_exposes_request_summary(client):
+    response = client.get("/ready")
+    assert response.status_code == 503
+
+    metrics_response = client.get("/metrics")
+
+    assert metrics_response.status_code == 200
+    assert "text/plain" in metrics_response.headers["content-type"]
+    body = metrics_response.text
+    assert "# TYPE youbike_api_requests_total counter" in body
+    assert 'youbike_api_requests_total{method="GET",path="/ready"} 1' in body
+    assert 'youbike_api_request_errors_total{method="GET",path="/ready"} 1' in body
+    assert 'youbike_api_request_duration_ms_count{method="GET",path="/ready"} 1' in body
+
+
+def test_metrics_endpoint_does_not_record_itself(client):
+    first_response = client.get("/metrics")
+    second_response = client.get("/metrics")
+
+    assert first_response.status_code == 200
+    assert second_response.status_code == 200
+    assert 'path="/metrics"' not in second_response.text
 
 
 def test_ready_reports_unavailable_when_model_resources_missing(client):

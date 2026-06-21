@@ -91,6 +91,7 @@ FastAPI 是本專案的後端核心。主要 endpoint：
 | --- | --- | --- |
 | GET | `/health` | liveness check，確認 API process 可回應，並回傳資源載入狀態 |
 | GET | `/ready` | inference readiness，確認是否具備推論所需資源 |
+| GET | `/metrics` | Prometheus-style 文字指標，輸出 request count、5xx error count 與 latency summary |
 | GET | `/stations` | 回傳模型支援的站點 catalog |
 | POST | `/predict` | 單站模型時窗預測 |
 | POST | `/stations/risk` | 多站缺車 / 滿站風險排序 |
@@ -125,6 +126,20 @@ API middleware 會為每個 response 加上 `X-Request-ID`：
 - 未處理例外會收斂成標準 500 JSON，並保留 request id。
 
 這讓 dashboard 或 API client 發生問題時，可以用同一組 request id 回到後端 log 追查單次請求。這不是完整 observability 平台，但已經具備後端服務最基本的 correlation 能力。
+
+## Metrics endpoint
+
+`GET /metrics` 會輸出輕量 Prometheus-style text metrics。目前追蹤的指標包含：
+
+- `youbike_api_requests_total`
+- `youbike_api_request_errors_total`
+- `youbike_api_request_duration_ms_sum`
+- `youbike_api_request_duration_ms_count`
+- `youbike_api_request_duration_ms_max`
+
+指標以 HTTP method 和 path 作為 label。`/metrics` 本身不會被納入統計，避免 scrape 行為讓 request count 自我膨脹。
+
+這個 endpoint 的定位是基礎可觀測性：讓本機 demo、面試展示或簡單監控可以看到 API 是否有 request、5xx error 和 latency 變化。它不是完整 production monitoring；若要上 production，仍應補 histogram buckets、process metrics、dashboard、alert rules 和 log aggregation。
 
 ## Demo mode 設計
 
@@ -226,6 +241,7 @@ API 回傳排序後的風險清單，dashboard 可以直接呈現調度順位，
 - ETL transform 與資料品質邊界。
 - FastAPI health/readiness。
 - request tracing。
+- `/metrics` request count、error count 與 latency summary。
 - API demo mode。
 - `/predict` payload validation、unknown station、lag window、warehouse fallback。
 - `/stations/risk` 批次排序、風險分類、per-station lag window。
@@ -277,7 +293,7 @@ benchmark 會依序呼叫：
 如果要把這個作品往更高階後端 / AI 應用作品推進，優先順序如下：
 
 1. **正式負載測試**：在目前 API latency smoke test 之外，用 k6 或 Locust 測 `/predict`、`/stations/risk` 的 concurrency、throughput 與錯誤率。
-2. **結構化 observability**：輸出 JSON log、加入 metrics endpoint，並建立簡單 dashboard。
+2. **結構化 observability**：將目前 `/metrics` 擴充為 histogram buckets，輸出 JSON log，並建立簡單 dashboard / alert rules。
 3. **模型版本管理**：在 response 加 model version / artifact hash，讓 prediction 可追溯。
 4. **Feature store-lite**：補 weather history table，讓 warehouse fallback 能查對齊時間的天氣特徵。
 5. **背景工作與快取**：對熱門站點或批次風險排序加入 cache / scheduled precompute。

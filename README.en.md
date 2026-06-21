@@ -163,6 +163,7 @@ FastAPI endpoints:
 | GET | `/` | Service status |
 | GET | `/health` | Process-level health check with model and data-resource load state |
 | GET | `/ready` | Inference-readiness check; in normal mode it returns 200 only when model, scaler, and station metadata are loaded; API demo mode uses fixed sample data |
+| GET | `/metrics` | Prometheus-style text metrics with request count, 5xx error count, and latency summary |
 | GET | `/stations` | Supported station list |
 | POST | `/predict` | Predicts available bikes for the model horizon |
 | POST | `/stations/risk` | Ranks multi-station stock-out / full-load risk |
@@ -172,6 +173,8 @@ FastAPI endpoints:
 For API contract inspection without model files, MySQL, or Docker Compose, run with `API_DEMO_MODE=true` or `make api-demo`. In this mode `/ready` returns 200 and `/predict` / `/stations/risk` return deterministic simulated responses. It is for API workflow inspection, not model evaluation.
 
 API responses include `X-Request-ID`. If the caller sends the header, the service echoes it; otherwise the service generates one. Logs include the request id, method, path, status code, and duration for each completed request.
+
+`/metrics` returns lightweight Prometheus-style metrics for request count, 5xx error count, and duration sum/count/max per endpoint. It is basic local/demo observability, not a complete production monitoring stack.
 
 Note: the API keeps the legacy `predicted_bikes_next_hour` / `predicted_spaces_next_hour` response keys for compatibility with the original demo. Interpret the actual horizon through `forecast_horizon` and `forecast_horizon_description`. The current local evaluation uses `horizon_steps=1`, meaning the next observation rather than a proven one-hour forecast.
 
@@ -435,7 +438,7 @@ Current tests cover:
 - ETL empty-input and missing-column handling
 - ETL successful transform behavior, station deduplication, and Taipei-time to UTC conversion
 - ETL post-transform validation for duplicate status keys, negative availability, and non-numeric availability fields
-- FastAPI `/health` liveness, `/ready` inference-readiness, API demo mode, and `X-Request-ID` response tracing
+- FastAPI `/health` liveness, `/ready` inference-readiness, `/metrics` observability, API demo mode, and `X-Request-ID` response tracing
 - API latency smoke-test summary output
 - `/stations` model-not-ready behavior
 - `/predict` request validation, `recent_observations` lag-window behavior, and warehouse lookup fallback behavior
