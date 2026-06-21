@@ -38,6 +38,65 @@ class BenchmarkRun:
     elapsed_seconds: float
 
 
+@dataclass(frozen=True)
+class BenchmarkProfile:
+    name: str
+    description: str
+    requests_per_endpoint: int
+    warmup_requests: int
+    concurrency: int
+    timeout: float
+    p95_warn_ms: float
+    p95_fail_ms: float
+    max_error_rate_percent: float
+
+
+BENCHMARK_PROFILES = {
+    "smoke": BenchmarkProfile(
+        name="smoke",
+        description="Quick contract and connectivity check before demos.",
+        requests_per_endpoint=5,
+        warmup_requests=1,
+        concurrency=1,
+        timeout=5.0,
+        p95_warn_ms=500.0,
+        p95_fail_ms=1000.0,
+        max_error_rate_percent=0.0,
+    ),
+    "demo": BenchmarkProfile(
+        name="demo",
+        description="Short local concurrency check for interview walkthroughs.",
+        requests_per_endpoint=30,
+        warmup_requests=2,
+        concurrency=5,
+        timeout=5.0,
+        p95_warn_ms=500.0,
+        p95_fail_ms=1000.0,
+        max_error_rate_percent=0.0,
+    ),
+    "capacity": BenchmarkProfile(
+        name="capacity",
+        description="Longer local capacity probe for latency and error-rate discussion.",
+        requests_per_endpoint=120,
+        warmup_requests=5,
+        concurrency=12,
+        timeout=10.0,
+        p95_warn_ms=750.0,
+        p95_fail_ms=1500.0,
+        max_error_rate_percent=1.0,
+    ),
+}
+
+
+@dataclass(frozen=True)
+class BenchmarkConfig:
+    profile: BenchmarkProfile
+    requests_per_endpoint: int
+    warmup_requests: int
+    concurrency: int
+    timeout: float
+
+
 def benchmark_cases() -> list[EndpointCase]:
     return [
         EndpointCase(name="ready", method="GET", path="/ready"),
@@ -198,6 +257,63 @@ def format_markdown_table(summaries: list[dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
+def assess_summaries(
+    summaries: list[dict[str, Any]],
+    profile: BenchmarkProfile,
+) -> list[dict[str, Any]]:
+    assessments = []
+    for summary in summaries:
+        status = "pass"
+        reasons = []
+
+        if summary["error_rate_percent"] > profile.max_error_rate_percent:
+            status = "fail"
+            reasons.append(
+                "error rate {error_rate_percent:.2f}% > {limit:.2f}%".format(
+                    error_rate_percent=summary["error_rate_percent"],
+                    limit=profile.max_error_rate_percent,
+                )
+            )
+
+        if summary["p95_ms"] > profile.p95_fail_ms:
+            status = "fail"
+            reasons.append(
+                "p95 {p95_ms:.2f} ms > fail threshold {limit:.2f} ms".format(
+                    p95_ms=summary["p95_ms"],
+                    limit=profile.p95_fail_ms,
+                )
+            )
+        elif summary["p95_ms"] > profile.p95_warn_ms and status != "fail":
+            status = "watch"
+            reasons.append(
+                "p95 {p95_ms:.2f} ms > watch threshold {limit:.2f} ms".format(
+                    p95_ms=summary["p95_ms"],
+                    limit=profile.p95_warn_ms,
+                )
+            )
+
+        assessments.append(
+            {
+                "endpoint": summary["endpoint"],
+                "status": status,
+                "reason": "; ".join(reasons) if reasons else "within local profile thresholds",
+            }
+        )
+    return assessments
+
+
+def format_assessment_table(assessments: list[dict[str, Any]]) -> str:
+    lines = [
+        "| endpoint | status | reason |",
+        "| --- | --- | --- |",
+    ]
+    for assessment in assessments:
+        lines.append(
+            "| {endpoint} | {status} | {reason} |".format(**assessment)
+        )
+    return "\n".join(lines)
+
+
 def run_benchmark(
     base_url: str,
     requests_per_endpoint: int,
@@ -252,37 +368,85 @@ def run_benchmark(
     return BenchmarkRun(measurements=measurements, elapsed_seconds=elapsed_seconds)
 
 
+def resolve_config(args: argparse.Namespace) -> BenchmarkConfig:
+    profile = BENCHMARK_PROFILES[args.profile]
+    return BenchmarkConfig(
+        profile=profile,
+        requests_per_endpoint=(
+            args.requests
+            if args.requests is not None
+            else profile.requests_per_endpoint
+        ),
+        warmup_requests=(
+            args.warmup
+            if args.warmup is not None
+            else profile.warmup_requests
+        ),
+        concurrency=(
+            args.concurrency
+            if args.concurrency is not None
+            else profile.concurrency
+        ),
+        timeout=args.timeout if args.timeout is not None else profile.timeout,
+    )
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Run a small local latency/concurrency benchmark against the YouBike FastAPI service."
     )
     parser.add_argument("--base-url", default=DEFAULT_BASE_URL)
-    parser.add_argument("--requests", type=int, default=20, help="Recorded requests per endpoint.")
-    parser.add_argument("--warmup", type=int, default=2, help="Warmup requests per endpoint.")
-    parser.add_argument("--concurrency", type=int, default=1, help="Concurrent workers for recorded requests.")
-    parser.add_argument("--timeout", type=float, default=5.0, help="Per-request timeout in seconds.")
+    parser.add_argument(
+        "--profile",
+        choices=sorted(BENCHMARK_PROFILES),
+        default="demo",
+        help="Named benchmark profile. Explicit request, warmup, concurrency, and timeout values override the profile.",
+    )
+    parser.add_argument("--requests", type=int, help="Recorded requests per endpoint.")
+    parser.add_argument("--warmup", type=int, help="Warmup requests per endpoint.")
+    parser.add_argument("--concurrency", type=int, help="Concurrent workers for recorded requests.")
+    parser.add_argument("--timeout", type=float, help="Per-request timeout in seconds.")
     parser.add_argument("--json-output", type=Path, help="Optional path for raw benchmark results.")
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
-    if args.requests <= 0:
+    config = resolve_config(args)
+    if config.requests_per_endpoint <= 0:
         raise SystemExit("--requests must be greater than 0")
-    if args.warmup < 0:
+    if config.warmup_requests < 0:
         raise SystemExit("--warmup must be greater than or equal to 0")
-    if args.concurrency <= 0:
+    if config.concurrency <= 0:
         raise SystemExit("--concurrency must be greater than 0")
+    if config.timeout <= 0:
+        raise SystemExit("--timeout must be greater than 0")
 
     result = run_benchmark(
         base_url=args.base_url,
-        requests_per_endpoint=args.requests,
-        warmup_requests=args.warmup,
-        timeout=args.timeout,
-        concurrency=args.concurrency,
+        requests_per_endpoint=config.requests_per_endpoint,
+        warmup_requests=config.warmup_requests,
+        timeout=config.timeout,
+        concurrency=config.concurrency,
     )
     summaries = summarize(result.measurements, elapsed_seconds=result.elapsed_seconds)
+    assessments = assess_summaries(summaries, config.profile)
+
+    print(
+        "Profile: {name} | requests/endpoint: {requests} | warmup: {warmup} | "
+        "concurrency: {concurrency} | timeout: {timeout:.1f}s".format(
+            name=config.profile.name,
+            requests=config.requests_per_endpoint,
+            warmup=config.warmup_requests,
+            concurrency=config.concurrency,
+            timeout=config.timeout,
+        )
+    )
+    print(config.profile.description)
+    print()
     print(format_markdown_table(summaries))
+    print()
+    print(format_assessment_table(assessments))
 
     if args.json_output:
         args.json_output.parent.mkdir(parents=True, exist_ok=True)
@@ -290,11 +454,14 @@ def main() -> int:
             json.dumps(
                 {
                     "base_url": args.base_url,
-                    "requests_per_endpoint": args.requests,
-                    "warmup_requests": args.warmup,
-                    "concurrency": args.concurrency,
+                    "profile": asdict(config.profile),
+                    "requests_per_endpoint": config.requests_per_endpoint,
+                    "warmup_requests": config.warmup_requests,
+                    "concurrency": config.concurrency,
+                    "timeout": config.timeout,
                     "elapsed_seconds": result.elapsed_seconds,
                     "summary": summaries,
+                    "assessment": assessments,
                     "measurements": [asdict(measurement) for measurement in result.measurements],
                 },
                 indent=2,
@@ -303,7 +470,11 @@ def main() -> int:
             encoding="utf-8",
         )
 
-    return 1 if any(not measurement.ok for measurement in result.measurements) else 0
+    has_request_error = any(not measurement.ok for measurement in result.measurements)
+    has_failed_threshold = any(
+        assessment["status"] == "fail" for assessment in assessments
+    )
+    return 1 if has_request_error or has_failed_threshold else 0
 
 
 if __name__ == "__main__":

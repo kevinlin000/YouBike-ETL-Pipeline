@@ -16,7 +16,7 @@
 
 本專案目前作為作品集展示，用來呈現資料管線設計、資料建模、統計分析、模型訓練與模型服務化能力；不是目前仍在線上營運的服務。
 
-完整專案脈絡整理在 [`docs/project_story.md`](docs/project_story.md)。API 行為可參考 [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md)，模型評估邊界則整理在 [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md) 與 [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md)。
+完整專案脈絡整理在 [`docs/project_story.md`](docs/project_story.md)。API 行為可參考 [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md)，本機 API 效能測試可參考 [`docs/performance_load_test.md`](docs/performance_load_test.md)，模型評估邊界則整理在 [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md) 與 [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md)。
 
 ## 核心成果
 
@@ -29,7 +29,7 @@
 | 預測建模 | 建立 Multi-Station LSTM prototype，整合站點、天氣與短序列狀態特徵，並封裝為 API artifact |
 | 服務化 | 以 FastAPI 提供模型推論與站點風險排序 API，Streamlit 提供單站預測與多站調度輔助介面 |
 | 部署證據 | 曾以 Docker Compose 部署於 GCP VM，並保留 Airflow、Docker、GCP 監控截圖 |
-| 工程化維護 | 以 pytest 覆蓋 ETL / API 基礎行為，並以 GitHub Actions 自動執行測試 |
+| 工程化維護 | 以 pytest 覆蓋 ETL / API 基礎行為，提供本機 API benchmark profiles，並以 GitHub Actions 自動執行測試 |
 
 ## 問題背景
 
@@ -419,13 +419,21 @@ make api-demo
 
 啟動後可開啟 http://localhost:8000/docs。此模式會提供固定站點 catalog、`/health`、`/ready`、`/predict` 與 `/stations/risk`，適合面試時展示 API contract、request validation、readiness 與 request tracing。
 
-另開一個 terminal 可執行小型本機 API concurrency benchmark：
+另開一個 terminal 可執行本機 API benchmark：
 
 ```bash
 make api-benchmark
 ```
 
-此指令會以 5 個 worker 併發呼叫 `/ready`、`/predict` 與 `/stations/risk`，輸出每個 endpoint 的 request 數、error rate、throughput、p50、p95、p99 與最大延遲。這是本機 benchmark，用來檢查 API demo flow、基礎 latency 與簡單併發行為；結果會受開發機規格影響，不代表 production SLO。
+此指令使用 `demo` profile，以 5 個 worker 併發呼叫 `/ready`、`/predict` 與 `/stations/risk`，輸出每個 endpoint 的 request 數、error rate、throughput、p50、p95、p99、最大延遲與 pass/watch/fail 判讀。
+
+若要執行較長的本機容量探測：
+
+```bash
+make api-load-test
+```
+
+`api-load-test` 使用 `capacity` profile，並把原始結果寫到 `.scratch/benchmarks/api-capacity.json`。這些 benchmark 用來檢查 API demo flow、基礎 latency、錯誤率與簡單併發行為；結果會受開發機規格影響，不代表 production SLO。詳細說明見 [`docs/performance_load_test.md`](docs/performance_load_test.md)。
 
 ETL load 前會執行資料品質 validation。預設 `ETL_VALIDATION_MODE=strict`，遇到重複 status key、負值或非數值 availability 會中止；若只想記錄警告並繼續，可設定 `ETL_VALIDATION_MODE=warn`。
 
@@ -468,7 +476,7 @@ make dbt-build
 - ETL 正常轉換、站點去重與台北時間轉 UTC
 - ETL transform 後的重複 status key、負值與非數值 availability validation
 - FastAPI `/health` liveness、`/ready` inference-readiness、`/metrics` observability、JSON request logging、模型 lineage、API demo mode 與 `X-Request-ID` response tracing
-- API concurrency benchmark 的 latency、error rate 與 throughput 摘要輸出
+- API benchmark profiles 的 latency、error rate、throughput 與 pass/watch/fail 摘要輸出
 - `/stations` model-not-ready 行為
 - `/predict` request validation、`recent_observations` lag-window 與 warehouse lookup fallback 行為
 - `/stations/risk` 批次風險排序、request validation、unknown station 與 per-station `recent_observations` 行為
@@ -490,6 +498,7 @@ CI 設定位於 `.github/workflows/ci.yml`。
 - `/predict` 可手動傳入 `recent_observations`，也可在 DB credentials 存在時自動從 MySQL `station_status` 查最近 3 筆可借車數；但目前 warehouse 沒有 weather history，因此自動查詢路徑會沿用 request 中的 temperature / rain。API 保留 `next_hour` 欄位名稱作相容用途，實際 horizon 需看 response metadata。
 - LSTM 訓練流程已提供可重現程式、baseline suite、Ridge lag-regression baseline 與小型測試；本地 checkpoint-data 評估顯示目前 LSTM 在下一筆 observation 與近似一小時 horizon 下，都沒有打敗最強 baseline。由於完整 processed training CSV 未提交，fresh clone 無法直接重現完整資料評估。
 - Dashboard 固定範例資料模式只代表介面流程與 response shape，不代表真實模型評估表現。
+- 本機 API benchmark profiles 是展示與回歸檢查用的容量探測，不是正式 production load test 或 SLO。
 
 ## 技術能力對應
 
@@ -510,6 +519,7 @@ CI 設定位於 `.github/workflows/ci.yml`。
 - [`docs/backend_ai_architecture.md`](docs/backend_ai_architecture.md)：後端與模型服務架構圖說明。
 - [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md)：FastAPI endpoint、request/response 與錯誤邊界。
 - [`docs/operations.md`](docs/operations.md)：本機 demo、Docker Compose、環境變數、health/readiness、metrics、JSON log、rollback 與故障排查。
+- [`docs/performance_load_test.md`](docs/performance_load_test.md)：本機 API benchmark profiles、延遲與錯誤率判讀方式。
 - [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md)：機器學習部分的可主張範圍與限制。
 - [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md)：本地 LSTM baseline 評估結果。
 

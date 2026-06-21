@@ -199,19 +199,27 @@ API response 會回傳：
 
 ## API Benchmark
 
-啟動 API demo 後可執行：
+啟動 API demo 後可執行短測：
 
 ```bash
 make api-benchmark
 ```
 
-此 benchmark 會以 5 個 worker 混合呼叫：
+此指令使用 `demo` profile，以 5 個 worker 混合呼叫：
 
 - `GET /ready`
 - `POST /predict`
 - `POST /stations/risk`
 
-輸出包含 request count、error rate、throughput、p50、p95、p99 與 max latency。這是本機 benchmark，不代表 production SLO。
+輸出包含 request count、error rate、throughput、p50、p95、p99、max latency 與 pass/watch/fail 判讀。
+
+若要保留較長的容量探測結果：
+
+```bash
+make api-load-test
+```
+
+此指令使用 `capacity` profile，並輸出 `.scratch/benchmarks/api-capacity.json`。這是本機 benchmark，不代表 production SLO。詳細 profile 與判讀方式見 [`docs/performance_load_test.md`](performance_load_test.md)。
 
 ## 常見故障處理
 

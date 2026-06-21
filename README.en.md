@@ -16,7 +16,7 @@ The project has three layers:
 
 This repository is a portfolio project rather than an actively operated production service. The Chinese README is the primary project narrative; this English README is a concise companion.
 
-For the end-to-end project narrative, see [`docs/project_story.md`](docs/project_story.md). API behavior is documented in [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md), and model evaluation boundaries are documented in [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md) and [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md).
+For the end-to-end project narrative, see [`docs/project_story.md`](docs/project_story.md). API behavior is documented in [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md), local API benchmark profiles are documented in [`docs/performance_load_test.md`](docs/performance_load_test.md), and model evaluation boundaries are documented in [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md) and [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md).
 
 ## Key Results
 
@@ -29,7 +29,7 @@ For the end-to-end project narrative, see [`docs/project_story.md`](docs/project
 | Forecasting | Built a Multi-Station LSTM prototype with station, weather, and short-sequence status features, then packaged it as API artifacts |
 | Serving | Exposed model inference and station risk ranking through FastAPI, with a Streamlit UI for prediction and redistribution support |
 | Deployment evidence | Historical GCP VM deployment with Docker Compose, Airflow, MySQL, API, and dashboard services |
-| Engineering hygiene | pytest coverage for ETL / API behavior and GitHub Actions CI |
+| Engineering hygiene | pytest coverage for ETL / API behavior, local API benchmark profiles, and GitHub Actions CI |
 
 ## Problem Context
 
@@ -401,13 +401,21 @@ make api-demo
 
 Then open http://localhost:8000/docs. This mode exposes the fixed station catalog, `/health`, `/ready`, `/predict`, and `/stations/risk`, which is useful for demonstrating API contracts, request validation, readiness, and request tracing.
 
-In another terminal, run a small local API concurrency benchmark:
+In another terminal, run the short local API benchmark profile:
 
 ```bash
 make api-benchmark
 ```
 
-The command calls `/ready`, `/predict`, and `/stations/risk` with 5 concurrent workers and prints request count, error rate, throughput, p50, p95, p99, and max latency per endpoint. This is a local benchmark for the API demo flow, baseline latency, and simple concurrency behavior; results depend on the development machine and should not be treated as production SLOs.
+The command uses the `demo` profile, calls `/ready`, `/predict`, and `/stations/risk` with 5 concurrent workers, and prints request count, error rate, throughput, p50, p95, p99, max latency, and a pass/watch/fail assessment per endpoint.
+
+For a longer local capacity probe:
+
+```bash
+make api-load-test
+```
+
+`api-load-test` uses the `capacity` profile and writes raw output to `.scratch/benchmarks/api-capacity.json`. These benchmarks are local checks for API demo flow, baseline latency, error rate, and simple concurrency behavior; results depend on the development machine and should not be treated as production SLOs. See [`docs/performance_load_test.md`](docs/performance_load_test.md).
 
 ETL runs data-quality validation before loading. The default `ETL_VALIDATION_MODE=strict` fails on duplicate status keys, negative availability, or non-numeric availability fields. Set `ETL_VALIDATION_MODE=warn` to log validation failures and continue.
 
@@ -450,7 +458,7 @@ Current tests cover:
 - ETL successful transform behavior, station deduplication, and Taipei-time to UTC conversion
 - ETL post-transform validation for duplicate status keys, negative availability, and non-numeric availability fields
 - FastAPI `/health` liveness, `/ready` inference-readiness, `/metrics` observability, JSON request logging, model lineage, API demo mode, and `X-Request-ID` response tracing
-- API concurrency benchmark output for latency, error rate, and throughput
+- API benchmark profile output for latency, error rate, throughput, and pass/watch/fail assessment
 - `/stations` model-not-ready behavior
 - `/predict` request validation, `recent_observations` lag-window behavior, and warehouse lookup fallback behavior
 - `/stations/risk` batch ranking, request validation, unknown station behavior, and per-station `recent_observations`
@@ -492,6 +500,7 @@ Supporting technical notes:
 - [`docs/backend_ai_architecture.md`](docs/backend_ai_architecture.md): backend and model-serving architecture.
 - [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md): FastAPI endpoints, request/response shapes, and error boundaries.
 - [`docs/operations.md`](docs/operations.md): local demo, Docker Compose, environment variables, health/readiness, metrics, JSON logs, rollback, and troubleshooting.
+- [`docs/performance_load_test.md`](docs/performance_load_test.md): local API benchmark profiles and latency/error-rate interpretation.
 - [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md): machine-learning scope and limitations.
 - [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md): local baseline evaluation results.
 

@@ -283,7 +283,7 @@ CI 會在 push / pull request 時跑 Python tests 與 dbt seed/build。這讓作
 
 ## 效能 benchmark
 
-專案提供一個零新增依賴的本機 API concurrency benchmark：
+專案提供一個零新增依賴的本機 API benchmark，包含 `smoke`、`demo` 與 `capacity` 三種 profile：
 
 ```bash
 make api-demo
@@ -295,35 +295,55 @@ make api-demo
 make api-benchmark
 ```
 
-benchmark 會以 5 個 worker 併發呼叫：
+`make api-benchmark` 使用 `demo` profile，以 5 個 worker 併發呼叫：
 
 - `GET /ready`
 - `POST /predict`
 - `POST /stations/risk`
 
-輸出欄位包含：
+若要執行較長的本機容量探測：
+
+```bash
+make api-load-test
+```
+
+`make api-load-test` 使用 `capacity` profile，並將原始結果輸出到 `.scratch/benchmarks/api-capacity.json`。
+
+摘要輸出欄位包含：
 
 - requests
 - errors
 - error rate
 - throughput
 - min / avg / p50 / p95 / p99 / max latency
+- pass / watch / fail assessment
 
 本機 API demo mode 範例輸出如下；這只是開發機上的 local benchmark，不代表 production SLO：
 
+```text
+Profile: demo | requests/endpoint: 30 | warmup: 2 | concurrency: 5 | timeout: 5.0s
+Short local concurrency check for interview walkthroughs.
+```
+
 | endpoint | requests | errors | error % | rps | min ms | avg ms | p50 ms | p95 ms | p99 ms | max ms |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| predict | 30 | 0 | 0.00 | 102.68 | 12.92 | 16.02 | 15.54 | 19.24 | 19.66 | 19.68 |
-| ready | 30 | 0 | 0.00 | 102.68 | 8.65 | 13.45 | 13.36 | 16.07 | 16.32 | 16.38 |
-| risk | 30 | 0 | 0.00 | 102.68 | 13.82 | 16.07 | 15.42 | 18.96 | 20.28 | 20.64 |
+| predict | 30 | 0 | 0.00 | 140.55 | 9.26 | 11.62 | 11.42 | 14.16 | 14.52 | 14.52 |
+| ready | 30 | 0 | 0.00 | 140.55 | 8.30 | 9.88 | 9.77 | 11.52 | 12.12 | 12.24 |
+| risk | 30 | 0 | 0.00 | 140.55 | 9.87 | 11.85 | 11.97 | 13.56 | 13.93 | 14.03 |
 
-這個 benchmark 不是正式 production load test。它的定位是檢查本機 demo API 的基本可用性、latency 量級、錯誤率與簡單併發行為；若要討論高併發或正式 SLO，仍應補 k6 / Locust、ramp-up、固定硬體規格、監控 dashboard 與多輪測試紀錄。
+| endpoint | status | reason |
+| --- | --- | --- |
+| predict | pass | within local profile thresholds |
+| ready | pass | within local profile thresholds |
+| risk | pass | within local profile thresholds |
+
+這個 benchmark 不是正式 production load test。它的定位是檢查本機 demo API 的基本可用性、latency 量級、錯誤率與簡單併發行為。詳細說明見 [`docs/performance_load_test.md`](performance_load_test.md)。若要討論高併發或正式 SLO，仍應補 k6 / Locust、ramp-up、固定硬體規格、監控 dashboard 與多輪測試紀錄。
 
 ## 擴展方向
 
 如果要把這個作品往更高階後端 / AI 應用作品推進，優先順序如下：
 
-1. **正式負載測試**：在目前本機 concurrency benchmark 之外，用 k6 或 Locust 測 `/predict`、`/stations/risk` 的 ramp-up、長時間穩定性與錯誤率。
+1. **正式負載測試**：在目前本機 benchmark profiles 之外，用 k6 或 Locust 測 `/predict`、`/stations/risk` 的 ramp-up、長時間穩定性與錯誤率。
 2. **結構化 observability**：將目前 `/metrics` 與 JSON log 接到 dashboard / alert rules，並補 histogram buckets。
 3. **模型 registry**：將目前 response 中的 model version / artifact hash 串到正式 registry、發布紀錄與 rollback 流程。
 4. **Feature store-lite**：補 weather history table，讓 warehouse fallback 能查對齊時間的天氣特徵。
