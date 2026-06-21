@@ -56,6 +56,17 @@ curl -s http://127.0.0.1:8000/ready
 curl -s http://127.0.0.1:8000/metrics
 ```
 
+重新產生 API contract artifacts：
+
+```bash
+make api-contract
+```
+
+輸出：
+
+- `docs/openapi.json`：FastAPI OpenAPI schema。
+- `docs/api_examples.http`：本機 request examples，可用 REST Client 類工具執行。
+
 範例 prediction：
 
 ```bash

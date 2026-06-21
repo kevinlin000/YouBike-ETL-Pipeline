@@ -2,6 +2,19 @@
 
 本文件整理 FastAPI 服務的 endpoint、request/response 形狀與錯誤邊界。API 實作位於 `api/app/main.py`，dashboard client 位於 `dashboard/api_client.py`。
 
+可重生的 contract artifacts：
+
+- [`docs/openapi.json`](openapi.json)：由 FastAPI `app.openapi()` 匯出的 OpenAPI schema。
+- [`docs/api_examples.http`](api_examples.http)：可貼到 REST Client 類工具執行的本機 request 範例。
+
+重新產生方式：
+
+```bash
+make api-contract
+```
+
+`api_examples.http` 使用 API demo mode 的固定資料，用來檢查 API contract、request validation 與 `X-Request-ID` tracing，不代表模型評估結果。
+
 ## 服務狀態與 Readiness
 
 `GET /`

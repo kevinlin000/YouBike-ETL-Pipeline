@@ -273,6 +273,7 @@ API 回傳排序後的風險清單，dashboard 可以直接呈現調度順位，
 - FastAPI health/readiness。
 - request tracing 與 JSON request logging。
 - `/metrics` request count、error count、latency summary 與 histogram buckets。
+- OpenAPI schema export 與本機 request examples。
 - 模型 lineage 與 artifact hash。
 - API demo mode。
 - `/predict` payload validation、unknown station、lag window、warehouse fallback。

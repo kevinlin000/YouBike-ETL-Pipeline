@@ -857,7 +857,7 @@ def home():
 def health():
     return service_state()
 
-@app.get(METRICS_PATH)
+@app.get(METRICS_PATH, response_class=PlainTextResponse)
 def metrics():
     return PlainTextResponse(render_metrics(), media_type="text/plain")
 

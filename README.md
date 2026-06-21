@@ -29,7 +29,7 @@
 | 預測建模 | 建立 Multi-Station LSTM prototype，整合站點、天氣與短序列狀態特徵，並封裝為 API artifact |
 | 服務化 | 以 FastAPI 提供模型推論與站點風險排序 API，Streamlit 提供單站預測與多站調度輔助介面 |
 | 部署證據 | 曾以 Docker Compose 部署於 GCP VM，並保留 Airflow、Docker、GCP 監控截圖 |
-| 工程化維護 | 以 pytest 覆蓋 ETL / API 基礎行為，提供 request tracing、Prometheus-style metrics、API benchmark profiles，並以 GitHub Actions 自動執行測試 |
+| 工程化維護 | 以 pytest 覆蓋 ETL / API 基礎行為，提供 OpenAPI schema、request examples、request tracing、Prometheus-style metrics、API benchmark profiles，並以 GitHub Actions 自動執行測試 |
 
 ## 問題背景
 
@@ -190,7 +190,7 @@ FastAPI endpoint：
 
 `/predict` 與 `/stations/risk` 支援可選的 `recent_observations`，可傳入 3 筆近期觀測值作為 LSTM lag window。若未提供，API 會在 DB credentials 存在時嘗試從 MySQL `station_status` 查詢最近 3 筆 `bikes_available`；查不到完整 3 筆或未設定 DB 時，會維持展示相容模式：使用目前狀態重複成短序列。
 
-若只要檢視 FastAPI contract，可用 `API_DEMO_MODE=true` 或 `make api-demo` 啟動固定範例 API。此模式不載入模型檔、不連 MySQL，`/ready` 會回 200，`/predict` 與 `/stations/risk` 會回傳可重現的模擬結果；它只用於展示 API 行為，不代表模型評估結果。
+若只要檢視 FastAPI contract，可用 `API_DEMO_MODE=true` 或 `make api-demo` 啟動固定範例 API。此模式不載入模型檔、不連 MySQL，`/ready` 會回 200，`/predict` 與 `/stations/risk` 會回傳可重現的模擬結果；它只用於展示 API 行為，不代表模型評估結果。OpenAPI schema 與本機 request 範例可用 `make api-contract` 重新產生，輸出為 [`docs/openapi.json`](docs/openapi.json) 與 [`docs/api_examples.http`](docs/api_examples.http)。
 
 API 回應會帶 `X-Request-ID`。呼叫端若有傳入同名 header，服務會沿用；若未傳入，服務會自動產生一組 request id。API log 採 JSON event 格式，request completion 會記錄 `request_id`、`method`、`path`、`status_code`、`duration_ms` 與 `model_version`，方便追查單次推論請求。
 
@@ -345,6 +345,8 @@ YouBike-ETL-Pipeline/
 │   └── dbt/                        # dbt analytics layer scaffold
 ├── docs/
 │   ├── adr/                        # 維護決策紀錄
+│   ├── api_examples.http           # 本機 API request 範例
+│   ├── openapi.json                # FastAPI OpenAPI schema 匯出
 │   ├── operations.md               # 本機啟動、觀測與故障處理 runbook
 │   ├── observability.md            # API metrics、JSON log、dashboard 與 alert rule 草案
 │   ├── performance_load_test.md    # 本機 API benchmark profiles 與容量探測
@@ -421,6 +423,14 @@ make api-demo
 
 啟動後可開啟 http://localhost:8000/docs。此模式會提供固定站點 catalog、`/health`、`/ready`、`/predict` 與 `/stations/risk`，適合面試時展示 API contract、request validation、readiness 與 request tracing。
 
+若要重新產生 API contract artifacts：
+
+```bash
+make api-contract
+```
+
+此指令會輸出 `docs/openapi.json` 與 `docs/api_examples.http`，方便用 OpenAPI viewer 或 REST Client 類工具檢查 endpoint、schema、範例 payload 與 validation 行為。
+
 另開一個 terminal 可執行本機 API benchmark：
 
 ```bash
@@ -478,6 +488,7 @@ make dbt-build
 - ETL 正常轉換、站點去重與台北時間轉 UTC
 - ETL transform 後的重複 status key、負值與非數值 availability validation
 - FastAPI `/health` liveness、`/ready` inference-readiness、`/metrics` observability、JSON request logging、模型 lineage、API demo mode 與 `X-Request-ID` response tracing
+- OpenAPI schema 匯出與本機 request examples，方便檢查 API contract 與 validation 行為
 - `/metrics` latency histogram，可用 Prometheus `histogram_quantile()` 查 p95 / p99 latency
 - API benchmark profiles 的 latency、error rate、throughput 與 pass/watch/fail 摘要輸出
 - `/stations` model-not-ready 行為
@@ -521,6 +532,7 @@ CI 設定位於 `.github/workflows/ci.yml`。
 - [`docs/system_design.md`](docs/system_design.md)：後端與 AI 應用系統設計、API 邊界、demo mode、failure modes 與擴展方向。
 - [`docs/backend_ai_architecture.md`](docs/backend_ai_architecture.md)：後端與模型服務架構圖說明。
 - [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md)：FastAPI endpoint、request/response 與錯誤邊界。
+- [`docs/openapi.json`](docs/openapi.json) / [`docs/api_examples.http`](docs/api_examples.http)：可重生的 API schema 與 request 範例。
 - [`docs/observability.md`](docs/observability.md)：API metrics、JSON log、request tracing、PromQL、dashboard 與 alert rule 草案。
 - [`docs/operations.md`](docs/operations.md)：本機 demo、Docker Compose、環境變數、health/readiness、metrics、JSON log、rollback 與故障排查。
 - [`docs/performance_load_test.md`](docs/performance_load_test.md)：本機 API benchmark profiles、延遲與錯誤率判讀方式。

@@ -29,7 +29,7 @@ For the end-to-end project narrative, see [`docs/project_story.md`](docs/project
 | Forecasting | Built a Multi-Station LSTM prototype with station, weather, and short-sequence status features, then packaged it as API artifacts |
 | Serving | Exposed model inference and station risk ranking through FastAPI, with a Streamlit UI for prediction and redistribution support |
 | Deployment evidence | Historical GCP VM deployment with Docker Compose, Airflow, MySQL, API, and dashboard services |
-| Engineering hygiene | pytest coverage for ETL / API behavior, request tracing, Prometheus-style metrics, local API benchmark profiles, and GitHub Actions CI |
+| Engineering hygiene | pytest coverage for ETL / API behavior, OpenAPI schema export, request examples, request tracing, Prometheus-style metrics, local API benchmark profiles, and GitHub Actions CI |
 
 ## Problem Context
 
@@ -172,7 +172,7 @@ FastAPI endpoints:
 
 `/predict` and `/stations/risk` accept optional `recent_observations`, a 3-row recent-history window for LSTM inference. When it is omitted and database credentials are available, the API attempts to load the latest three `bikes_available` rows from MySQL `station_status`. If the lookup cannot return three rows, or DB credentials are not configured, the API keeps the demo-compatible fallback and repeats the current state into a short sequence.
 
-For API contract inspection without model files, MySQL, or Docker Compose, run with `API_DEMO_MODE=true` or `make api-demo`. In this mode `/ready` returns 200 and `/predict` / `/stations/risk` return deterministic simulated responses. It is for API workflow inspection, not model evaluation.
+For API contract inspection without model files, MySQL, or Docker Compose, run with `API_DEMO_MODE=true` or `make api-demo`. In this mode `/ready` returns 200 and `/predict` / `/stations/risk` return deterministic simulated responses. It is for API workflow inspection, not model evaluation. The OpenAPI schema and local request examples can be regenerated with `make api-contract`, which writes [`docs/openapi.json`](docs/openapi.json) and [`docs/api_examples.http`](docs/api_examples.http).
 
 API responses include `X-Request-ID`. If the caller sends the header, the service echoes it; otherwise the service generates one. API logs use JSON event records; request-completion logs include `request_id`, `method`, `path`, `status_code`, `duration_ms`, and `model_version`.
 
@@ -327,6 +327,8 @@ YouBike-ETL-Pipeline/
 │   └── dbt/                        # dbt analytics layer scaffold
 ├── docs/
 │   ├── adr/                        # Maintenance decisions
+│   ├── api_examples.http           # Local API request examples
+│   ├── openapi.json                # Exported FastAPI OpenAPI schema
 │   ├── operations.md               # Local run, observability, and troubleshooting runbook
 │   ├── observability.md            # API metrics, JSON logs, dashboard panels, and alert drafts
 │   ├── performance_load_test.md    # Local API benchmark profiles and capacity probe
@@ -403,6 +405,14 @@ make api-demo
 
 Then open http://localhost:8000/docs. This mode exposes the fixed station catalog, `/health`, `/ready`, `/predict`, and `/stations/risk`, which is useful for demonstrating API contracts, request validation, readiness, and request tracing.
 
+To regenerate API contract artifacts:
+
+```bash
+make api-contract
+```
+
+This writes `docs/openapi.json` and `docs/api_examples.http` for OpenAPI viewers or REST Client-style tools.
+
 In another terminal, run the short local API benchmark profile:
 
 ```bash
@@ -460,6 +470,7 @@ Current tests cover:
 - ETL successful transform behavior, station deduplication, and Taipei-time to UTC conversion
 - ETL post-transform validation for duplicate status keys, negative availability, and non-numeric availability fields
 - FastAPI `/health` liveness, `/ready` inference-readiness, `/metrics` observability, JSON request logging, model lineage, API demo mode, and `X-Request-ID` response tracing
+- OpenAPI schema export and local request examples for API contract and validation checks
 - `/metrics` latency histogram for Prometheus `histogram_quantile()` p95 / p99 queries
 - API benchmark profile output for latency, error rate, throughput, and pass/watch/fail assessment
 - `/stations` model-not-ready behavior
@@ -502,6 +513,7 @@ Supporting technical notes:
 - [`docs/system_design.md`](docs/system_design.md): system design note for backend / AI application boundaries, demo modes, failure modes, and extension paths. The main content is in Chinese with a short English summary.
 - [`docs/backend_ai_architecture.md`](docs/backend_ai_architecture.md): backend and model-serving architecture.
 - [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md): FastAPI endpoints, request/response shapes, and error boundaries.
+- [`docs/openapi.json`](docs/openapi.json) / [`docs/api_examples.http`](docs/api_examples.http): reproducible API schema and request examples.
 - [`docs/observability.md`](docs/observability.md): API metrics, JSON logs, request tracing, PromQL, dashboard panels, and alert-rule drafts.
 - [`docs/operations.md`](docs/operations.md): local demo, Docker Compose, environment variables, health/readiness, metrics, JSON logs, rollback, and troubleshooting.
 - [`docs/performance_load_test.md`](docs/performance_load_test.md): local API benchmark profiles and latency/error-rate interpretation.

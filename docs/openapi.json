@@ -1,0 +1,716 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "YouBike LSTM Prediction API",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/": {
+      "get": {
+        "summary": "Home",
+        "operationId": "home__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/metrics": {
+      "get": {
+        "summary": "Metrics",
+        "operationId": "metrics_metrics_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ready": {
+      "get": {
+        "summary": "Readiness",
+        "operationId": "readiness_ready_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/stations": {
+      "get": {
+        "summary": "Get Stations",
+        "operationId": "get_stations_stations_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StationsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/predict": {
+      "post": {
+        "summary": "Predict",
+        "operationId": "predict_predict_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PredictRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PredictResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/stations/risk": {
+      "post": {
+        "summary": "Rank Station Risks",
+        "operationId": "rank_station_risks_stations_risk_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StationsRiskRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StationsRiskResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "demo_mode": {
+            "type": "boolean",
+            "title": "Demo Mode"
+          },
+          "model_loaded": {
+            "type": "boolean",
+            "title": "Model Loaded"
+          },
+          "scaler_loaded": {
+            "type": "boolean",
+            "title": "Scaler Loaded"
+          },
+          "station_mapping_loaded": {
+            "type": "boolean",
+            "title": "Station Mapping Loaded"
+          },
+          "station_catalog_loaded": {
+            "type": "boolean",
+            "title": "Station Catalog Loaded"
+          },
+          "warehouse_lookup_enabled": {
+            "type": "boolean",
+            "title": "Warehouse Lookup Enabled"
+          },
+          "forecast_horizon": {
+            "type": "string",
+            "title": "Forecast Horizon"
+          },
+          "model_version": {
+            "type": "string",
+            "title": "Model Version"
+          },
+          "model_artifact_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Artifact Hash"
+          },
+          "model_metadata_loaded": {
+            "type": "boolean",
+            "title": "Model Metadata Loaded"
+          },
+          "model_metadata_generated_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Metadata Generated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "demo_mode",
+          "model_loaded",
+          "scaler_loaded",
+          "station_mapping_loaded",
+          "station_catalog_loaded",
+          "warehouse_lookup_enabled",
+          "forecast_horizon",
+          "model_version",
+          "model_artifact_hash",
+          "model_metadata_loaded",
+          "model_metadata_generated_at"
+        ],
+        "title": "HealthResponse"
+      },
+      "PredictRequest": {
+        "properties": {
+          "station_no": {
+            "type": "string",
+            "title": "Station No"
+          },
+          "bikes_available": {
+            "type": "integer",
+            "title": "Bikes Available"
+          },
+          "temperature": {
+            "type": "number",
+            "title": "Temperature"
+          },
+          "rain": {
+            "type": "number",
+            "title": "Rain"
+          },
+          "recent_observations": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/RecentObservation"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recent Observations"
+          }
+        },
+        "type": "object",
+        "required": [
+          "station_no",
+          "bikes_available",
+          "temperature",
+          "rain"
+        ],
+        "title": "PredictRequest"
+      },
+      "PredictResponse": {
+        "properties": {
+          "station_no": {
+            "type": "string",
+            "title": "Station No"
+          },
+          "predicted_bikes_next_hour": {
+            "type": "integer",
+            "title": "Predicted Bikes Next Hour"
+          },
+          "forecast_horizon": {
+            "type": "string",
+            "title": "Forecast Horizon"
+          },
+          "forecast_horizon_description": {
+            "type": "string",
+            "title": "Forecast Horizon Description"
+          },
+          "model_version": {
+            "type": "string",
+            "title": "Model Version"
+          },
+          "model_artifact_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Artifact Hash"
+          },
+          "model_metadata_loaded": {
+            "type": "boolean",
+            "title": "Model Metadata Loaded"
+          },
+          "model_metadata_generated_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Metadata Generated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "station_no",
+          "predicted_bikes_next_hour",
+          "forecast_horizon",
+          "forecast_horizon_description",
+          "model_version",
+          "model_artifact_hash",
+          "model_metadata_loaded",
+          "model_metadata_generated_at"
+        ],
+        "title": "PredictResponse"
+      },
+      "ReadinessResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "demo_mode": {
+            "type": "boolean",
+            "title": "Demo Mode"
+          },
+          "model_loaded": {
+            "type": "boolean",
+            "title": "Model Loaded"
+          },
+          "scaler_loaded": {
+            "type": "boolean",
+            "title": "Scaler Loaded"
+          },
+          "station_mapping_loaded": {
+            "type": "boolean",
+            "title": "Station Mapping Loaded"
+          },
+          "station_catalog_loaded": {
+            "type": "boolean",
+            "title": "Station Catalog Loaded"
+          },
+          "warehouse_lookup_enabled": {
+            "type": "boolean",
+            "title": "Warehouse Lookup Enabled"
+          },
+          "forecast_horizon": {
+            "type": "string",
+            "title": "Forecast Horizon"
+          },
+          "model_version": {
+            "type": "string",
+            "title": "Model Version"
+          },
+          "model_artifact_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Artifact Hash"
+          },
+          "model_metadata_loaded": {
+            "type": "boolean",
+            "title": "Model Metadata Loaded"
+          },
+          "model_metadata_generated_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Metadata Generated At"
+          },
+          "ready": {
+            "type": "boolean",
+            "title": "Ready"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "demo_mode",
+          "model_loaded",
+          "scaler_loaded",
+          "station_mapping_loaded",
+          "station_catalog_loaded",
+          "warehouse_lookup_enabled",
+          "forecast_horizon",
+          "model_version",
+          "model_artifact_hash",
+          "model_metadata_loaded",
+          "model_metadata_generated_at",
+          "ready"
+        ],
+        "title": "ReadinessResponse"
+      },
+      "RecentObservation": {
+        "properties": {
+          "bikes_available": {
+            "type": "integer",
+            "title": "Bikes Available"
+          },
+          "temperature": {
+            "type": "number",
+            "title": "Temperature"
+          },
+          "rain": {
+            "type": "number",
+            "title": "Rain"
+          }
+        },
+        "type": "object",
+        "required": [
+          "bikes_available",
+          "temperature",
+          "rain"
+        ],
+        "title": "RecentObservation"
+      },
+      "StationRiskInput": {
+        "properties": {
+          "station_no": {
+            "type": "string",
+            "title": "Station No"
+          },
+          "bikes_available": {
+            "type": "integer",
+            "title": "Bikes Available"
+          },
+          "spaces_available": {
+            "type": "integer",
+            "title": "Spaces Available"
+          },
+          "recent_observations": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/RecentObservation"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recent Observations"
+          }
+        },
+        "type": "object",
+        "required": [
+          "station_no",
+          "bikes_available",
+          "spaces_available"
+        ],
+        "title": "StationRiskInput"
+      },
+      "StationRiskResult": {
+        "properties": {
+          "station_no": {
+            "type": "string",
+            "title": "Station No"
+          },
+          "current_bikes_available": {
+            "type": "integer",
+            "title": "Current Bikes Available"
+          },
+          "current_spaces_available": {
+            "type": "integer",
+            "title": "Current Spaces Available"
+          },
+          "predicted_bikes_next_hour": {
+            "type": "integer",
+            "title": "Predicted Bikes Next Hour"
+          },
+          "predicted_spaces_next_hour": {
+            "type": "integer",
+            "title": "Predicted Spaces Next Hour"
+          },
+          "forecast_horizon": {
+            "type": "string",
+            "title": "Forecast Horizon"
+          },
+          "risk_level": {
+            "type": "string",
+            "title": "Risk Level"
+          },
+          "risk_score": {
+            "type": "integer",
+            "title": "Risk Score"
+          },
+          "suggested_action": {
+            "type": "string",
+            "title": "Suggested Action"
+          }
+        },
+        "type": "object",
+        "required": [
+          "station_no",
+          "current_bikes_available",
+          "current_spaces_available",
+          "predicted_bikes_next_hour",
+          "predicted_spaces_next_hour",
+          "forecast_horizon",
+          "risk_level",
+          "risk_score",
+          "suggested_action"
+        ],
+        "title": "StationRiskResult"
+      },
+      "StationsResponse": {
+        "properties": {
+          "stations": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Stations"
+          }
+        },
+        "type": "object",
+        "required": [
+          "stations"
+        ],
+        "title": "StationsResponse"
+      },
+      "StationsRiskRequest": {
+        "properties": {
+          "temperature": {
+            "type": "number",
+            "title": "Temperature"
+          },
+          "rain": {
+            "type": "number",
+            "title": "Rain"
+          },
+          "stations": {
+            "items": {
+              "$ref": "#/components/schemas/StationRiskInput"
+            },
+            "type": "array",
+            "title": "Stations"
+          }
+        },
+        "type": "object",
+        "required": [
+          "temperature",
+          "rain",
+          "stations"
+        ],
+        "title": "StationsRiskRequest"
+      },
+      "StationsRiskResponse": {
+        "properties": {
+          "forecast_horizon": {
+            "type": "string",
+            "title": "Forecast Horizon"
+          },
+          "forecast_horizon_description": {
+            "type": "string",
+            "title": "Forecast Horizon Description"
+          },
+          "model_version": {
+            "type": "string",
+            "title": "Model Version"
+          },
+          "model_artifact_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Artifact Hash"
+          },
+          "model_metadata_loaded": {
+            "type": "boolean",
+            "title": "Model Metadata Loaded"
+          },
+          "model_metadata_generated_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Metadata Generated At"
+          },
+          "risks": {
+            "items": {
+              "$ref": "#/components/schemas/StationRiskResult"
+            },
+            "type": "array",
+            "title": "Risks"
+          }
+        },
+        "type": "object",
+        "required": [
+          "forecast_horizon",
+          "forecast_horizon_description",
+          "model_version",
+          "model_artifact_hash",
+          "model_metadata_loaded",
+          "model_metadata_generated_at",
+          "risks"
+        ],
+        "title": "StationsRiskResponse"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

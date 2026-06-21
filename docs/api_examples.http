@@ -1,0 +1,97 @@
+# YouBike FastAPI request examples
+# 先啟動 demo API：
+#   make api-demo
+#
+# 這些範例使用 API demo mode 的固定資料，用來驗證 request/response
+# contract 與 request tracing；它們不是模型效果評估結果。
+
+@base_url = http://127.0.0.1:8000
+@request_id = portfolio-demo-001
+
+### 服務基本資訊
+GET {{base_url}}/
+X-Request-ID: {{request_id}}
+
+### Liveness
+GET {{base_url}}/health
+X-Request-ID: {{request_id}}
+
+### Inference readiness
+GET {{base_url}}/ready
+X-Request-ID: {{request_id}}
+
+### Prometheus-style metrics
+GET {{base_url}}/metrics
+X-Request-ID: {{request_id}}
+
+### 站點清單
+GET {{base_url}}/stations
+X-Request-ID: {{request_id}}
+
+### 單站預測
+POST {{base_url}}/predict
+Content-Type: application/json
+X-Request-ID: {{request_id}}
+
+{
+  "station_no": "500101002",
+  "bikes_available": 8,
+  "temperature": 33,
+  "rain": 3
+}
+
+### 單站預測：明確提供 lag window
+POST {{base_url}}/predict
+Content-Type: application/json
+X-Request-ID: {{request_id}}
+
+{
+  "station_no": "500101002",
+  "bikes_available": 8,
+  "temperature": 33,
+  "rain": 3,
+  "recent_observations": [
+    {"bikes_available": 10, "temperature": 31.5, "rain": 0},
+    {"bikes_available": 9, "temperature": 32.2, "rain": 1.5},
+    {"bikes_available": 8, "temperature": 33, "rain": 3}
+  ]
+}
+
+### 多站點風險排序
+POST {{base_url}}/stations/risk
+Content-Type: application/json
+X-Request-ID: {{request_id}}
+
+{
+  "temperature": 25,
+  "rain": 0,
+  "stations": [
+    {
+      "station_no": "500101001",
+      "bikes_available": 4,
+      "spaces_available": 16
+    },
+    {
+      "station_no": "500101002",
+      "bikes_available": 5,
+      "spaces_available": 15
+    },
+    {
+      "station_no": "500101003",
+      "bikes_available": 18,
+      "spaces_available": 2
+    }
+  ]
+}
+
+### Validation 範例：負數車輛應回 422
+POST {{base_url}}/predict
+Content-Type: application/json
+X-Request-ID: {{request_id}}
+
+{
+  "station_no": "500101002",
+  "bikes_available": -1,
+  "temperature": 33,
+  "rain": 3
+}
