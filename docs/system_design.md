@@ -265,6 +265,19 @@ API 回傳排序後的風險清單，dashboard 可以直接呈現調度順位，
 - 將 demo mode 與正式模式的設定集中到 config module。
 - 將模型 artifact lineage 接到正式 registry、發布流程與 rollback 紀錄。
 
+## 設定與安全邊界
+
+設定與安全邊界整理在 [`docs/configuration_security.md`](configuration_security.md)。目前專案已明確區分 dashboard demo、API demo、local full stack 與 production-like 設定，並列出 env var inventory、secret handling、trust boundaries 與 API threat model。
+
+目前具備的安全基礎包含：
+
+- `.env` 不進 Git，`.env.example` 只放 placeholder。
+- ETL / Airflow 可從 GCP Secret Manager 讀取 DB password，或在本機使用 `DB_PASSWORD`。
+- API demo mode 不讀模型檔、不連 DB，可安全展示 contract。
+- API 使用 Pydantic validation、readiness、request id、JSON logs 與 metrics。
+
+目前不主張已完成 production security controls，例如 auth、rate limit、secret rotation、WAF、CI secret scanning 或正式 incident response。
+
 ## 測試策略
 
 目前測試覆蓋：
@@ -352,7 +365,7 @@ Short local concurrency check for interview walkthroughs.
 3. **模型 registry**：將目前 response 中的 model version / artifact hash 串到正式 registry、發布紀錄與 rollback 流程。
 4. **Feature store-lite**：補 weather history table，讓 warehouse fallback 能查對齊時間的天氣特徵。
 5. **背景工作與快取**：對熱門站點或批次風險排序加入 cache / scheduled precompute。
-6. **部署文件**：整理 Docker Compose profile、環境變數、secret handling、rolling restart 與 rollback 策略。
+6. **安全補強**：加入 auth / rate limit、CI secret scanning、least-privilege DB user、secret rotation 與正式 incident response runbook。
 
 這些方向比繼續美化 dashboard 更能提升後端 / AI 應用工程的面試說服力。
 

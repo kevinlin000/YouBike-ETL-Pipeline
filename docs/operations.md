@@ -113,6 +113,8 @@ ETL_VALIDATION_MODE=strict
 
 公開 repo 不應提交真實密碼、GCP VM 資訊或 Secret Manager secret value。
 
+完整 env var inventory、secret handling、demo / production-like 設定界線與 API threat model 見 [`docs/configuration_security.md`](configuration_security.md)。
+
 ### 啟動服務
 
 ```bash

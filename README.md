@@ -16,7 +16,7 @@
 
 本專案目前作為作品集展示，用來呈現資料管線設計、資料建模、統計分析、模型訓練與模型服務化能力；不是目前仍在線上營運的服務。
 
-完整專案脈絡整理在 [`docs/project_story.md`](docs/project_story.md)。API 行為可參考 [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md)，可觀測性設計可參考 [`docs/observability.md`](docs/observability.md)，本機 API 效能測試可參考 [`docs/performance_load_test.md`](docs/performance_load_test.md)，模型評估邊界則整理在 [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md) 與 [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md)。
+完整專案脈絡整理在 [`docs/project_story.md`](docs/project_story.md)。API 行為可參考 [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md)，可觀測性設計可參考 [`docs/observability.md`](docs/observability.md)，設定與安全邊界可參考 [`docs/configuration_security.md`](docs/configuration_security.md)，本機 API 效能測試可參考 [`docs/performance_load_test.md`](docs/performance_load_test.md)，模型評估邊界則整理在 [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md) 與 [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md)。
 
 ## 核心成果
 
@@ -346,6 +346,7 @@ YouBike-ETL-Pipeline/
 ├── docs/
 │   ├── adr/                        # 維護決策紀錄
 │   ├── api_examples.http           # 本機 API request 範例
+│   ├── configuration_security.md   # 設定、secret handling 與 threat model
 │   ├── openapi.json                # FastAPI OpenAPI schema 匯出
 │   ├── operations.md               # 本機啟動、觀測與故障處理 runbook
 │   ├── observability.md            # API metrics、JSON log、dashboard 與 alert rule 草案
@@ -513,6 +514,7 @@ CI 設定位於 `.github/workflows/ci.yml`。
 - LSTM 訓練流程已提供可重現程式、baseline suite、Ridge lag-regression baseline 與小型測試；本地 checkpoint-data 評估顯示目前 LSTM 在下一筆 observation 與近似一小時 horizon 下，都沒有打敗最強 baseline。由於完整 processed training CSV 未提交，fresh clone 無法直接重現完整資料評估。
 - Dashboard 固定範例資料模式只代表介面流程與 response shape，不代表真實模型評估表現。
 - 本機 API benchmark profiles 是展示與回歸檢查用的容量探測，不是正式 production load test 或 SLO。
+- 設定與安全文件整理了 env var、secret handling 與 threat model，但本專案不主張已具備完整 production security controls，例如 auth、rate limit、secret rotation 或 WAF。
 
 ## 技術能力對應
 
@@ -534,6 +536,7 @@ CI 設定位於 `.github/workflows/ci.yml`。
 - [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md)：FastAPI endpoint、request/response 與錯誤邊界。
 - [`docs/openapi.json`](docs/openapi.json) / [`docs/api_examples.http`](docs/api_examples.http)：可重生的 API schema 與 request 範例。
 - [`docs/observability.md`](docs/observability.md)：API metrics、JSON log、request tracing、PromQL、dashboard 與 alert rule 草案。
+- [`docs/configuration_security.md`](docs/configuration_security.md)：環境變數、secret handling、demo/正式設定邊界與 API threat model。
 - [`docs/operations.md`](docs/operations.md)：本機 demo、Docker Compose、環境變數、health/readiness、metrics、JSON log、rollback 與故障排查。
 - [`docs/performance_load_test.md`](docs/performance_load_test.md)：本機 API benchmark profiles、延遲與錯誤率判讀方式。
 - [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md)：機器學習部分的可主張範圍與限制。

@@ -16,7 +16,7 @@ The project has three layers:
 
 This repository is a portfolio project rather than an actively operated production service. The Chinese README is the primary project narrative; this English README is a concise companion.
 
-For the end-to-end project narrative, see [`docs/project_story.md`](docs/project_story.md). API behavior is documented in [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md), observability design is documented in [`docs/observability.md`](docs/observability.md), local API benchmark profiles are documented in [`docs/performance_load_test.md`](docs/performance_load_test.md), and model evaluation boundaries are documented in [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md) and [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md).
+For the end-to-end project narrative, see [`docs/project_story.md`](docs/project_story.md). API behavior is documented in [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md), observability design is documented in [`docs/observability.md`](docs/observability.md), configuration and security boundaries are documented in [`docs/configuration_security.md`](docs/configuration_security.md), local API benchmark profiles are documented in [`docs/performance_load_test.md`](docs/performance_load_test.md), and model evaluation boundaries are documented in [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md) and [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md).
 
 ## Key Results
 
@@ -328,6 +328,7 @@ YouBike-ETL-Pipeline/
 ├── docs/
 │   ├── adr/                        # Maintenance decisions
 │   ├── api_examples.http           # Local API request examples
+│   ├── configuration_security.md   # Env vars, secret handling, and threat model
 │   ├── openapi.json                # Exported FastAPI OpenAPI schema
 │   ├── operations.md               # Local run, observability, and troubleshooting runbook
 │   ├── observability.md            # API metrics, JSON logs, dashboard panels, and alert drafts
@@ -494,6 +495,7 @@ CI configuration lives in `.github/workflows/ci.yml`.
 - `/predict` accepts manual `recent_observations` and can query the latest three bike counts from MySQL `station_status` when DB credentials are configured; the automatic lookup still reuses the request temperature / rain because the warehouse does not currently store weather history. The API keeps `next_hour` response keys for compatibility, but the actual horizon should be read from response metadata.
 - The LSTM training flow now has a script, a baseline suite, a Ridge lag-regression baseline, and small tests; local checkpoint-data evaluations show the current LSTM does not beat the strongest baseline for either the next-observation or approximate one-hour horizon. Because the full processed training CSV is not committed, fresh clones cannot directly reproduce the full-data evaluation.
 - The dashboard fixed-sample-data mode is for UI inspection and response-shape validation, not real model-performance evidence.
+- The configuration/security note documents environment variables, secret handling, and a threat model, but the project does not claim complete production security controls such as auth, rate limiting, secret rotation, or WAF protection.
 
 ## Role Relevance
 
@@ -515,6 +517,7 @@ Supporting technical notes:
 - [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md): FastAPI endpoints, request/response shapes, and error boundaries.
 - [`docs/openapi.json`](docs/openapi.json) / [`docs/api_examples.http`](docs/api_examples.http): reproducible API schema and request examples.
 - [`docs/observability.md`](docs/observability.md): API metrics, JSON logs, request tracing, PromQL, dashboard panels, and alert-rule drafts.
+- [`docs/configuration_security.md`](docs/configuration_security.md): environment variables, secret handling, demo/production boundaries, and API threat model.
 - [`docs/operations.md`](docs/operations.md): local demo, Docker Compose, environment variables, health/readiness, metrics, JSON logs, rollback, and troubleshooting.
 - [`docs/performance_load_test.md`](docs/performance_load_test.md): local API benchmark profiles and latency/error-rate interpretation.
 - [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md): machine-learning scope and limitations.
