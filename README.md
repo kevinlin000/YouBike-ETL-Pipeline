@@ -174,6 +174,8 @@ make train-lstm
 
 此指令預設讀取 `data/processed/youbike_weather_merged.csv`，並將新 artifact 輸出到 `.scratch/model_training`，避免不小心覆蓋目前 API 使用的 `api/model_files`。若要正式替換服務中的模型，應先檢查 `model_metadata.json` 的 train / validation / test 指標與 `model_selection.recommendation`，再明確指定 `--output-dir api/model_files`。
 
+API 會在 `/health`、`/ready`、`/predict` 與 `/stations/risk` 回傳模型 lineage 欄位：`model_version`、`model_artifact_hash`、`model_metadata_loaded` 與 `model_metadata_generated_at`。若服務中的 artifact 有 `model_metadata.json`，版本會由 metadata 與 artifact hash 組成；若沒有 metadata，仍會以目前載入的 model / scaler / station mapping 檔案內容計算 hash，讓每次推論都能追到同一組服務資源。
+
 FastAPI endpoint：
 
 | Method | Path | 說明 |
@@ -219,7 +221,11 @@ API 回應會帶 `X-Request-ID`。呼叫端若有傳入同名 header，服務會
   "station_no": "500101001",
   "predicted_bikes_next_hour": 10,
   "forecast_horizon": "model_artifact_horizon",
-  "forecast_horizon_description": "Legacy response keys use next_hour naming, but current artifacts should be interpreted as the model-defined horizon. The documented local evaluation uses horizon_steps=1, meaning the next observation rather than a guaranteed one-hour forecast."
+  "forecast_horizon_description": "Legacy response keys use next_hour naming, but current artifacts should be interpreted as the model-defined horizon. The documented local evaluation uses horizon_steps=1, meaning the next observation rather than a guaranteed one-hour forecast.",
+  "model_version": "legacy-artifact-ea8d8266925da66f",
+  "model_artifact_hash": "sha256:ea8d8266925da66f",
+  "model_metadata_loaded": false,
+  "model_metadata_generated_at": null
 }
 ```
 
@@ -261,7 +267,11 @@ API 回應會帶 `X-Request-ID`。呼叫端若有傳入同名 header，服務會
       "suggested_action": "rebalance_in"
     }
   ],
-  "forecast_horizon": "model_artifact_horizon"
+  "forecast_horizon": "model_artifact_horizon",
+  "model_version": "legacy-artifact-ea8d8266925da66f",
+  "model_artifact_hash": "sha256:ea8d8266925da66f",
+  "model_metadata_loaded": false,
+  "model_metadata_generated_at": null
 }
 ```
 
@@ -456,7 +466,7 @@ make dbt-build
 - ETL 空資料與缺欄位錯誤處理
 - ETL 正常轉換、站點去重與台北時間轉 UTC
 - ETL transform 後的重複 status key、負值與非數值 availability validation
-- FastAPI `/health` liveness、`/ready` inference-readiness、`/metrics` observability、API demo mode 與 `X-Request-ID` response tracing
+- FastAPI `/health` liveness、`/ready` inference-readiness、`/metrics` observability、模型 lineage、API demo mode 與 `X-Request-ID` response tracing
 - API concurrency benchmark 的 latency、error rate 與 throughput 摘要輸出
 - `/stations` model-not-ready 行為
 - `/predict` request validation、`recent_observations` lag-window 與 warehouse lookup fallback 行為

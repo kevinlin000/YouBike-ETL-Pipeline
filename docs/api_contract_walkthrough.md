@@ -31,11 +31,15 @@
   "station_mapping_loaded": true,
   "station_catalog_loaded": true,
   "warehouse_lookup_enabled": false,
-  "forecast_horizon": "model_artifact_horizon"
+  "forecast_horizon": "model_artifact_horizon",
+  "model_version": "legacy-artifact-ea8d8266925da66f",
+  "model_artifact_hash": "sha256:ea8d8266925da66f",
+  "model_metadata_loaded": false,
+  "model_metadata_generated_at": null
 }
 ```
 
-`/health` 是 liveness check：只要 API process 可回應就回 `200`，同時揭露是否為 demo mode、模型、scaler、站點 mapping、站點 metadata 與 warehouse fallback 是否已啟用。
+`/health` 是 liveness check：只要 API process 可回應就回 `200`，同時揭露是否為 demo mode、模型、scaler、站點 mapping、站點 metadata、warehouse fallback 與模型 lineage 是否已啟用。
 
 `GET /ready`
 
@@ -51,6 +55,10 @@
   "station_catalog_loaded": true,
   "warehouse_lookup_enabled": false,
   "forecast_horizon": "model_artifact_horizon",
+  "model_version": "legacy-artifact-ea8d8266925da66f",
+  "model_artifact_hash": "sha256:ea8d8266925da66f",
+  "model_metadata_loaded": false,
+  "model_metadata_generated_at": null,
   "ready": true
 }
 ```
@@ -70,6 +78,17 @@ make api-demo
 ```
 
 這個模式用於檢視 API contract、request validation、readiness、request tracing 與 dashboard 對接流程，不代表模型效果評估。
+
+## 模型 Lineage
+
+`/health`、`/ready`、`/predict` 與 `/stations/risk` 都會回傳模型 lineage 欄位：
+
+- `model_version`
+- `model_artifact_hash`
+- `model_metadata_loaded`
+- `model_metadata_generated_at`
+
+正式模式會依目前載入的 model weight、scaler、station mapping 與 station metadata artifact 計算 hash。若 `model_metadata.json` 存在，`model_version` 會結合 metadata 與 artifact hash；若 served artifact 沒有 metadata，API 仍會回傳 `legacy-artifact-...` 版本與 hash，並標示 `model_metadata_loaded: false`。Demo mode 則回固定的 `api-demo-fixtures-v1`。
 
 ## Request Tracing
 
@@ -139,7 +158,11 @@ make api-demo
   "station_no": "500101001",
   "predicted_bikes_next_hour": 7,
   "forecast_horizon": "model_artifact_horizon",
-  "forecast_horizon_description": "Legacy response keys use next_hour naming, but current artifacts should be interpreted as the model-defined horizon. The documented local evaluation uses horizon_steps=1, meaning the next observation rather than a guaranteed one-hour forecast."
+  "forecast_horizon_description": "Legacy response keys use next_hour naming, but current artifacts should be interpreted as the model-defined horizon. The documented local evaluation uses horizon_steps=1, meaning the next observation rather than a guaranteed one-hour forecast.",
+  "model_version": "legacy-artifact-ea8d8266925da66f",
+  "model_artifact_hash": "sha256:ea8d8266925da66f",
+  "model_metadata_loaded": false,
+  "model_metadata_generated_at": null
 }
 ```
 
@@ -150,6 +173,7 @@ make api-demo
 - warehouse fallback 目前沒有查詢歷史天氣，因此會沿用 request 中的 `temperature` 與 `rain`。
 - 若沒有可用 lag window，API 會沿用早期 demo 行為，將目前狀態重複 3 次後推論。
 - Response 保留 `predicted_bikes_next_hour` 欄位名稱是為了相容舊 demo；實際預測時窗需看 `forecast_horizon` metadata。
+- Response 會帶模型 lineage，讓推論結果可追到同一組服務 artifact。
 
 錯誤行為：
 
@@ -189,6 +213,10 @@ make api-demo
 {
   "forecast_horizon": "model_artifact_horizon",
   "forecast_horizon_description": "Legacy response keys use next_hour naming, but current artifacts should be interpreted as the model-defined horizon. The documented local evaluation uses horizon_steps=1, meaning the next observation rather than a guaranteed one-hour forecast.",
+  "model_version": "legacy-artifact-ea8d8266925da66f",
+  "model_artifact_hash": "sha256:ea8d8266925da66f",
+  "model_metadata_loaded": false,
+  "model_metadata_generated_at": null,
   "risks": [
     {
       "station_no": "500101001",
@@ -221,6 +249,7 @@ make api-demo
 - 每個站點可各自提供 `recent_observations`。
 - 預測空位數由觀測容量推估：`bikes_available + spaces_available - predicted_bikes`。
 - Dashboard 可直接消費 response 中的 `risk_level`、`risk_score` 與 `suggested_action`。
+- Top-level response 會帶模型 lineage；單站風險項目只保留該站推論與風險欄位。
 
 錯誤行為：
 
@@ -235,6 +264,8 @@ Dashboard 固定範例資料模式不會呼叫 FastAPI，而是在 `dashboard/ap
 
 - `predicted_bikes_next_hour`
 - `forecast_horizon`
+- `model_version`
+- `model_artifact_hash`
 - `risk_level`
 - `risk_score`
 - `suggested_action`

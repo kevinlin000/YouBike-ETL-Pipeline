@@ -156,6 +156,8 @@ make train-lstm
 
 This command reads `data/processed/youbike_weather_merged.csv` and writes new artifacts to `.scratch/model_training`, so it does not accidentally overwrite the currently served artifacts in `api/model_files`. To intentionally replace the served model, inspect the train / validation / test metrics and `model_selection.recommendation` in `model_metadata.json` first, then run the script with `--output-dir api/model_files`.
 
+The API returns model lineage fields from `/health`, `/ready`, `/predict`, and `/stations/risk`: `model_version`, `model_artifact_hash`, `model_metadata_loaded`, and `model_metadata_generated_at`. When `model_metadata.json` is present, the served version is derived from metadata and the artifact hash; when metadata is absent, the API still hashes the loaded model, scaler, and station mapping files so each prediction can be traced to a specific served artifact set.
+
 FastAPI endpoints:
 
 | Method | Path | Description |
@@ -201,7 +203,11 @@ Example response:
   "station_no": "500101001",
   "predicted_bikes_next_hour": 10,
   "forecast_horizon": "model_artifact_horizon",
-  "forecast_horizon_description": "Legacy response keys use next_hour naming, but current artifacts should be interpreted as the model-defined horizon. The documented local evaluation uses horizon_steps=1, meaning the next observation rather than a guaranteed one-hour forecast."
+  "forecast_horizon_description": "Legacy response keys use next_hour naming, but current artifacts should be interpreted as the model-defined horizon. The documented local evaluation uses horizon_steps=1, meaning the next observation rather than a guaranteed one-hour forecast.",
+  "model_version": "legacy-artifact-ea8d8266925da66f",
+  "model_artifact_hash": "sha256:ea8d8266925da66f",
+  "model_metadata_loaded": false,
+  "model_metadata_generated_at": null
 }
 ```
 
@@ -243,7 +249,11 @@ Risk-ranking response:
       "suggested_action": "rebalance_in"
     }
   ],
-  "forecast_horizon": "model_artifact_horizon"
+  "forecast_horizon": "model_artifact_horizon",
+  "model_version": "legacy-artifact-ea8d8266925da66f",
+  "model_artifact_hash": "sha256:ea8d8266925da66f",
+  "model_metadata_loaded": false,
+  "model_metadata_generated_at": null
 }
 ```
 
@@ -438,7 +448,7 @@ Current tests cover:
 - ETL empty-input and missing-column handling
 - ETL successful transform behavior, station deduplication, and Taipei-time to UTC conversion
 - ETL post-transform validation for duplicate status keys, negative availability, and non-numeric availability fields
-- FastAPI `/health` liveness, `/ready` inference-readiness, `/metrics` observability, API demo mode, and `X-Request-ID` response tracing
+- FastAPI `/health` liveness, `/ready` inference-readiness, `/metrics` observability, model lineage, API demo mode, and `X-Request-ID` response tracing
 - API concurrency benchmark output for latency, error rate, and throughput
 - `/stations` model-not-ready behavior
 - `/predict` request validation, `recent_observations` lag-window behavior, and warehouse lookup fallback behavior

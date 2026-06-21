@@ -140,6 +140,7 @@ def test_demo_predict_station_is_deterministic():
         "predicted_bikes_next_hour": 4,
         "forecast_horizon": api_client.FORECAST_HORIZON,
         "forecast_horizon_description": api_client.FORECAST_HORIZON_DESCRIPTION,
+        **api_client.DEMO_MODEL_LINEAGE,
     }
 
 
@@ -157,6 +158,7 @@ def test_demo_rank_station_risks_returns_sorted_results():
     assert result[0]["risk_level"] == "stock_out"
     assert result[0]["suggested_action"] == "rebalance_in"
     assert result[0]["forecast_horizon"] == api_client.FORECAST_HORIZON
+    assert result[0]["model_version"] == api_client.DEMO_MODEL_LINEAGE["model_version"]
 
 
 def test_station_display_options_are_sorted_and_parseable():

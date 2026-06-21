@@ -73,7 +73,7 @@
 
 若 request 未提供 `recent_observations`，且 DB credentials 存在，API 會嘗試從 MySQL `station_status` 讀取最近 3 筆 `bikes_available`。目前缺口是 warehouse 沒有儲存對齊時間的 weather history，因此自動查詢路徑只能沿用 request 中的當前 `temperature` 與 `rain`。
 
-API 仍保留 `predicted_bikes_next_hour` 與 `predicted_spaces_next_hour` 欄位名稱，原因是相容早期 dashboard demo。新的 response 另外加入 `forecast_horizon` metadata，避免將欄位名稱誤解成已完成驗證的一小時預測。
+API 仍保留 `predicted_bikes_next_hour` 與 `predicted_spaces_next_hour` 欄位名稱，原因是相容早期 dashboard demo。新的 response 另外加入 `forecast_horizon` metadata，避免將欄位名稱誤解成已完成驗證的一小時預測；同時也回傳 `model_version` 與 `model_artifact_hash`，讓推論結果可以追到目前服務載入的 artifact。
 
 ## 後續建議
 

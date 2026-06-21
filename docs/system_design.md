@@ -111,10 +111,23 @@ API request 使用 Pydantic 驗證，包含：
 
 `/health` 與 `/ready` 分開處理：
 
-- `/health`：只要 API process 活著就回 `200`，並列出 `model_loaded`、`scaler_loaded`、`station_mapping_loaded`、`station_catalog_loaded`、`warehouse_lookup_enabled` 與 `demo_mode`。
+- `/health`：只要 API process 活著就回 `200`，並列出 `model_loaded`、`scaler_loaded`、`station_mapping_loaded`、`station_catalog_loaded`、`warehouse_lookup_enabled`、`demo_mode` 與模型 lineage。
 - `/ready`：正式模式下，只有模型、scaler、station mapping 與 station metadata 都載入時才回 `200`。任一必要資源缺失時回 `503`。
 
 這個切法可以避免常見誤判：服務 process 還活著，不代表模型推論已經可用。
+
+## 模型 lineage
+
+API 會在 `/health`、`/ready`、`/predict` 與 `/stations/risk` 回傳模型 lineage：
+
+- `model_version`
+- `model_artifact_hash`
+- `model_metadata_loaded`
+- `model_metadata_generated_at`
+
+正式模式載入模型時，API 會對目前服務中的 model weight、scaler、station mapping 與 station metadata artifact 計算 hash。若 `model_metadata.json` 存在，`model_version` 會結合模型類型、horizon steps 與 artifact hash；若目前 served artifact 沒有 metadata，API 仍會回傳 `legacy-artifact-...` 版本與 artifact hash，並明確標示 `model_metadata_loaded: false`。
+
+這個設計不是完整 model registry，但已經讓每次 prediction 可以追到同一組服務資源。面試時可以誠實說明：目前做到 API 層級 artifact lineage；若要 production 化，下一步才是把 artifact 發布流程、registry、rollback 與監控串起來。
 
 ## Request tracing
 
@@ -232,7 +245,7 @@ API 回傳排序後的風險清單，dashboard 可以直接呈現調度順位，
 - 將 log 改成結構化 JSON，方便接 log aggregator。
 - 將目前 `/metrics` 擴充為 histogram buckets、process metrics 與 prediction error count。
 - 將 demo mode 與正式模式的設定集中到 config module。
-- 為模型 artifact 加 checksum / version metadata。
+- 將模型 artifact lineage 接到正式 registry、發布流程與 rollback 紀錄。
 
 ## 測試策略
 
@@ -242,6 +255,7 @@ API 回傳排序後的風險清單，dashboard 可以直接呈現調度順位，
 - FastAPI health/readiness。
 - request tracing。
 - `/metrics` request count、error count 與 latency summary。
+- 模型 lineage 與 artifact hash。
 - API demo mode。
 - `/predict` payload validation、unknown station、lag window、warehouse fallback。
 - `/stations/risk` 批次排序、風險分類、per-station lag window。
@@ -296,7 +310,7 @@ benchmark 會以 5 個 worker 併發呼叫：
 
 1. **正式負載測試**：在目前本機 concurrency benchmark 之外，用 k6 或 Locust 測 `/predict`、`/stations/risk` 的 ramp-up、長時間穩定性與錯誤率。
 2. **結構化 observability**：將目前 `/metrics` 擴充為 histogram buckets，輸出 JSON log，並建立簡單 dashboard / alert rules。
-3. **模型版本管理**：在 response 加 model version / artifact hash，讓 prediction 可追溯。
+3. **模型 registry**：將目前 response 中的 model version / artifact hash 串到正式 registry、發布紀錄與 rollback 流程。
 4. **Feature store-lite**：補 weather history table，讓 warehouse fallback 能查對齊時間的天氣特徵。
 5. **背景工作與快取**：對熱門站點或批次風險排序加入 cache / scheduled precompute。
 6. **部署文件**：整理 Docker Compose profile、環境變數、secret handling、rolling restart 與 rollback 策略。

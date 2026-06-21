@@ -22,6 +22,12 @@ DEMO_STATION_BIAS = {
     "500101005": 4,
     "500101006": 5,
 }
+DEMO_MODEL_LINEAGE = {
+    "model_version": "dashboard-demo-fixtures-v1",
+    "model_artifact_hash": "sha256:dashboard-demo",
+    "model_metadata_loaded": False,
+    "model_metadata_generated_at": None,
+}
 
 
 class DashboardApiError(RuntimeError):
@@ -113,6 +119,7 @@ def demo_predict_station(
         "predicted_bikes_next_hour": predicted,
         "forecast_horizon": FORECAST_HORIZON,
         "forecast_horizon_description": FORECAST_HORIZON_DESCRIPTION,
+        **DEMO_MODEL_LINEAGE,
     }
 
 
@@ -146,6 +153,7 @@ def demo_rank_station_risks(
                 "predicted_bikes_next_hour": predicted_bikes,
                 "predicted_spaces_next_hour": predicted_spaces,
                 "forecast_horizon": FORECAST_HORIZON,
+                **DEMO_MODEL_LINEAGE,
                 "risk_level": risk_level,
                 "risk_score": risk_score,
                 "suggested_action": suggested_action,

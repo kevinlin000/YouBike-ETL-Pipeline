@@ -21,6 +21,7 @@ def reset_model_resources(monkeypatch):
     monkeypatch.setattr(api_main, "station_mapping", None)
     monkeypatch.setattr(api_main, "station_info_map", None)
     monkeypatch.setattr(api_main, "db_engine", None)
+    monkeypatch.setattr(api_main, "model_lineage", api_main.unloaded_model_lineage())
     monkeypatch.setattr(api_main, "get_recent_observations_from_warehouse", lambda *_args: None)
 
 
@@ -65,6 +66,39 @@ def test_home_returns_service_metadata(client):
     assert "Bikes" in body["features"]
 
 
+def test_demo_model_lineage_is_deterministic():
+    first = api_main.demo_model_lineage()
+    second = api_main.demo_model_lineage()
+
+    assert first == second
+    assert first["model_version"] == api_main.DEMO_MODEL_VERSION
+    assert first["model_artifact_hash"].startswith("sha256:")
+    assert first["model_metadata_loaded"] is False
+
+
+def test_load_model_lineage_uses_metadata_and_artifact_hashes(tmp_path):
+    model_dir = tmp_path / "model_files"
+    model_dir.mkdir()
+    (model_dir / "youbike_lstm_multistation.pth").write_bytes(b"model")
+    (model_dir / "scaler.pkl").write_bytes(b"scaler")
+    (model_dir / "station_mapping.pkl").write_bytes(b"mapping")
+    (model_dir / "station_info_map.pkl").write_bytes(b"info")
+    (model_dir / api_main.MODEL_METADATA_FILENAME).write_text(
+        (
+            '{"generated_at_utc":"2026-06-21T00:00:00+00:00",'
+            '"horizon_steps":1,"model":{"type":"MultiStationLSTM"}}'
+        ),
+        encoding="utf-8",
+    )
+
+    lineage = api_main.load_model_lineage(model_dir)
+
+    assert lineage["model_version"].startswith("MultiStationLSTM-h1-")
+    assert lineage["model_artifact_hash"].startswith("sha256:")
+    assert lineage["model_metadata_loaded"] is True
+    assert lineage["model_metadata_generated_at"] == "2026-06-21T00:00:00+00:00"
+
+
 def test_response_includes_generated_request_id(client):
     response = client.get("/health")
 
@@ -99,6 +133,7 @@ def test_health_returns_service_state_without_ready_model(client):
         "station_catalog_loaded": False,
         "warehouse_lookup_enabled": False,
         "forecast_horizon": api_main.MODEL_FORECAST_HORIZON,
+        **api_main.unloaded_model_lineage(),
     }
 
 
@@ -139,6 +174,7 @@ def test_ready_reports_unavailable_when_model_resources_missing(client):
         "station_catalog_loaded": False,
         "warehouse_lookup_enabled": False,
         "forecast_horizon": api_main.MODEL_FORECAST_HORIZON,
+        **api_main.unloaded_model_lineage(),
         "ready": False,
     }
 
@@ -161,6 +197,7 @@ def test_ready_returns_ok_when_model_resources_loaded(client, monkeypatch):
         "station_catalog_loaded": True,
         "warehouse_lookup_enabled": False,
         "forecast_horizon": api_main.MODEL_FORECAST_HORIZON,
+        **api_main.unloaded_model_lineage(),
         "ready": True,
     }
 
@@ -181,6 +218,7 @@ def test_demo_mode_reports_ready_without_model_artifacts(client, monkeypatch):
         "station_catalog_loaded": True,
         "warehouse_lookup_enabled": False,
         "forecast_horizon": api_main.MODEL_FORECAST_HORIZON,
+        **api_main.demo_model_lineage(),
         "ready": True,
     }
 
@@ -218,6 +256,7 @@ def test_demo_mode_predicts_without_model_artifacts(client, monkeypatch):
         "predicted_bikes_next_hour": 1,
         "forecast_horizon": api_main.MODEL_FORECAST_HORIZON,
         "forecast_horizon_description": api_main.MODEL_FORECAST_HORIZON_DESCRIPTION,
+        **api_main.demo_model_lineage(),
     }
 
 
@@ -360,6 +399,7 @@ def test_predict_returns_prediction_with_mocked_model(client, monkeypatch):
         "predicted_bikes_next_hour": 7,
         "forecast_horizon": api_main.MODEL_FORECAST_HORIZON,
         "forecast_horizon_description": api_main.MODEL_FORECAST_HORIZON_DESCRIPTION,
+        **api_main.unloaded_model_lineage(),
     }
 
 
@@ -600,6 +640,7 @@ def test_station_risks_returns_ranked_decision_support(client, monkeypatch):
         ],
         "forecast_horizon": api_main.MODEL_FORECAST_HORIZON,
         "forecast_horizon_description": api_main.MODEL_FORECAST_HORIZON_DESCRIPTION,
+        **api_main.unloaded_model_lineage(),
     }
 
 

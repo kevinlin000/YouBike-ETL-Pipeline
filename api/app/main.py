@@ -4,8 +4,11 @@ import joblib
 import pandas as pd
 import numpy as np
 import os
+import hashlib
+import json
 import logging
 import time
+from pathlib import Path
 from threading import Lock
 from uuid import uuid4
 from fastapi import FastAPI, HTTPException, Request
@@ -27,6 +30,8 @@ MODEL_FORECAST_HORIZON_DESCRIPTION = (
 REQUEST_ID_HEADER = "X-Request-ID"
 API_DEMO_MODE_ENV = "API_DEMO_MODE"
 METRICS_PATH = "/metrics"
+MODEL_METADATA_FILENAME = "model_metadata.json"
+DEMO_MODEL_VERSION = "api-demo-fixtures-v1"
 TRUTHY_VALUES = {"1", "true", "yes", "on"}
 DEMO_STATION_FIXTURES = {
     "500101001": {"name": "捷運公館站 (大安區)", "capacity": 20, "station_bias": -1},
@@ -106,6 +111,10 @@ class PredictResponse(BaseModel):
     predicted_bikes_next_hour: int
     forecast_horizon: str
     forecast_horizon_description: str
+    model_version: str
+    model_artifact_hash: str | None
+    model_metadata_loaded: bool
+    model_metadata_generated_at: str | None
 
 class StationRiskInput(BaseModel):
     station_no: str
@@ -170,6 +179,10 @@ class StationRiskResult(BaseModel):
 class StationsRiskResponse(BaseModel):
     forecast_horizon: str
     forecast_horizon_description: str
+    model_version: str
+    model_artifact_hash: str | None
+    model_metadata_loaded: bool
+    model_metadata_generated_at: str | None
     risks: list[StationRiskResult]
 
 class StationsResponse(BaseModel):
@@ -185,6 +198,10 @@ class HealthResponse(BaseModel):
     station_catalog_loaded: bool
     warehouse_lookup_enabled: bool
     forecast_horizon: str
+    model_version: str
+    model_artifact_hash: str | None
+    model_metadata_loaded: bool
+    model_metadata_generated_at: str | None
 
 class ReadinessResponse(HealthResponse):
     ready: bool
@@ -203,13 +220,95 @@ def api_demo_mode_enabled() -> bool:
     return os.getenv(API_DEMO_MODE_ENV, "").strip().lower() in TRUTHY_VALUES
 
 
+def short_sha256(data: bytes, length: int = 16) -> str:
+    return f"sha256:{hashlib.sha256(data).hexdigest()[:length]}"
+
+
+def hash_json_payload(payload: dict) -> str:
+    return short_sha256(
+        json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8")
+    )
+
+
+def hash_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as file:
+        for chunk in iter(lambda: file.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return f"sha256:{digest.hexdigest()[:16]}"
+
+
+def unloaded_model_lineage() -> dict[str, str | bool | None]:
+    return {
+        "model_version": "unloaded",
+        "model_artifact_hash": None,
+        "model_metadata_loaded": False,
+        "model_metadata_generated_at": None,
+    }
+
+
+def demo_model_lineage() -> dict[str, str | bool | None]:
+    return {
+        "model_version": DEMO_MODEL_VERSION,
+        "model_artifact_hash": hash_json_payload(DEMO_STATION_FIXTURES),
+        "model_metadata_loaded": False,
+        "model_metadata_generated_at": None,
+    }
+
+
+model_lineage = unloaded_model_lineage()
+
+
+def derive_model_version(
+    metadata: dict | None,
+    artifact_hash: str | None,
+) -> str:
+    hash_suffix = artifact_hash.split(":", maxsplit=1)[-1] if artifact_hash else "unknown"
+    if metadata:
+        model_type = metadata.get("model", {}).get("type", "model")
+        horizon_steps = metadata.get("horizon_steps", "unknown")
+        return f"{model_type}-h{horizon_steps}-{hash_suffix}"
+    return f"legacy-artifact-{hash_suffix}"
+
+
+def load_model_lineage(base_path: Path) -> dict[str, str | bool | None]:
+    artifact_paths = {
+        "model": base_path / "youbike_lstm_multistation.pth",
+        "scaler": base_path / "scaler.pkl",
+        "station_mapping": base_path / "station_mapping.pkl",
+        "station_info_map": base_path / "station_info_map.pkl",
+    }
+    artifact_hashes = {
+        name: hash_file(path)
+        for name, path in artifact_paths.items()
+        if path.exists()
+    }
+    artifact_hash = hash_json_payload(artifact_hashes) if artifact_hashes else None
+
+    metadata_path = base_path / MODEL_METADATA_FILENAME
+    metadata: dict | None = None
+    if metadata_path.exists():
+        try:
+            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            logger.warning("Model metadata is not valid JSON: %s", exc)
+
+    return {
+        "model_version": derive_model_version(metadata, artifact_hash),
+        "model_artifact_hash": artifact_hash,
+        "model_metadata_loaded": metadata is not None,
+        "model_metadata_generated_at": metadata.get("generated_at_utc") if metadata else None,
+    }
+
+
 def load_demo_resources() -> None:
-    global station_mapping, station_info_map
+    global station_mapping, station_info_map, model_lineage
     station_mapping = {station_no: index for index, station_no in enumerate(DEMO_STATION_FIXTURES)}
     station_info_map = {
         station_no: fixture["name"]
         for station_no, fixture in DEMO_STATION_FIXTURES.items()
     }
+    model_lineage = demo_model_lineage()
 
 
 def reset_request_metrics() -> None:
@@ -318,7 +417,7 @@ class MultiStationLSTM(nn.Module):
 # --- 4. 生命週期管理 (啟動時載入模型) ---
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global model, scaler, station_mapping, station_info_map, db_engine
+    global model, scaler, station_mapping, station_info_map, db_engine, model_lineage
 
     if api_demo_mode_enabled():
         load_demo_resources()
@@ -330,23 +429,24 @@ async def lifespan(app: FastAPI):
         station_mapping = None
         station_info_map = None
         db_engine = None
+        model_lineage = unloaded_model_lineage()
         logger.info("API demo resources released.")
         return
     
     # 模型檔案路徑
     # 取得目前 main.py 的所在目錄 (api/app)
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    base_path = os.path.join(current_dir, "..", "model_files")
-    model_path = os.path.join(base_path, "youbike_lstm_multistation.pth")
-    scaler_path = os.path.join(base_path, "scaler.pkl")
-    mapping_path = os.path.join(base_path, "station_mapping.pkl")
-    info_map_path = os.path.join(base_path, "station_info_map.pkl")
+    base_path = Path(current_dir) / ".." / "model_files"
+    model_path = base_path / "youbike_lstm_multistation.pth"
+    scaler_path = base_path / "scaler.pkl"
+    mapping_path = base_path / "station_mapping.pkl"
+    info_map_path = base_path / "station_info_map.pkl"
 
     try:
         logger.info("正在從 %s 載入資源...", base_path)
         scaler = joblib.load(scaler_path)
         station_mapping = {str(k): v for k, v in joblib.load(mapping_path).items()}
-        if os.path.exists(info_map_path):
+        if info_map_path.exists():
             station_info_map = joblib.load(info_map_path)
         else:
             station_info_map = {sid: sid for sid in station_mapping.keys()}
@@ -354,8 +454,10 @@ async def lifespan(app: FastAPI):
         model = MultiStationLSTM(num_stations=num_stations, input_size=4)
         model.load_state_dict(torch.load(model_path, map_location=torch.device("cpu")))
         model.eval()
+        model_lineage = load_model_lineage(base_path)
         logger.info("所有模型資源載入成功。")
     except Exception as e:
+        model_lineage = unloaded_model_lineage()
         logger.exception("模型載入失敗: %s", e)
     db_engine = create_optional_db_engine()
     yield
@@ -364,6 +466,7 @@ async def lifespan(app: FastAPI):
     station_mapping = None
     station_info_map = None
     db_engine = None
+    model_lineage = unloaded_model_lineage()
     logger.info("模型資源已釋放。")
 
 app = FastAPI(lifespan=lifespan, title="YouBike LSTM Prediction API")
@@ -439,6 +542,7 @@ def service_state() -> dict:
         "station_catalog_loaded": station_catalog_loaded,
         "warehouse_lookup_enabled": db_engine is not None,
         "forecast_horizon": MODEL_FORECAST_HORIZON,
+        **model_lineage,
     }
 
 def inference_ready() -> bool:
@@ -689,6 +793,7 @@ def predict(request: PredictRequest):
             "predicted_bikes_next_hour": final_prediction,
             "forecast_horizon": MODEL_FORECAST_HORIZON,
             "forecast_horizon_description": MODEL_FORECAST_HORIZON_DESCRIPTION,
+            **model_lineage,
         }
 
     except Exception as e:
@@ -737,5 +842,6 @@ def rank_station_risks(request: StationsRiskRequest):
     return {
         "forecast_horizon": MODEL_FORECAST_HORIZON,
         "forecast_horizon_description": MODEL_FORECAST_HORIZON_DESCRIPTION,
+        **model_lineage,
         "risks": risks,
     }
