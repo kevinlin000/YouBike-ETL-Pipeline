@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 import json
 import statistics
 import time
@@ -29,6 +30,12 @@ class Measurement:
     duration_ms: float
     ok: bool
     error: str | None = None
+
+
+@dataclass(frozen=True)
+class BenchmarkRun:
+    measurements: list[Measurement]
+    elapsed_seconds: float
 
 
 def benchmark_cases() -> list[EndpointCase]:
@@ -135,7 +142,10 @@ def request_once(
     )
 
 
-def summarize(measurements: list[Measurement]) -> list[dict[str, Any]]:
+def summarize(
+    measurements: list[Measurement],
+    elapsed_seconds: float | None = None,
+) -> list[dict[str, Any]]:
     summaries = []
     endpoints = sorted({measurement.endpoint for measurement in measurements})
     for endpoint in endpoints:
@@ -144,15 +154,30 @@ def summarize(measurements: list[Measurement]) -> list[dict[str, Any]]:
         ]
         durations = [measurement.duration_ms for measurement in endpoint_measurements]
         error_count = sum(1 for measurement in endpoint_measurements if not measurement.ok)
+        endpoint_elapsed_seconds = elapsed_seconds
+        if endpoint_elapsed_seconds is None:
+            endpoint_elapsed_seconds = sum(durations) / 1000
+        throughput_rps = (
+            len(endpoint_measurements) / endpoint_elapsed_seconds
+            if endpoint_elapsed_seconds and endpoint_elapsed_seconds > 0
+            else 0.0
+        )
         summaries.append(
             {
                 "endpoint": endpoint,
                 "requests": len(endpoint_measurements),
                 "errors": error_count,
+                "error_rate_percent": (
+                    error_count / len(endpoint_measurements) * 100
+                    if endpoint_measurements
+                    else 0.0
+                ),
+                "throughput_rps": throughput_rps,
                 "min_ms": min(durations) if durations else 0.0,
                 "avg_ms": statistics.fmean(durations) if durations else 0.0,
                 "p50_ms": percentile(durations, 0.50),
                 "p95_ms": percentile(durations, 0.95),
+                "p99_ms": percentile(durations, 0.99),
                 "max_ms": max(durations) if durations else 0.0,
             }
         )
@@ -161,13 +186,14 @@ def summarize(measurements: list[Measurement]) -> list[dict[str, Any]]:
 
 def format_markdown_table(summaries: list[dict[str, Any]]) -> str:
     lines = [
-        "| endpoint | requests | errors | min ms | avg ms | p50 ms | p95 ms | max ms |",
-        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+        "| endpoint | requests | errors | error % | rps | min ms | avg ms | p50 ms | p95 ms | p99 ms | max ms |",
+        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
     ]
     for summary in summaries:
         lines.append(
-            "| {endpoint} | {requests} | {errors} | {min_ms:.2f} | {avg_ms:.2f} | "
-            "{p50_ms:.2f} | {p95_ms:.2f} | {max_ms:.2f} |".format(**summary)
+            "| {endpoint} | {requests} | {errors} | {error_rate_percent:.2f} | "
+            "{throughput_rps:.2f} | {min_ms:.2f} | {avg_ms:.2f} | {p50_ms:.2f} | "
+            "{p95_ms:.2f} | {p99_ms:.2f} | {max_ms:.2f} |".format(**summary)
         )
     return "\n".join(lines)
 
@@ -177,7 +203,8 @@ def run_benchmark(
     requests_per_endpoint: int,
     warmup_requests: int,
     timeout: float,
-) -> list[Measurement]:
+    concurrency: int,
+) -> BenchmarkRun:
     cases = benchmark_cases()
 
     for case in cases:
@@ -190,8 +217,14 @@ def run_benchmark(
             )
 
     measurements = []
-    for case in cases:
-        for index in range(requests_per_endpoint):
+    recorded_requests = [
+        (case, index)
+        for index in range(requests_per_endpoint)
+        for case in cases
+    ]
+    start = time.perf_counter()
+    if concurrency == 1:
+        for case, index in recorded_requests:
             measurements.append(
                 request_once(
                     base_url=base_url,
@@ -200,16 +233,33 @@ def run_benchmark(
                     timeout=timeout,
                 )
             )
-    return measurements
+    else:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=concurrency) as executor:
+            futures = [
+                executor.submit(
+                    request_once,
+                    base_url=base_url,
+                    case=case,
+                    request_id=f"benchmark-{case.name}-{index}",
+                    timeout=timeout,
+                )
+                for case, index in recorded_requests
+            ]
+            for future in concurrent.futures.as_completed(futures):
+                measurements.append(future.result())
+
+    elapsed_seconds = time.perf_counter() - start
+    return BenchmarkRun(measurements=measurements, elapsed_seconds=elapsed_seconds)
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Run a small sequential latency smoke test against the YouBike FastAPI service."
+        description="Run a small local latency/concurrency benchmark against the YouBike FastAPI service."
     )
     parser.add_argument("--base-url", default=DEFAULT_BASE_URL)
     parser.add_argument("--requests", type=int, default=20, help="Recorded requests per endpoint.")
     parser.add_argument("--warmup", type=int, default=2, help="Warmup requests per endpoint.")
+    parser.add_argument("--concurrency", type=int, default=1, help="Concurrent workers for recorded requests.")
     parser.add_argument("--timeout", type=float, default=5.0, help="Per-request timeout in seconds.")
     parser.add_argument("--json-output", type=Path, help="Optional path for raw benchmark results.")
     return parser.parse_args()
@@ -221,14 +271,17 @@ def main() -> int:
         raise SystemExit("--requests must be greater than 0")
     if args.warmup < 0:
         raise SystemExit("--warmup must be greater than or equal to 0")
+    if args.concurrency <= 0:
+        raise SystemExit("--concurrency must be greater than 0")
 
-    measurements = run_benchmark(
+    result = run_benchmark(
         base_url=args.base_url,
         requests_per_endpoint=args.requests,
         warmup_requests=args.warmup,
         timeout=args.timeout,
+        concurrency=args.concurrency,
     )
-    summaries = summarize(measurements)
+    summaries = summarize(result.measurements, elapsed_seconds=result.elapsed_seconds)
     print(format_markdown_table(summaries))
 
     if args.json_output:
@@ -239,8 +292,10 @@ def main() -> int:
                     "base_url": args.base_url,
                     "requests_per_endpoint": args.requests,
                     "warmup_requests": args.warmup,
+                    "concurrency": args.concurrency,
+                    "elapsed_seconds": result.elapsed_seconds,
                     "summary": summaries,
-                    "measurements": [asdict(measurement) for measurement in measurements],
+                    "measurements": [asdict(measurement) for measurement in result.measurements],
                 },
                 indent=2,
                 ensure_ascii=False,
@@ -248,7 +303,7 @@ def main() -> int:
             encoding="utf-8",
         )
 
-    return 1 if any(not measurement.ok for measurement in measurements) else 0
+    return 1 if any(not measurement.ok for measurement in result.measurements) else 0
 
 
 if __name__ == "__main__":

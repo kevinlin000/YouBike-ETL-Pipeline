@@ -408,13 +408,13 @@ make api-demo
 
 啟動後可開啟 http://localhost:8000/docs。此模式會提供固定站點 catalog、`/health`、`/ready`、`/predict` 與 `/stations/risk`，適合面試時展示 API contract、request validation、readiness 與 request tracing。
 
-另開一個 terminal 可執行小型 API latency smoke test：
+另開一個 terminal 可執行小型本機 API concurrency benchmark：
 
 ```bash
 make api-benchmark
 ```
 
-此指令會依序呼叫 `/ready`、`/predict` 與 `/stations/risk`，輸出每個 endpoint 的 request 數、error 數、平均延遲、p50、p95 與最大延遲。這是本機 sequential smoke test，用來檢查 API demo flow 與基礎 latency，不是正式 load test。
+此指令會以 5 個 worker 併發呼叫 `/ready`、`/predict` 與 `/stations/risk`，輸出每個 endpoint 的 request 數、error rate、throughput、p50、p95、p99 與最大延遲。這是本機 benchmark，用來檢查 API demo flow、基礎 latency 與簡單併發行為；結果會受開發機規格影響，不代表 production SLO。
 
 ETL load 前會執行資料品質 validation。預設 `ETL_VALIDATION_MODE=strict`，遇到重複 status key、負值或非數值 availability 會中止；若只想記錄警告並繼續，可設定 `ETL_VALIDATION_MODE=warn`。
 
@@ -457,7 +457,7 @@ make dbt-build
 - ETL 正常轉換、站點去重與台北時間轉 UTC
 - ETL transform 後的重複 status key、負值與非數值 availability validation
 - FastAPI `/health` liveness、`/ready` inference-readiness、`/metrics` observability、API demo mode 與 `X-Request-ID` response tracing
-- API latency smoke test 的統計摘要輸出
+- API concurrency benchmark 的 latency、error rate 與 throughput 摘要輸出
 - `/stations` model-not-ready 行為
 - `/predict` request validation、`recent_observations` lag-window 與 warehouse lookup fallback 行為
 - `/stations/risk` 批次風險排序、request validation、unknown station 與 per-station `recent_observations` 行為

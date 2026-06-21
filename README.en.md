@@ -390,13 +390,13 @@ make api-demo
 
 Then open http://localhost:8000/docs. This mode exposes the fixed station catalog, `/health`, `/ready`, `/predict`, and `/stations/risk`, which is useful for demonstrating API contracts, request validation, readiness, and request tracing.
 
-In another terminal, run a small API latency smoke test:
+In another terminal, run a small local API concurrency benchmark:
 
 ```bash
 make api-benchmark
 ```
 
-The command calls `/ready`, `/predict`, and `/stations/risk` sequentially and prints request count, error count, average latency, p50, p95, and max latency per endpoint. This is a local sequential smoke test for the API demo flow, not a formal load test.
+The command calls `/ready`, `/predict`, and `/stations/risk` with 5 concurrent workers and prints request count, error rate, throughput, p50, p95, p99, and max latency per endpoint. This is a local benchmark for the API demo flow, baseline latency, and simple concurrency behavior; results depend on the development machine and should not be treated as production SLOs.
 
 ETL runs data-quality validation before loading. The default `ETL_VALIDATION_MODE=strict` fails on duplicate status keys, negative availability, or non-numeric availability fields. Set `ETL_VALIDATION_MODE=warn` to log validation failures and continue.
 
@@ -439,7 +439,7 @@ Current tests cover:
 - ETL successful transform behavior, station deduplication, and Taipei-time to UTC conversion
 - ETL post-transform validation for duplicate status keys, negative availability, and non-numeric availability fields
 - FastAPI `/health` liveness, `/ready` inference-readiness, `/metrics` observability, API demo mode, and `X-Request-ID` response tracing
-- API latency smoke-test summary output
+- API concurrency benchmark output for latency, error rate, and throughput
 - `/stations` model-not-ready behavior
 - `/predict` request validation, `recent_observations` lag-window behavior, and warehouse lookup fallback behavior
 - `/stations/risk` batch ranking, request validation, unknown station behavior, and per-station `recent_observations`
