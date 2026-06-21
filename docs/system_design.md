@@ -164,10 +164,13 @@ API middleware 會為每個 response 加上 `X-Request-ID`：
 - `youbike_api_request_duration_ms_sum`
 - `youbike_api_request_duration_ms_count`
 - `youbike_api_request_duration_ms_max`
+- `youbike_api_request_duration_seconds_bucket`
+- `youbike_api_request_duration_seconds_sum`
+- `youbike_api_request_duration_seconds_count`
 
 指標以 HTTP method 和 path 作為 label。`/metrics` 本身不會被納入統計，避免 scrape 行為讓 request count 自我膨脹。
 
-這個 endpoint 的定位是基礎可觀測性：讓本機 demo、面試展示或簡單監控可以看到 API 是否有 request、5xx error 和 latency 變化。它不是完整 production monitoring；若要上 production，仍應補 histogram buckets、process metrics、dashboard、alert rules 和 log aggregation。
+這個 endpoint 的定位是基礎可觀測性：讓本機 demo、面試展示或簡單監控可以看到 API 是否有 request、5xx error 和 latency 變化。latency histogram 可接 Prometheus `histogram_quantile()` 查 p95 / p99。它不是完整 production monitoring；若要上 production，仍應補 process metrics、正式 dashboard、alert routing 和 log aggregation。PromQL 與 alert rule 草案整理在 [`docs/observability.md`](observability.md)。
 
 ## Demo mode 設計
 
@@ -257,8 +260,8 @@ API 回傳排序後的風險清單，dashboard 可以直接呈現調度順位，
 
 仍可改進的地方：
 
-- 將目前 JSON log 接到 log aggregator，並補 dashboard / alert 查詢。
-- 將目前 `/metrics` 擴充為 histogram buckets、process metrics 與 prediction error count。
+- 將目前 JSON log 接到 log aggregator，並補正式 dashboard / alert routing。
+- 將目前 `/metrics` 擴充 process metrics 與 prediction error count。
 - 將 demo mode 與正式模式的設定集中到 config module。
 - 將模型 artifact lineage 接到正式 registry、發布流程與 rollback 紀錄。
 
@@ -269,7 +272,7 @@ API 回傳排序後的風險清單，dashboard 可以直接呈現調度順位，
 - ETL transform 與資料品質邊界。
 - FastAPI health/readiness。
 - request tracing 與 JSON request logging。
-- `/metrics` request count、error count 與 latency summary。
+- `/metrics` request count、error count、latency summary 與 histogram buckets。
 - 模型 lineage 與 artifact hash。
 - API demo mode。
 - `/predict` payload validation、unknown station、lag window、warehouse fallback。
@@ -344,7 +347,7 @@ Short local concurrency check for interview walkthroughs.
 如果要把這個作品往更高階後端 / AI 應用作品推進，優先順序如下：
 
 1. **正式負載測試**：在目前本機 benchmark profiles 之外，用 k6 或 Locust 測 `/predict`、`/stations/risk` 的 ramp-up、長時間穩定性與錯誤率。
-2. **結構化 observability**：將目前 `/metrics` 與 JSON log 接到 dashboard / alert rules，並補 histogram buckets。
+2. **結構化 observability**：將目前 `/metrics` 與 JSON log 接到正式 dashboard、alert routing 與 log aggregation，並補 process metrics。
 3. **模型 registry**：將目前 response 中的 model version / artifact hash 串到正式 registry、發布紀錄與 rollback 流程。
 4. **Feature store-lite**：補 weather history table，讓 warehouse fallback 能查對齊時間的天氣特徵。
 5. **背景工作與快取**：對熱門站點或批次風險排序加入 cache / scheduled precompute。

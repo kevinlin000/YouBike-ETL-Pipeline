@@ -11,6 +11,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 from threading import Lock
+from typing import Any
 from uuid import uuid4
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, PlainTextResponse
@@ -40,6 +41,18 @@ METRICS_PATH = "/metrics"
 MODEL_METADATA_FILENAME = "model_metadata.json"
 DEMO_MODEL_VERSION = "api-demo-fixtures-v1"
 TRUTHY_VALUES = {"1", "true", "yes", "on"}
+REQUEST_DURATION_BUCKETS_SECONDS = (
+    0.005,
+    0.01,
+    0.025,
+    0.05,
+    0.1,
+    0.25,
+    0.5,
+    1.0,
+    2.5,
+    5.0,
+)
 DEMO_STATION_FIXTURES = {
     "500101001": {"name": "捷運公館站 (大安區)", "capacity": 20, "station_bias": -1},
     "500101002": {"name": "臺大資訊大樓 (大安區)", "capacity": 20, "station_bias": -4},
@@ -219,7 +232,7 @@ scaler = None
 station_mapping = None
 station_info_map = None  # 新增：站點資訊對照表
 db_engine: Engine | None = None
-request_metrics: dict[tuple[str, str], dict[str, float | int]] = {}
+request_metrics: dict[tuple[str, str], dict[str, Any]] = {}
 request_metrics_lock = Lock()
 
 
@@ -366,6 +379,9 @@ def record_request_metric(
                 "errors": 0,
                 "duration_ms_sum": 0.0,
                 "duration_ms_max": 0.0,
+                "duration_seconds_buckets": {
+                    bucket: 0 for bucket in REQUEST_DURATION_BUCKETS_SECONDS
+                },
             },
         )
         metric["requests"] = int(metric["requests"]) + 1
@@ -373,10 +389,19 @@ def record_request_metric(
             metric["errors"] = int(metric["errors"]) + 1
         metric["duration_ms_sum"] = float(metric["duration_ms_sum"]) + duration_ms
         metric["duration_ms_max"] = max(float(metric["duration_ms_max"]), duration_ms)
+        duration_seconds = duration_ms / 1000
+        bucket_counts = metric["duration_seconds_buckets"]
+        for bucket in REQUEST_DURATION_BUCKETS_SECONDS:
+            if duration_seconds <= bucket:
+                bucket_counts[bucket] = int(bucket_counts[bucket]) + 1
 
 
 def label_value(value: str) -> str:
     return value.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
+
+
+def bucket_label(bucket: float) -> str:
+    return f"{bucket:g}"
 
 
 def render_metrics() -> str:
@@ -397,9 +422,13 @@ def render_metrics() -> str:
         "# TYPE youbike_api_request_duration_ms_count counter",
         "# HELP youbike_api_request_duration_ms_max Maximum observed request duration in milliseconds.",
         "# TYPE youbike_api_request_duration_ms_max gauge",
+        "# HELP youbike_api_request_duration_seconds Request duration histogram in seconds.",
+        "# TYPE youbike_api_request_duration_seconds histogram",
     ]
     for (method, path), metric in snapshot.items():
         labels = f'method="{label_value(method)}",path="{label_value(path)}"'
+        histogram_labels = labels + ',le="{le}"'
+        bucket_counts = metric["duration_seconds_buckets"]
         lines.extend(
             [
                 f"youbike_api_requests_total{{{labels}}} {int(metric['requests'])}",
@@ -407,6 +436,22 @@ def render_metrics() -> str:
                 f"youbike_api_request_duration_ms_sum{{{labels}}} {float(metric['duration_ms_sum']):.6f}",
                 f"youbike_api_request_duration_ms_count{{{labels}}} {int(metric['requests'])}",
                 f"youbike_api_request_duration_ms_max{{{labels}}} {float(metric['duration_ms_max']):.6f}",
+            ]
+        )
+        for bucket in REQUEST_DURATION_BUCKETS_SECONDS:
+            lines.append(
+                "youbike_api_request_duration_seconds_bucket"
+                f"{{{histogram_labels.format(le=bucket_label(bucket))}}} "
+                f"{int(bucket_counts[bucket])}"
+            )
+        lines.extend(
+            [
+                "youbike_api_request_duration_seconds_bucket"
+                f"{{{histogram_labels.format(le='+Inf')}}} {int(metric['requests'])}",
+                f"youbike_api_request_duration_seconds_sum{{{labels}}} "
+                f"{float(metric['duration_ms_sum']) / 1000:.6f}",
+                f"youbike_api_request_duration_seconds_count{{{labels}}} "
+                f"{int(metric['requests'])}",
             ]
         )
     return "\n".join(lines) + "\n"

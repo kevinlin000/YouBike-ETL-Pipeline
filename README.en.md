@@ -16,7 +16,7 @@ The project has three layers:
 
 This repository is a portfolio project rather than an actively operated production service. The Chinese README is the primary project narrative; this English README is a concise companion.
 
-For the end-to-end project narrative, see [`docs/project_story.md`](docs/project_story.md). API behavior is documented in [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md), local API benchmark profiles are documented in [`docs/performance_load_test.md`](docs/performance_load_test.md), and model evaluation boundaries are documented in [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md) and [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md).
+For the end-to-end project narrative, see [`docs/project_story.md`](docs/project_story.md). API behavior is documented in [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md), observability design is documented in [`docs/observability.md`](docs/observability.md), local API benchmark profiles are documented in [`docs/performance_load_test.md`](docs/performance_load_test.md), and model evaluation boundaries are documented in [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md) and [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md).
 
 ## Key Results
 
@@ -29,7 +29,7 @@ For the end-to-end project narrative, see [`docs/project_story.md`](docs/project
 | Forecasting | Built a Multi-Station LSTM prototype with station, weather, and short-sequence status features, then packaged it as API artifacts |
 | Serving | Exposed model inference and station risk ranking through FastAPI, with a Streamlit UI for prediction and redistribution support |
 | Deployment evidence | Historical GCP VM deployment with Docker Compose, Airflow, MySQL, API, and dashboard services |
-| Engineering hygiene | pytest coverage for ETL / API behavior, local API benchmark profiles, and GitHub Actions CI |
+| Engineering hygiene | pytest coverage for ETL / API behavior, request tracing, Prometheus-style metrics, local API benchmark profiles, and GitHub Actions CI |
 
 ## Problem Context
 
@@ -165,7 +165,7 @@ FastAPI endpoints:
 | GET | `/` | Service status |
 | GET | `/health` | Process-level health check with model and data-resource load state |
 | GET | `/ready` | Inference-readiness check; in normal mode it returns 200 only when model, scaler, and station metadata are loaded; API demo mode uses fixed sample data |
-| GET | `/metrics` | Prometheus-style text metrics with request count, 5xx error count, and latency summary |
+| GET | `/metrics` | Prometheus-style text metrics with request count, 5xx error count, and latency histogram |
 | GET | `/stations` | Supported station list |
 | POST | `/predict` | Predicts available bikes for the model horizon |
 | POST | `/stations/risk` | Ranks multi-station stock-out / full-load risk |
@@ -176,7 +176,7 @@ For API contract inspection without model files, MySQL, or Docker Compose, run w
 
 API responses include `X-Request-ID`. If the caller sends the header, the service echoes it; otherwise the service generates one. API logs use JSON event records; request-completion logs include `request_id`, `method`, `path`, `status_code`, `duration_ms`, and `model_version`.
 
-`/metrics` returns lightweight Prometheus-style metrics for request count, 5xx error count, and duration sum/count/max per endpoint. It is basic local/demo observability, not a complete production monitoring stack.
+`/metrics` returns lightweight Prometheus-style metrics for request count, 5xx error count, duration sum/count/max, and latency histograms per endpoint. It is basic local/demo observability, not a complete production monitoring stack. PromQL examples and draft alert rules are documented in [`docs/observability.md`](docs/observability.md).
 
 Note: the API keeps the legacy `predicted_bikes_next_hour` / `predicted_spaces_next_hour` response keys for compatibility with the original demo. Interpret the actual horizon through `forecast_horizon` and `forecast_horizon_description`. The current local evaluation uses `horizon_steps=1`, meaning the next observation rather than a proven one-hour forecast.
 
@@ -328,6 +328,8 @@ YouBike-ETL-Pipeline/
 ├── docs/
 │   ├── adr/                        # Maintenance decisions
 │   ├── operations.md               # Local run, observability, and troubleshooting runbook
+│   ├── observability.md            # API metrics, JSON logs, dashboard panels, and alert drafts
+│   ├── performance_load_test.md    # Local API benchmark profiles and capacity probe
 │   └── images/                     # Deployment and data-volume evidence
 ├── notebooks/
 │   ├── 01_youbike_analysis.ipynb
@@ -458,6 +460,7 @@ Current tests cover:
 - ETL successful transform behavior, station deduplication, and Taipei-time to UTC conversion
 - ETL post-transform validation for duplicate status keys, negative availability, and non-numeric availability fields
 - FastAPI `/health` liveness, `/ready` inference-readiness, `/metrics` observability, JSON request logging, model lineage, API demo mode, and `X-Request-ID` response tracing
+- `/metrics` latency histogram for Prometheus `histogram_quantile()` p95 / p99 queries
 - API benchmark profile output for latency, error rate, throughput, and pass/watch/fail assessment
 - `/stations` model-not-ready behavior
 - `/predict` request validation, `recent_observations` lag-window behavior, and warehouse lookup fallback behavior
@@ -499,6 +502,7 @@ Supporting technical notes:
 - [`docs/system_design.md`](docs/system_design.md): system design note for backend / AI application boundaries, demo modes, failure modes, and extension paths. The main content is in Chinese with a short English summary.
 - [`docs/backend_ai_architecture.md`](docs/backend_ai_architecture.md): backend and model-serving architecture.
 - [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md): FastAPI endpoints, request/response shapes, and error boundaries.
+- [`docs/observability.md`](docs/observability.md): API metrics, JSON logs, request tracing, PromQL, dashboard panels, and alert-rule drafts.
 - [`docs/operations.md`](docs/operations.md): local demo, Docker Compose, environment variables, health/readiness, metrics, JSON logs, rollback, and troubleshooting.
 - [`docs/performance_load_test.md`](docs/performance_load_test.md): local API benchmark profiles and latency/error-rate interpretation.
 - [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md): machine-learning scope and limitations.

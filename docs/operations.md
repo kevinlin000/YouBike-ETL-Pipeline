@@ -143,8 +143,11 @@ make down
 - `youbike_api_request_duration_ms_sum`
 - `youbike_api_request_duration_ms_count`
 - `youbike_api_request_duration_ms_max`
+- `youbike_api_request_duration_seconds_bucket`
+- `youbike_api_request_duration_seconds_sum`
+- `youbike_api_request_duration_seconds_count`
 
-`/metrics` 本身不納入統計，避免 scrape 行為讓 request count 自我膨脹。
+`/metrics` 本身不納入統計，避免 scrape 行為讓 request count 自我膨脹。Prometheus scrape、PromQL、dashboard panels 與 alert rule 草案見 [`docs/observability.md`](observability.md)。
 
 ## JSON Log
 

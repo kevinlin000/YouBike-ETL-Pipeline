@@ -177,6 +177,21 @@ def test_metrics_endpoint_exposes_request_summary(client):
     assert 'youbike_api_requests_total{method="GET",path="/ready"} 1' in body
     assert 'youbike_api_request_errors_total{method="GET",path="/ready"} 1' in body
     assert 'youbike_api_request_duration_ms_count{method="GET",path="/ready"} 1' in body
+    assert "# TYPE youbike_api_request_duration_seconds histogram" in body
+    assert 'youbike_api_request_duration_seconds_bucket{method="GET",path="/ready",le="+Inf"} 1' in body
+    assert 'youbike_api_request_duration_seconds_count{method="GET",path="/ready"} 1' in body
+
+
+def test_metrics_histogram_buckets_are_cumulative():
+    api_main.record_request_metric("GET", "/slow", 200, 60.0)
+
+    body = api_main.render_metrics()
+
+    assert 'youbike_api_request_duration_seconds_bucket{method="GET",path="/slow",le="0.05"} 0' in body
+    assert 'youbike_api_request_duration_seconds_bucket{method="GET",path="/slow",le="0.1"} 1' in body
+    assert 'youbike_api_request_duration_seconds_bucket{method="GET",path="/slow",le="+Inf"} 1' in body
+    assert 'youbike_api_request_duration_seconds_sum{method="GET",path="/slow"} 0.060000' in body
+    assert 'youbike_api_request_duration_seconds_count{method="GET",path="/slow"} 1' in body
 
 
 def test_metrics_endpoint_does_not_record_itself(client):

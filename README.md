@@ -16,7 +16,7 @@
 
 本專案目前作為作品集展示，用來呈現資料管線設計、資料建模、統計分析、模型訓練與模型服務化能力；不是目前仍在線上營運的服務。
 
-完整專案脈絡整理在 [`docs/project_story.md`](docs/project_story.md)。API 行為可參考 [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md)，本機 API 效能測試可參考 [`docs/performance_load_test.md`](docs/performance_load_test.md)，模型評估邊界則整理在 [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md) 與 [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md)。
+完整專案脈絡整理在 [`docs/project_story.md`](docs/project_story.md)。API 行為可參考 [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md)，可觀測性設計可參考 [`docs/observability.md`](docs/observability.md)，本機 API 效能測試可參考 [`docs/performance_load_test.md`](docs/performance_load_test.md)，模型評估邊界則整理在 [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md) 與 [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md)。
 
 ## 核心成果
 
@@ -29,7 +29,7 @@
 | 預測建模 | 建立 Multi-Station LSTM prototype，整合站點、天氣與短序列狀態特徵，並封裝為 API artifact |
 | 服務化 | 以 FastAPI 提供模型推論與站點風險排序 API，Streamlit 提供單站預測與多站調度輔助介面 |
 | 部署證據 | 曾以 Docker Compose 部署於 GCP VM，並保留 Airflow、Docker、GCP 監控截圖 |
-| 工程化維護 | 以 pytest 覆蓋 ETL / API 基礎行為，提供本機 API benchmark profiles，並以 GitHub Actions 自動執行測試 |
+| 工程化維護 | 以 pytest 覆蓋 ETL / API 基礎行為，提供 request tracing、Prometheus-style metrics、API benchmark profiles，並以 GitHub Actions 自動執行測試 |
 
 ## 問題背景
 
@@ -183,7 +183,7 @@ FastAPI endpoint：
 | GET | `/` | 服務狀態 |
 | GET | `/health` | 服務行程健康檢查，回傳模型與資料資源載入狀態 |
 | GET | `/ready` | 推論 readiness 檢查；正式模式需模型、scaler 與站點 metadata 都載入才回 200，API demo mode 則使用固定範例資料 |
-| GET | `/metrics` | Prometheus-style 文字指標，回傳 request count、5xx error count 與 latency summary |
+| GET | `/metrics` | Prometheus-style 文字指標，回傳 request count、5xx error count 與 latency histogram |
 | GET | `/stations` | 回傳模型支援的站點清單 |
 | POST | `/predict` | 預測指定站點在模型時窗內的可借車數 |
 | POST | `/stations/risk` | 批次評估多站點缺車 / 滿站風險並排序 |
@@ -194,7 +194,7 @@ FastAPI endpoint：
 
 API 回應會帶 `X-Request-ID`。呼叫端若有傳入同名 header，服務會沿用；若未傳入，服務會自動產生一組 request id。API log 採 JSON event 格式，request completion 會記錄 `request_id`、`method`、`path`、`status_code`、`duration_ms` 與 `model_version`，方便追查單次推論請求。
 
-`/metrics` 會輸出輕量 Prometheus-style 指標，包含各 endpoint 的 request count、5xx error count、duration sum/count/max。這是本機與展示用的基礎 observability，不等同於完整 production monitoring。
+`/metrics` 會輸出輕量 Prometheus-style 指標，包含各 endpoint 的 request count、5xx error count、duration sum/count/max 與 latency histogram。這是本機與展示用的基礎 observability，不等同於完整 production monitoring。PromQL 與 alert rule 草案見 [`docs/observability.md`](docs/observability.md)。
 
 注意：API 仍保留 `predicted_bikes_next_hour` / `predicted_spaces_next_hour` 這組早期 demo 欄位名稱以維持相容性；實際 horizon 應以 response 中的 `forecast_horizon` 與 `forecast_horizon_description` 判讀。目前本地評估使用 `horizon_steps=1`，代表下一筆 observation，而不是已驗證的一小時預測。
 
@@ -346,6 +346,8 @@ YouBike-ETL-Pipeline/
 ├── docs/
 │   ├── adr/                        # 維護決策紀錄
 │   ├── operations.md               # 本機啟動、觀測與故障處理 runbook
+│   ├── observability.md            # API metrics、JSON log、dashboard 與 alert rule 草案
+│   ├── performance_load_test.md    # 本機 API benchmark profiles 與容量探測
 │   └── images/                     # 部署與資料規模截圖
 ├── notebooks/
 │   ├── 01_youbike_analysis.ipynb
@@ -476,6 +478,7 @@ make dbt-build
 - ETL 正常轉換、站點去重與台北時間轉 UTC
 - ETL transform 後的重複 status key、負值與非數值 availability validation
 - FastAPI `/health` liveness、`/ready` inference-readiness、`/metrics` observability、JSON request logging、模型 lineage、API demo mode 與 `X-Request-ID` response tracing
+- `/metrics` latency histogram，可用 Prometheus `histogram_quantile()` 查 p95 / p99 latency
 - API benchmark profiles 的 latency、error rate、throughput 與 pass/watch/fail 摘要輸出
 - `/stations` model-not-ready 行為
 - `/predict` request validation、`recent_observations` lag-window 與 warehouse lookup fallback 行為
@@ -518,6 +521,7 @@ CI 設定位於 `.github/workflows/ci.yml`。
 - [`docs/system_design.md`](docs/system_design.md)：後端與 AI 應用系統設計、API 邊界、demo mode、failure modes 與擴展方向。
 - [`docs/backend_ai_architecture.md`](docs/backend_ai_architecture.md)：後端與模型服務架構圖說明。
 - [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md)：FastAPI endpoint、request/response 與錯誤邊界。
+- [`docs/observability.md`](docs/observability.md)：API metrics、JSON log、request tracing、PromQL、dashboard 與 alert rule 草案。
 - [`docs/operations.md`](docs/operations.md)：本機 demo、Docker Compose、環境變數、health/readiness、metrics、JSON log、rollback 與故障排查。
 - [`docs/performance_load_test.md`](docs/performance_load_test.md)：本機 API benchmark profiles、延遲與錯誤率判讀方式。
 - [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md)：機器學習部分的可主張範圍與限制。
