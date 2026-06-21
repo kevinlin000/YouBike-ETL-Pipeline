@@ -8,6 +8,7 @@ import hashlib
 import json
 import logging
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from threading import Lock
 from uuid import uuid4
@@ -19,6 +20,12 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine, URL
 
 logger = logging.getLogger(__name__)
+logger.setLevel(os.getenv("API_LOG_LEVEL", "INFO").upper())
+if not logger.handlers:
+    stream_handler = logging.StreamHandler()
+    stream_handler.setFormatter(logging.Formatter("%(message)s"))
+    logger.addHandler(stream_handler)
+SERVICE_NAME = "youbike-prediction-api"
 MODEL_TIME_STEPS = 3
 MODEL_FORECAST_HORIZON = "model_artifact_horizon"
 MODEL_FORECAST_HORIZON_DESCRIPTION = (
@@ -220,6 +227,25 @@ def api_demo_mode_enabled() -> bool:
     return os.getenv(API_DEMO_MODE_ENV, "").strip().lower() in TRUTHY_VALUES
 
 
+def log_event(
+    level: int,
+    event: str,
+    exc_info: bool = False,
+    **fields,
+) -> None:
+    payload = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "service": SERVICE_NAME,
+        "event": event,
+        **fields,
+    }
+    logger.log(
+        level,
+        json.dumps(payload, ensure_ascii=False, sort_keys=True),
+        exc_info=exc_info,
+    )
+
+
 def short_sha256(data: bytes, length: int = 16) -> str:
     return f"sha256:{hashlib.sha256(data).hexdigest()[:length]}"
 
@@ -291,7 +317,13 @@ def load_model_lineage(base_path: Path) -> dict[str, str | bool | None]:
         try:
             metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
         except json.JSONDecodeError as exc:
-            logger.warning("Model metadata is not valid JSON: %s", exc)
+            log_event(
+                logging.WARNING,
+                "model_metadata_invalid",
+                metadata_path=str(metadata_path),
+                error_type=type(exc).__name__,
+                error_message=str(exc),
+            )
 
     return {
         "model_version": derive_model_version(metadata, artifact_hash),
@@ -422,7 +454,12 @@ async def lifespan(app: FastAPI):
     if api_demo_mode_enabled():
         load_demo_resources()
         db_engine = None
-        logger.info("%s is enabled; using deterministic API demo fixtures.", API_DEMO_MODE_ENV)
+        log_event(
+            logging.INFO,
+            "api_demo_mode_enabled",
+            env_var=API_DEMO_MODE_ENV,
+            model_version=model_lineage["model_version"],
+        )
         yield
         model = None
         scaler = None
@@ -430,7 +467,7 @@ async def lifespan(app: FastAPI):
         station_info_map = None
         db_engine = None
         model_lineage = unloaded_model_lineage()
-        logger.info("API demo resources released.")
+        log_event(logging.INFO, "api_demo_resources_released")
         return
     
     # 模型檔案路徑
@@ -443,7 +480,7 @@ async def lifespan(app: FastAPI):
     info_map_path = base_path / "station_info_map.pkl"
 
     try:
-        logger.info("正在從 %s 載入資源...", base_path)
+        log_event(logging.INFO, "model_resources_loading", base_path=str(base_path))
         scaler = joblib.load(scaler_path)
         station_mapping = {str(k): v for k, v in joblib.load(mapping_path).items()}
         if info_map_path.exists():
@@ -455,10 +492,24 @@ async def lifespan(app: FastAPI):
         model.load_state_dict(torch.load(model_path, map_location=torch.device("cpu")))
         model.eval()
         model_lineage = load_model_lineage(base_path)
-        logger.info("所有模型資源載入成功。")
+        log_event(
+            logging.INFO,
+            "model_resources_loaded",
+            base_path=str(base_path),
+            model_version=model_lineage["model_version"],
+            model_artifact_hash=model_lineage["model_artifact_hash"],
+            model_metadata_loaded=model_lineage["model_metadata_loaded"],
+        )
     except Exception as e:
         model_lineage = unloaded_model_lineage()
-        logger.exception("模型載入失敗: %s", e)
+        log_event(
+            logging.ERROR,
+            "model_resources_load_failed",
+            exc_info=True,
+            base_path=str(base_path),
+            error_type=type(e).__name__,
+            error_message=str(e),
+        )
     db_engine = create_optional_db_engine()
     yield
     model = None
@@ -467,7 +518,7 @@ async def lifespan(app: FastAPI):
     station_info_map = None
     db_engine = None
     model_lineage = unloaded_model_lineage()
-    logger.info("模型資源已釋放。")
+    log_event(logging.INFO, "model_resources_released")
 
 app = FastAPI(lifespan=lifespan, title="YouBike LSTM Prediction API")
 
@@ -480,12 +531,16 @@ async def add_request_context(request: Request, call_next):
     except Exception:
         duration_ms = (time.perf_counter() - start_time) * 1000
         record_request_metric(request.method, request.url.path, 500, duration_ms)
-        logger.exception(
-            "request_failed request_id=%s method=%s path=%s duration_ms=%.2f",
-            request_id,
-            request.method,
-            request.url.path,
-            duration_ms,
+        log_event(
+            logging.ERROR,
+            "request_failed",
+            exc_info=True,
+            request_id=request_id,
+            method=request.method,
+            path=request.url.path,
+            status_code=500,
+            duration_ms=round(duration_ms, 2),
+            model_version=model_lineage["model_version"],
         )
         return JSONResponse(
             status_code=500,
@@ -496,13 +551,15 @@ async def add_request_context(request: Request, call_next):
     duration_ms = (time.perf_counter() - start_time) * 1000
     record_request_metric(request.method, request.url.path, response.status_code, duration_ms)
     response.headers[REQUEST_ID_HEADER] = request_id
-    logger.info(
-        "request_completed request_id=%s method=%s path=%s status_code=%s duration_ms=%.2f",
-        request_id,
-        request.method,
-        request.url.path,
-        response.status_code,
-        duration_ms,
+    log_event(
+        logging.INFO,
+        "request_completed",
+        request_id=request_id,
+        method=request.method,
+        path=request.url.path,
+        status_code=response.status_code,
+        duration_ms=round(duration_ms, 2),
+        model_version=model_lineage["model_version"],
     )
     return response
 
@@ -559,7 +616,7 @@ def inference_ready() -> bool:
 def create_optional_db_engine() -> Engine | None:
     db_password = os.getenv("DB_PASSWORD")
     if not db_password:
-        logger.info("DB_PASSWORD is not set; warehouse lag-window lookup disabled.")
+        log_event(logging.INFO, "warehouse_lookup_disabled", reason="missing_db_password")
         return None
 
     db_user = os.getenv("DB_USER", "admin")
@@ -605,14 +662,22 @@ def get_recent_observations_from_warehouse(
                 {"station_no": station_no, "limit": MODEL_TIME_STEPS},
             ).fetchall()
     except Exception as exc:
-        logger.warning("Warehouse lag-window lookup failed for station %s: %s", station_no, exc)
+        log_event(
+            logging.WARNING,
+            "warehouse_lag_window_lookup_failed",
+            station_no=station_no,
+            error_type=type(exc).__name__,
+            error_message=str(exc),
+        )
         return None
 
     if len(rows) != MODEL_TIME_STEPS:
-        logger.info(
-            "Warehouse lag-window lookup returned %s rows for station %s; using fallback.",
-            len(rows),
-            station_no,
+        log_event(
+            logging.INFO,
+            "warehouse_lag_window_incomplete",
+            station_no=station_no,
+            rows_returned=len(rows),
+            expected_rows=MODEL_TIME_STEPS,
         )
         return None
 
@@ -797,7 +862,15 @@ def predict(request: PredictRequest):
         }
 
     except Exception as e:
-        logger.exception("Predict 執行錯誤: %s", e)
+        log_event(
+            logging.ERROR,
+            "prediction_failed",
+            exc_info=True,
+            station_no=request.station_no,
+            model_version=model_lineage["model_version"],
+            error_type=type(e).__name__,
+            error_message=str(e),
+        )
         raise HTTPException(status_code=500, detail="Internal Prediction Error")
 
 @app.post("/stations/risk", response_model=StationsRiskResponse)
@@ -835,7 +908,15 @@ def rank_station_risks(request: StationsRiskRequest):
     except HTTPException:
         raise
     except Exception as e:
-        logger.exception("Station risk ranking 執行錯誤: %s", e)
+        log_event(
+            logging.ERROR,
+            "station_risk_ranking_failed",
+            exc_info=True,
+            station_count=len(request.stations),
+            model_version=model_lineage["model_version"],
+            error_type=type(e).__name__,
+            error_message=str(e),
+        )
         raise HTTPException(status_code=500, detail="Internal Risk Ranking Error")
 
     risks.sort(key=lambda item: (-item["risk_score"], item["station_no"]))

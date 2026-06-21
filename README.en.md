@@ -174,7 +174,7 @@ FastAPI endpoints:
 
 For API contract inspection without model files, MySQL, or Docker Compose, run with `API_DEMO_MODE=true` or `make api-demo`. In this mode `/ready` returns 200 and `/predict` / `/stations/risk` return deterministic simulated responses. It is for API workflow inspection, not model evaluation.
 
-API responses include `X-Request-ID`. If the caller sends the header, the service echoes it; otherwise the service generates one. Logs include the request id, method, path, status code, and duration for each completed request.
+API responses include `X-Request-ID`. If the caller sends the header, the service echoes it; otherwise the service generates one. API logs use JSON event records; request-completion logs include `request_id`, `method`, `path`, `status_code`, `duration_ms`, and `model_version`.
 
 `/metrics` returns lightweight Prometheus-style metrics for request count, 5xx error count, and duration sum/count/max per endpoint. It is basic local/demo observability, not a complete production monitoring stack.
 
@@ -448,7 +448,7 @@ Current tests cover:
 - ETL empty-input and missing-column handling
 - ETL successful transform behavior, station deduplication, and Taipei-time to UTC conversion
 - ETL post-transform validation for duplicate status keys, negative availability, and non-numeric availability fields
-- FastAPI `/health` liveness, `/ready` inference-readiness, `/metrics` observability, model lineage, API demo mode, and `X-Request-ID` response tracing
+- FastAPI `/health` liveness, `/ready` inference-readiness, `/metrics` observability, JSON request logging, model lineage, API demo mode, and `X-Request-ID` response tracing
 - API concurrency benchmark output for latency, error rate, and throughput
 - `/stations` model-not-ready behavior
 - `/predict` request validation, `recent_observations` lag-window behavior, and warehouse lookup fallback behavior

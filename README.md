@@ -192,7 +192,7 @@ FastAPI endpoint：
 
 若只要檢視 FastAPI contract，可用 `API_DEMO_MODE=true` 或 `make api-demo` 啟動固定範例 API。此模式不載入模型檔、不連 MySQL，`/ready` 會回 200，`/predict` 與 `/stations/risk` 會回傳可重現的模擬結果；它只用於展示 API 行為，不代表模型評估結果。
 
-API 回應會帶 `X-Request-ID`。呼叫端若有傳入同名 header，服務會沿用；若未傳入，服務會自動產生一組 request id，並在 log 中記錄 request id、method、path、status code 與處理時間，方便追查單次推論請求。
+API 回應會帶 `X-Request-ID`。呼叫端若有傳入同名 header，服務會沿用；若未傳入，服務會自動產生一組 request id。API log 採 JSON event 格式，request completion 會記錄 `request_id`、`method`、`path`、`status_code`、`duration_ms` 與 `model_version`，方便追查單次推論請求。
 
 `/metrics` 會輸出輕量 Prometheus-style 指標，包含各 endpoint 的 request count、5xx error count、duration sum/count/max。這是本機與展示用的基礎 observability，不等同於完整 production monitoring。
 
@@ -466,7 +466,7 @@ make dbt-build
 - ETL 空資料與缺欄位錯誤處理
 - ETL 正常轉換、站點去重與台北時間轉 UTC
 - ETL transform 後的重複 status key、負值與非數值 availability validation
-- FastAPI `/health` liveness、`/ready` inference-readiness、`/metrics` observability、模型 lineage、API demo mode 與 `X-Request-ID` response tracing
+- FastAPI `/health` liveness、`/ready` inference-readiness、`/metrics` observability、JSON request logging、模型 lineage、API demo mode 與 `X-Request-ID` response tracing
 - API concurrency benchmark 的 latency、error rate 與 throughput 摘要輸出
 - `/stations` model-not-ready 行為
 - `/predict` request validation、`recent_observations` lag-window 與 warehouse lookup fallback 行為

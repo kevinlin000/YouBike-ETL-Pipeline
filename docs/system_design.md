@@ -135,10 +135,25 @@ API middleware 會為每個 response 加上 `X-Request-ID`：
 
 - 呼叫端有傳入 `X-Request-ID` 時，API 會沿用。
 - 呼叫端沒有傳入時，API 會產生新的 UUID。
-- log 會記錄 request id、method、path、status code 與 duration。
+- log 使用 JSON event 格式，request completion 會記錄 request id、method、path、status code、duration 與 model version。
 - 未處理例外會收斂成標準 500 JSON，並保留 request id。
 
 這讓 dashboard 或 API client 發生問題時，可以用同一組 request id 回到後端 log 追查單次請求。這不是完整 observability 平台，但已經具備後端服務最基本的 correlation 能力。
+
+範例 request log：
+
+```json
+{
+  "event": "request_completed",
+  "service": "youbike-prediction-api",
+  "request_id": "trace-123",
+  "method": "GET",
+  "path": "/health",
+  "status_code": 200,
+  "duration_ms": 2.31,
+  "model_version": "legacy-artifact-ea8d8266925da66f"
+}
+```
 
 ## Metrics endpoint
 
@@ -242,7 +257,7 @@ API 回傳排序後的風險清單，dashboard 可以直接呈現調度順位，
 
 仍可改進的地方：
 
-- 將 log 改成結構化 JSON，方便接 log aggregator。
+- 將目前 JSON log 接到 log aggregator，並補 dashboard / alert 查詢。
 - 將目前 `/metrics` 擴充為 histogram buckets、process metrics 與 prediction error count。
 - 將 demo mode 與正式模式的設定集中到 config module。
 - 將模型 artifact lineage 接到正式 registry、發布流程與 rollback 紀錄。
@@ -253,7 +268,7 @@ API 回傳排序後的風險清單，dashboard 可以直接呈現調度順位，
 
 - ETL transform 與資料品質邊界。
 - FastAPI health/readiness。
-- request tracing。
+- request tracing 與 JSON request logging。
 - `/metrics` request count、error count 與 latency summary。
 - 模型 lineage 與 artifact hash。
 - API demo mode。
@@ -309,7 +324,7 @@ benchmark 會以 5 個 worker 併發呼叫：
 如果要把這個作品往更高階後端 / AI 應用作品推進，優先順序如下：
 
 1. **正式負載測試**：在目前本機 concurrency benchmark 之外，用 k6 或 Locust 測 `/predict`、`/stations/risk` 的 ramp-up、長時間穩定性與錯誤率。
-2. **結構化 observability**：將目前 `/metrics` 擴充為 histogram buckets，輸出 JSON log，並建立簡單 dashboard / alert rules。
+2. **結構化 observability**：將目前 `/metrics` 與 JSON log 接到 dashboard / alert rules，並補 histogram buckets。
 3. **模型 registry**：將目前 response 中的 model version / artifact hash 串到正式 registry、發布紀錄與 rollback 流程。
 4. **Feature store-lite**：補 weather history table，讓 warehouse fallback 能查對齊時間的天氣特徵。
 5. **背景工作與快取**：對熱門站點或批次風險排序加入 cache / scheduled precompute。

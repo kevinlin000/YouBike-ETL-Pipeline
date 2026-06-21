@@ -94,7 +94,22 @@ make api-demo
 
 所有 API response 都會帶 `X-Request-ID`。如果呼叫端已經傳入這個 header，API 會原樣回傳；如果沒有傳入，API 會自動產生一組 request id。
 
-服務 log 會記錄 request id、HTTP method、path、status code 與處理時間。這個設計讓 dashboard 或其他呼叫端回報錯誤時，可以用同一組 request id 對應到後端 log。
+服務 log 採 JSON event 格式。每次 request completion 會記錄 request id、HTTP method、path、status code、處理時間與 model version。這個設計讓 dashboard 或其他呼叫端回報錯誤時，可以用同一組 request id 對應到後端 log。
+
+範例 request log：
+
+```json
+{
+  "event": "request_completed",
+  "service": "youbike-prediction-api",
+  "request_id": "trace-123",
+  "method": "GET",
+  "path": "/health",
+  "status_code": 200,
+  "duration_ms": 2.31,
+  "model_version": "legacy-artifact-ea8d8266925da66f"
+}
+```
 
 ## 站點清單
 

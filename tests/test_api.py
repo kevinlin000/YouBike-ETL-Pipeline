@@ -1,3 +1,5 @@
+import json
+import logging
 import os
 import sys
 
@@ -111,6 +113,31 @@ def test_response_preserves_incoming_request_id(client):
 
     assert response.status_code == 200
     assert response.headers[api_main.REQUEST_ID_HEADER] == "trace-123"
+
+
+def test_request_log_is_structured_json(client, caplog):
+    caplog.set_level(logging.INFO, logger=api_main.logger.name)
+
+    response = client.get("/health", headers={api_main.REQUEST_ID_HEADER: "trace-json"})
+
+    assert response.status_code == 200
+    events = [
+        json.loads(record.message)
+        for record in caplog.records
+        if record.name == api_main.logger.name
+    ]
+    request_event = next(
+        event for event in events
+        if event["event"] == "request_completed"
+    )
+    assert request_event["service"] == api_main.SERVICE_NAME
+    assert request_event["request_id"] == "trace-json"
+    assert request_event["method"] == "GET"
+    assert request_event["path"] == "/health"
+    assert request_event["status_code"] == 200
+    assert request_event["duration_ms"] >= 0
+    assert request_event["model_version"] == "unloaded"
+    assert "timestamp" in request_event
 
 
 def test_error_response_includes_request_id(client):
