@@ -345,6 +345,7 @@ YouBike-ETL-Pipeline/
 │   └── dbt/                        # dbt analytics layer scaffold
 ├── docs/
 │   ├── adr/                        # 維護決策紀錄
+│   ├── operations.md               # 本機啟動、觀測與故障處理 runbook
 │   └── images/                     # 部署與資料規模截圖
 ├── notebooks/
 │   ├── 01_youbike_analysis.ipynb
@@ -508,6 +509,7 @@ CI 設定位於 `.github/workflows/ci.yml`。
 - [`docs/system_design.md`](docs/system_design.md)：後端與 AI 應用系統設計、API 邊界、demo mode、failure modes 與擴展方向。
 - [`docs/backend_ai_architecture.md`](docs/backend_ai_architecture.md)：後端與模型服務架構圖說明。
 - [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md)：FastAPI endpoint、request/response 與錯誤邊界。
+- [`docs/operations.md`](docs/operations.md)：本機 demo、Docker Compose、環境變數、health/readiness、metrics、JSON log、rollback 與故障排查。
 - [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md)：機器學習部分的可主張範圍與限制。
 - [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md)：本地 LSTM baseline 評估結果。
 

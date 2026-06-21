@@ -327,6 +327,7 @@ YouBike-ETL-Pipeline/
 │   └── dbt/                        # dbt analytics layer scaffold
 ├── docs/
 │   ├── adr/                        # Maintenance decisions
+│   ├── operations.md               # Local run, observability, and troubleshooting runbook
 │   └── images/                     # Deployment and data-volume evidence
 ├── notebooks/
 │   ├── 01_youbike_analysis.ipynb
@@ -490,6 +491,7 @@ Supporting technical notes:
 - [`docs/system_design.md`](docs/system_design.md): system design note for backend / AI application boundaries, demo modes, failure modes, and extension paths. The main content is in Chinese with a short English summary.
 - [`docs/backend_ai_architecture.md`](docs/backend_ai_architecture.md): backend and model-serving architecture.
 - [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md): FastAPI endpoints, request/response shapes, and error boundaries.
+- [`docs/operations.md`](docs/operations.md): local demo, Docker Compose, environment variables, health/readiness, metrics, JSON logs, rollback, and troubleshooting.
 - [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md): machine-learning scope and limitations.
 - [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md): local baseline evaluation results.
 
