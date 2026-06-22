@@ -1,6 +1,9 @@
+import os
+
 import requests
 
 DEFAULT_TIMEOUT_SECONDS = 10
+API_KEY_HEADER = "X-API-Key"
 FORECAST_HORIZON = "model_artifact_horizon"
 FORECAST_HORIZON_DESCRIPTION = (
     "Demo and live responses keep legacy next_hour keys, but should be interpreted "
@@ -38,8 +41,19 @@ def _api_url(api_base_url: str, path: str) -> str:
     return f"{api_base_url.rstrip('/')}{path}"
 
 
+def api_headers() -> dict[str, str]:
+    api_key = os.getenv("API_KEY", "").strip()
+    if not api_key:
+        return {}
+    return {API_KEY_HEADER: api_key}
+
+
 def get_station_data(api_base_url: str, timeout: int = 5) -> dict:
-    response = requests.get(_api_url(api_base_url, "/stations"), timeout=timeout)
+    response = requests.get(
+        _api_url(api_base_url, "/stations"),
+        headers=api_headers(),
+        timeout=timeout,
+    )
     if response.status_code != 200:
         raise DashboardApiError(f"API returned {response.status_code}: {response.text}")
     return response.json().get("stations", {})
@@ -66,6 +80,7 @@ def predict_station(
     response = requests.post(
         _api_url(api_base_url, "/predict"),
         json=payload,
+        headers=api_headers(),
         timeout=timeout,
     )
     if response.status_code != 200:
@@ -95,6 +110,7 @@ def rank_station_risks(
     response = requests.post(
         _api_url(api_base_url, "/stations/risk"),
         json=payload,
+        headers=api_headers(),
         timeout=timeout,
     )
     if response.status_code != 200:

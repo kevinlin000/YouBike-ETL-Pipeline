@@ -29,7 +29,7 @@ For the end-to-end project narrative, see [`docs/project_story.md`](docs/project
 | Forecasting | Built a Multi-Station LSTM prototype with station, weather, and short-sequence status features, then packaged it as API artifacts |
 | Serving | Exposed model inference and station risk ranking through FastAPI, with a Streamlit UI for prediction and redistribution support |
 | Deployment evidence | Historical GCP VM deployment with Docker Compose, Airflow, MySQL, API, and dashboard services |
-| Engineering hygiene | pytest coverage for ETL / API behavior, OpenAPI schema export, request examples, request tracing, Prometheus-style metrics, local API benchmark profiles, config/security validation, and GitHub Actions CI |
+| Engineering hygiene | pytest coverage for ETL / API behavior, OpenAPI schema export, request examples, request tracing, Prometheus-style metrics, local API benchmark profiles, optional API-key / rate-limit guardrails, config/security validation, and GitHub Actions CI |
 
 ## Problem Context
 
@@ -175,6 +175,8 @@ FastAPI endpoints:
 For API contract inspection without model files, MySQL, or Docker Compose, run with `API_DEMO_MODE=true` or `make api-demo`. In this mode `/ready` returns 200 and `/predict` / `/stations/risk` return deterministic simulated responses. It is for API workflow inspection, not model evaluation. The OpenAPI schema and local request examples can be regenerated with `make api-contract`, which writes [`docs/openapi.json`](docs/openapi.json) and [`docs/api_examples.http`](docs/api_examples.http).
 
 API responses include `X-Request-ID`. If the caller sends the header, the service echoes it; otherwise the service generates one. API logs use JSON event records; request-completion logs include `request_id`, `method`, `path`, `status_code`, `duration_ms`, and `model_version`.
+
+The API also has optional `X-API-Key` and single-node rate-limit guardrails. When `API_KEY` is set, `/stations`, `/predict`, and `/stations/risk` require the same value in the `X-API-Key` header. When `API_RATE_LIMIT_PER_MINUTE` is greater than 0, protected endpoints are capped per minute. `/health`, `/ready`, and `/metrics` remain available for local checks and monitoring. This is a basic backend guardrail for the portfolio project, not a complete production auth system, API gateway, or WAF.
 
 `/metrics` returns lightweight Prometheus-style metrics for request count, 5xx error count, duration sum/count/max, and latency histograms per endpoint. It is basic local/demo observability, not a complete production monitoring stack. PromQL examples and draft alert rules are documented in [`docs/observability.md`](docs/observability.md).
 
@@ -473,7 +475,7 @@ Current tests cover:
 - ETL empty-input and missing-column handling
 - ETL successful transform behavior, station deduplication, and Taipei-time to UTC conversion
 - ETL post-transform validation for duplicate status keys, negative availability, and non-numeric availability fields
-- FastAPI `/health` liveness, `/ready` inference-readiness, `/metrics` observability, JSON request logging, model lineage, API demo mode, and `X-Request-ID` response tracing
+- FastAPI `/health` liveness, `/ready` inference-readiness, `/metrics` observability, JSON request logging, model lineage, API demo mode, `X-Request-ID` response tracing, optional API key, and rate-limit guardrails
 - OpenAPI schema export and local request examples for API contract and validation checks
 - `/metrics` latency histogram for Prometheus `histogram_quantile()` p95 / p99 queries
 - API benchmark profile output for latency, error rate, throughput, and pass/watch/fail assessment
@@ -499,7 +501,7 @@ CI configuration lives in `.github/workflows/ci.yml`.
 - `/predict` accepts manual `recent_observations` and can query the latest three bike counts from MySQL `station_status` when DB credentials are configured; the automatic lookup still reuses the request temperature / rain because the warehouse does not currently store weather history. The API keeps `next_hour` response keys for compatibility, but the actual horizon should be read from response metadata.
 - The LSTM training flow now has a script, a baseline suite, a Ridge lag-regression baseline, and small tests; local checkpoint-data evaluations show the current LSTM does not beat the strongest baseline for either the next-observation or approximate one-hour horizon. Because the full processed training CSV is not committed, fresh clones cannot directly reproduce the full-data evaluation.
 - The dashboard fixed-sample-data mode is for UI inspection and response-shape validation, not real model-performance evidence.
-- The configuration/security note documents environment variables, secret handling, and a threat model, but the project does not claim complete production security controls such as auth, rate limiting, secret rotation, or WAF protection.
+- The configuration/security note documents environment variables, secret handling, and a threat model. The API has optional API-key and single-node rate-limit guardrails, but the project does not claim complete production security controls such as a formal identity system, API gateway, secret rotation, or WAF protection.
 
 ## Role Relevance
 

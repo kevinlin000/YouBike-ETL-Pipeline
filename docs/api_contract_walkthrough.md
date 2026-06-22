@@ -124,6 +124,25 @@ make api-demo
 }
 ```
 
+## API Key 與 Rate Limit
+
+API key 與 rate limit 預設關閉，方便本機 demo 與 contract 檢查。若設定 `API_KEY`，以下 endpoint 需要帶 `X-API-Key`：
+
+- `GET /stations`
+- `POST /predict`
+- `POST /stations/risk`
+
+若設定 `API_RATE_LIMIT_PER_MINUTE` 大於 0，這些受保護 endpoint 會套用單一 API process 內的每分鐘請求上限。`/`、`/health`、`/ready` 與 `/metrics` 保持可公開檢查。
+
+錯誤行為：
+
+- `401 api_key_missing`：受保護 endpoint 缺少 `X-API-Key`。
+- `403 api_key_invalid`：`X-API-Key` 與 `API_KEY` 不一致。
+- `503 api_key_not_configured`：`API_REQUIRE_API_KEY=true` 但未設定 `API_KEY`。
+- `429 rate_limit_exceeded`：超過 `API_RATE_LIMIT_PER_MINUTE`，response 會帶 `Retry-After`。
+
+這是 portfolio API 的基本 guardrail，不代表完整 production auth、API gateway、WAF 或分散式 rate limiting。
+
 ## 站點清單
 
 `GET /stations`

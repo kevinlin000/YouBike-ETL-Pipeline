@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import os
 import hashlib
+import hmac
 import json
 import logging
 import time
@@ -37,10 +38,16 @@ MODEL_FORECAST_HORIZON_DESCRIPTION = (
 )
 REQUEST_ID_HEADER = "X-Request-ID"
 API_DEMO_MODE_ENV = "API_DEMO_MODE"
+API_KEY_ENV = "API_KEY"
+API_REQUIRE_API_KEY_ENV = "API_REQUIRE_API_KEY"
+API_KEY_HEADER = "X-API-Key"
+API_RATE_LIMIT_PER_MINUTE_ENV = "API_RATE_LIMIT_PER_MINUTE"
 METRICS_PATH = "/metrics"
 MODEL_METADATA_FILENAME = "model_metadata.json"
 DEMO_MODEL_VERSION = "api-demo-fixtures-v1"
 TRUTHY_VALUES = {"1", "true", "yes", "on"}
+ACCESS_CONTROL_EXEMPT_PATHS = {"/", "/health", "/ready", METRICS_PATH}
+DOCS_PATH_PREFIXES = ("/docs", "/redoc", "/openapi.json")
 REQUEST_DURATION_BUCKETS_SECONDS = (
     0.005,
     0.01,
@@ -234,10 +241,35 @@ station_info_map = None  # 新增：站點資訊對照表
 db_engine: Engine | None = None
 request_metrics: dict[tuple[str, str], dict[str, Any]] = {}
 request_metrics_lock = Lock()
+rate_limit_windows: dict[str, list[float]] = {}
+rate_limit_lock = Lock()
 
 
 def api_demo_mode_enabled() -> bool:
     return os.getenv(API_DEMO_MODE_ENV, "").strip().lower() in TRUTHY_VALUES
+
+
+def api_key_required() -> bool:
+    return (
+        os.getenv(API_REQUIRE_API_KEY_ENV, "").strip().lower() in TRUTHY_VALUES
+        or bool(os.getenv(API_KEY_ENV, "").strip())
+    )
+
+
+def api_rate_limit_per_minute() -> int:
+    raw_limit = os.getenv(API_RATE_LIMIT_PER_MINUTE_ENV, "").strip()
+    if not raw_limit:
+        return 0
+    try:
+        return max(0, int(raw_limit))
+    except ValueError:
+        log_event(
+            logging.WARNING,
+            "api_rate_limit_invalid",
+            env_var=API_RATE_LIMIT_PER_MINUTE_ENV,
+            configured_value=raw_limit,
+        )
+        return 0
 
 
 def log_event(
@@ -359,6 +391,87 @@ def load_demo_resources() -> None:
 def reset_request_metrics() -> None:
     with request_metrics_lock:
         request_metrics.clear()
+
+
+def reset_rate_limit_state() -> None:
+    with rate_limit_lock:
+        rate_limit_windows.clear()
+
+
+def path_is_access_control_exempt(path: str) -> bool:
+    return path in ACCESS_CONTROL_EXEMPT_PATHS or path.startswith(DOCS_PATH_PREFIXES)
+
+
+def request_client_id(request: Request) -> str:
+    forwarded_for = request.headers.get("X-Forwarded-For", "").strip()
+    if forwarded_for:
+        return forwarded_for.split(",", maxsplit=1)[0].strip()
+    if request.client:
+        return request.client.host
+    return "unknown"
+
+
+def rate_limit_key(request: Request) -> str:
+    api_key = request.headers.get(API_KEY_HEADER, "").strip()
+    if api_key:
+        return f"api_key:{short_sha256(api_key.encode('utf-8'))}"
+    return f"client:{request_client_id(request)}"
+
+
+def check_rate_limit(request: Request, now: float) -> tuple[bool, int]:
+    limit = api_rate_limit_per_minute()
+    if limit <= 0 or path_is_access_control_exempt(request.url.path):
+        return True, 0
+
+    key = rate_limit_key(request)
+    window_start = now - 60
+    with rate_limit_lock:
+        timestamps = [
+            timestamp
+            for timestamp in rate_limit_windows.get(key, [])
+            if timestamp > window_start
+        ]
+        if len(timestamps) >= limit:
+            oldest_timestamp = min(timestamps)
+            retry_after = max(1, int(60 - (now - oldest_timestamp)))
+            rate_limit_windows[key] = timestamps
+            return False, retry_after
+        timestamps.append(now)
+        rate_limit_windows[key] = timestamps
+    return True, 0
+
+
+def check_api_key(request: Request) -> tuple[bool, int, str]:
+    if not api_key_required() or path_is_access_control_exempt(request.url.path):
+        return True, 0, ""
+
+    expected_api_key = os.getenv(API_KEY_ENV, "").strip()
+    if not expected_api_key:
+        return False, 503, "api_key_not_configured"
+
+    request_api_key = request.headers.get(API_KEY_HEADER, "").strip()
+    if not request_api_key:
+        return False, 401, "api_key_missing"
+    if not hmac.compare_digest(request_api_key, expected_api_key):
+        return False, 403, "api_key_invalid"
+    return True, 0, ""
+
+
+def build_rejection_response(status_code: int, reason: str, retry_after: int = 0) -> JSONResponse:
+    headers = {}
+    if retry_after:
+        headers["Retry-After"] = str(retry_after)
+    if status_code == 429:
+        detail = "Rate limit exceeded"
+    elif status_code == 503:
+        detail = "API access control is not configured"
+    else:
+        detail = "API key required"
+    return JSONResponse(
+        status_code=status_code,
+        content={"detail": detail, "reason": reason},
+        headers=headers,
+    )
 
 
 def record_request_metric(
@@ -571,6 +684,50 @@ app = FastAPI(lifespan=lifespan, title="YouBike LSTM Prediction API")
 async def add_request_context(request: Request, call_next):
     request_id = request.headers.get(REQUEST_ID_HEADER, "").strip() or str(uuid4())
     start_time = time.perf_counter()
+
+    api_key_ok, status_code, reason = check_api_key(request)
+    if not api_key_ok:
+        response = build_rejection_response(status_code, reason)
+        duration_ms = (time.perf_counter() - start_time) * 1000
+        record_request_metric(request.method, request.url.path, response.status_code, duration_ms)
+        response.headers[REQUEST_ID_HEADER] = request_id
+        log_event(
+            logging.WARNING,
+            "request_rejected",
+            request_id=request_id,
+            method=request.method,
+            path=request.url.path,
+            status_code=response.status_code,
+            duration_ms=round(duration_ms, 2),
+            reason=reason,
+            model_version=model_lineage["model_version"],
+        )
+        return response
+
+    rate_limit_ok, retry_after = check_rate_limit(request, start_time)
+    if not rate_limit_ok:
+        response = build_rejection_response(
+            status_code=429,
+            reason="rate_limit_exceeded",
+            retry_after=retry_after,
+        )
+        duration_ms = (time.perf_counter() - start_time) * 1000
+        record_request_metric(request.method, request.url.path, response.status_code, duration_ms)
+        response.headers[REQUEST_ID_HEADER] = request_id
+        log_event(
+            logging.WARNING,
+            "request_rejected",
+            request_id=request_id,
+            method=request.method,
+            path=request.url.path,
+            status_code=response.status_code,
+            duration_ms=round(duration_ms, 2),
+            reason="rate_limit_exceeded",
+            retry_after=retry_after,
+            model_version=model_lineage["model_version"],
+        )
+        return response
+
     try:
         response = await call_next(request)
     except Exception:

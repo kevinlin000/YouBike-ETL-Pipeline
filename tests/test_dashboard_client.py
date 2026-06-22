@@ -19,8 +19,11 @@ class FakeResponse:
 
 
 def test_get_station_data_returns_station_map(monkeypatch):
-    def fake_get(url, timeout):
+    monkeypatch.delenv("API_KEY", raising=False)
+
+    def fake_get(url, headers, timeout):
         assert url == "http://api:8000/stations"
+        assert headers == {}
         assert timeout == 5
         return FakeResponse(body={"stations": {"500101001": "測試站 (中正區)"}})
 
@@ -39,7 +42,10 @@ def test_get_demo_station_data_returns_copy():
 
 
 def test_get_station_data_raises_on_api_error(monkeypatch):
-    def fake_get(_url, timeout):
+    monkeypatch.delenv("API_KEY", raising=False)
+
+    def fake_get(_url, headers, timeout):
+        assert headers == {}
         assert timeout == 5
         return FakeResponse(status_code=503, text="model not ready")
 
@@ -50,11 +56,13 @@ def test_get_station_data_raises_on_api_error(monkeypatch):
 
 
 def test_predict_station_posts_expected_payload(monkeypatch):
+    monkeypatch.delenv("API_KEY", raising=False)
     captured = {}
 
-    def fake_post(url, json, timeout):
+    def fake_post(url, json, headers, timeout):
         captured["url"] = url
         captured["json"] = json
+        captured["headers"] = headers
         captured["timeout"] = timeout
         return FakeResponse(body={"station_no": "500101001", "predicted_bikes_next_hour": 9})
 
@@ -76,17 +84,42 @@ def test_predict_station_posts_expected_payload(monkeypatch):
             "temperature": 27.5,
             "rain": 0.0,
         },
+        "headers": {},
         "timeout": 10,
     }
     assert result["predicted_bikes_next_hour"] == 9
 
 
-def test_rank_station_risks_posts_expected_payload(monkeypatch):
+def test_live_requests_include_api_key_header(monkeypatch):
+    monkeypatch.setenv("API_KEY", "portfolio-demo-key")
     captured = {}
 
-    def fake_post(url, json, timeout):
+    def fake_get(url, headers, timeout):
+        captured["url"] = url
+        captured["headers"] = headers
+        captured["timeout"] = timeout
+        return FakeResponse(body={"stations": {"500101001": "測試站 (中正區)"}})
+
+    monkeypatch.setattr(api_client.requests, "get", fake_get)
+
+    result = api_client.get_station_data("http://api:8000")
+
+    assert captured == {
+        "url": "http://api:8000/stations",
+        "headers": {api_client.API_KEY_HEADER: "portfolio-demo-key"},
+        "timeout": 5,
+    }
+    assert result == {"500101001": "測試站 (中正區)"}
+
+
+def test_rank_station_risks_posts_expected_payload(monkeypatch):
+    monkeypatch.delenv("API_KEY", raising=False)
+    captured = {}
+
+    def fake_post(url, json, headers, timeout):
         captured["url"] = url
         captured["json"] = json
+        captured["headers"] = headers
         captured["timeout"] = timeout
         return FakeResponse(
             body={
@@ -122,6 +155,7 @@ def test_rank_station_risks_posts_expected_payload(monkeypatch):
                 }
             ],
         },
+        "headers": {},
         "timeout": 10,
     }
     assert result[0]["risk_level"] == "stock_out"

@@ -34,6 +34,9 @@
 | `ETL_VALIDATION_MODE` | ETL / Airflow DAG | 可選 | 否 | `strict` | `strict` 會中止不合法資料；`warn` 只記錄警告 |
 | `API_DEMO_MODE` | FastAPI | demo 可選 | 否 | `false` | `true` 時使用固定範例站點與 mock prediction |
 | `API_LOG_LEVEL` | FastAPI | 可選 | 否 | `INFO` | JSON log level |
+| `API_KEY` | FastAPI / Streamlit live mode | production-like 可選 | 是 | 無預設 | 設定後 `/stations`、`/predict`、`/stations/risk` 需帶 `X-API-Key`；dashboard live mode 會帶同一組 header |
+| `API_REQUIRE_API_KEY` | FastAPI | production-like 可選 | 否 | `false` | `true` 時強制檢查 `API_KEY` 是否已設定 |
+| `API_RATE_LIMIT_PER_MINUTE` | FastAPI | production-like 可選 | 否 | `0` | 大於 0 時對受保護 API 做單節點每分鐘限流 |
 | `DASHBOARD_DEMO_MODE` | Streamlit | demo 可選 | 否 | `false` | `true` 時 dashboard 使用固定範例資料 |
 | `API_BASE_URL` | Streamlit | dashboard live mode 必要 | 否 | `http://api:8000` | Dashboard 呼叫 FastAPI 的 base URL |
 | `AIRFLOW_USER` | Docker Compose Airflow | full stack 可選 | 否 | `admin` | 本機預設帳號；正式環境不可沿用 |
@@ -59,6 +62,7 @@
 - 沒有集中式 config module。
 - 沒有 Kubernetes / cloud-native secret mount。
 - 沒有完整企業級 secret scanning 服務；目前提供的是 repo 內的輕量 config / secret-boundary validation。
+- API key 與 rate limit 是應用層基本 guardrail，不等同於完整使用者身份驗證、API gateway、WAF 或分散式限流。
 
 這些限制可以在面試時主動說明，不要把作品包裝成完整 production security implementation。
 
@@ -98,6 +102,8 @@ Demo mode 不能主張：
 
 - `API_DEMO_MODE=false`
 - `DASHBOARD_DEMO_MODE=false`
+- 設定 `API_KEY`，必要時設定 `API_REQUIRE_API_KEY=true`
+- 依展示或壓測需求設定 `API_RATE_LIMIT_PER_MINUTE`
 - 使用完整 `api/model_files`
 - 設定 DB credentials 或明確關閉 warehouse fallback
 - 替換 Airflow 預設帳密
@@ -108,7 +114,7 @@ Demo mode 不能主張：
 
 | 邊界 | 資產 | 主要風險 | 目前控制 | 缺口 |
 | --- | --- | --- | --- | --- |
-| Public internet -> FastAPI | API availability、模型 artifact、站點 catalog | 無限制流量、payload abuse、error probing | Pydantic validation、readiness、request id、metrics | 無 auth、無 rate limit、無 WAF |
+| Public internet -> FastAPI | API availability、模型 artifact、站點 catalog | 無限制流量、payload abuse、error probing | Pydantic validation、readiness、request id、metrics、optional API key、single-node rate limit | 無完整身份系統、API gateway、WAF、分散式限流 |
 | FastAPI -> MySQL | station status history、DB credentials | credential leak、過度查詢、DB unavailable | DB engine only when `DB_PASSWORD` exists、pool limits、fallback path | 無 query-level timeout 設定、無 least-privilege 文件 |
 | Dashboard -> FastAPI | API base URL、使用者輸入 | 指向錯誤 backend、API unavailable | `API_BASE_URL` env、dashboard demo mode、client error handling | 無 authentication、無 CSRF/session model |
 | ETL / Airflow -> Open Data API | Raw station data、pipeline availability | 外部 API timeout、schema drift、duplicate data | timeout/retry、strict validation、unique key handling | 無 upstream contract monitoring |
@@ -120,8 +126,8 @@ Demo mode 不能主張：
 | Threat | Impact | Current Mitigation | Recommended Next Step |
 | --- | --- | --- | --- |
 | Invalid payload causes runtime errors | API 500、demo 中斷 | Pydantic validators、422 response tests | 保留 contract tests，新增 fuzz/property tests |
-| Unknown station id probes model support | 站點支援範圍外錯誤 | `ensure_station_supported()` 回 404 | 若公開服務需加 auth 或 rate limit |
-| High request volume increases latency | API latency 上升、CPU 壓力 | Local benchmark profiles、metrics histogram | 加 rate limiting、process metrics、load test baseline |
+| Unknown station id probes model support | 站點支援範圍外錯誤 | `ensure_station_supported()` 回 404、optional API key | 若公開服務需接 API gateway 或正式 auth |
+| High request volume increases latency | API latency 上升、CPU 壓力 | Local benchmark profiles、metrics histogram、single-node rate limit | 增加分散式限流、process metrics、load test baseline |
 | Model artifact mismatch | 推論結果不可追蹤 | `model_version`、artifact hash、metadata loaded flag | 正式 model registry 與 release notes |
 | DB credential leak | Warehouse exposure | `.env` ignored、Secret Manager fallback | Secret scanning、least-privilege DB user、rotation runbook |
 | Airflow default credentials used outside local demo | Airflow UI 被登入 | `.env.example` 明確提醒替換 | 在 production-like compose profile 禁止預設值 |
@@ -131,7 +137,7 @@ Demo mode 不能主張：
 
 可以這樣講：
 
-> 這個作品不是完整 production security project，但我有把設定邊界補清楚。Demo mode 完全不依賴 DB 或模型檔，適合展示 API contract；local full stack 透過 `.env` 注入 MySQL 和 Airflow 設定；ETL / Airflow 可用 GCP Secret Manager 讀 DB password。API 端有 Pydantic validation、readiness、request id、JSON logs、Prometheus metrics 和 benchmark profiles；CI 也會跑 `make validate-config`，避免 `.env`、dbt local profile 或常見 secret pattern 被提交。若要真的上線，我會先補 auth/rate limit、企業級 secret scanning、least-privilege DB user、正式 alert routing 和 secret rotation。
+> 這個作品不是完整 production security project，但我有把設定邊界補清楚。Demo mode 完全不依賴 DB 或模型檔，適合展示 API contract；local full stack 透過 `.env` 注入 MySQL 和 Airflow 設定；ETL / Airflow 可用 GCP Secret Manager 讀 DB password。API 端有 Pydantic validation、readiness、request id、JSON logs、Prometheus metrics、benchmark profiles、可選 API key 與單節點 rate limit；CI 也會跑 `make validate-config`，避免 `.env`、dbt local profile 或常見 secret pattern 被提交。若要真的上線，我會再補正式身份系統或 API gateway、企業級 secret scanning、least-privilege DB user、正式 alert routing 和 secret rotation。
 
 ## English Summary
 

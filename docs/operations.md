@@ -108,6 +108,9 @@ AIRFLOW_USER=admin
 AIRFLOW_PASSWORD=admin
 AIRFLOW_WEBSERVER_SECRET_KEY=your_random_secret_key
 API_LOG_LEVEL=INFO
+API_KEY=your_api_key_here
+API_REQUIRE_API_KEY=false
+API_RATE_LIMIT_PER_MINUTE=0
 ETL_VALIDATION_MODE=strict
 ```
 
@@ -161,6 +164,47 @@ make down
 - `youbike_api_request_duration_seconds_count`
 
 `/metrics` 本身不納入統計，避免 scrape 行為讓 request count 自我膨脹。Prometheus scrape、PromQL、dashboard panels 與 alert rule 草案見 [`docs/observability.md`](observability.md)。
+
+## API Access Controls
+
+API key 與 rate limit 預設關閉，避免本機 demo 因環境變數不完整而中斷。若要用 production-like 模式展示受保護的 inference API，可設定：
+
+```env
+API_KEY=your_api_key_here
+API_REQUIRE_API_KEY=true
+API_RATE_LIMIT_PER_MINUTE=60
+```
+
+受保護 endpoint：
+
+- `GET /stations`
+- `POST /predict`
+- `POST /stations/risk`
+
+公開檢查 endpoint：
+
+- `GET /`
+- `GET /health`
+- `GET /ready`
+- `GET /metrics`
+
+呼叫受保護 endpoint 時需帶：
+
+```bash
+curl -s http://127.0.0.1:8000/stations \
+  -H "X-API-Key: your_api_key_here"
+```
+
+Streamlit dashboard 的 live mode 也會讀取同一個 `API_KEY`，並在呼叫 FastAPI 時帶 `X-API-Key` header。
+
+錯誤邊界：
+
+- 缺少 API key：`401`
+- API key 錯誤：`403`
+- `API_REQUIRE_API_KEY=true` 但未設定 `API_KEY`：`503`
+- 超過 `API_RATE_LIMIT_PER_MINUTE`：`429`，並回 `Retry-After`
+
+這是單一 API process 內的輕量 guardrail。若要正式公開服務，應改由 API gateway、集中式 rate limiter、正式身份系統與 WAF 承接。
 
 ## JSON Log
 

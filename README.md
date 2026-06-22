@@ -29,7 +29,7 @@
 | 預測建模 | 建立 Multi-Station LSTM prototype，整合站點、天氣與短序列狀態特徵，並封裝為 API artifact |
 | 服務化 | 以 FastAPI 提供模型推論與站點風險排序 API，Streamlit 提供單站預測與多站調度輔助介面 |
 | 部署證據 | 曾以 Docker Compose 部署於 GCP VM，並保留 Airflow、Docker、GCP 監控截圖 |
-| 工程化維護 | 以 pytest 覆蓋 ETL / API 基礎行為，提供 OpenAPI schema、request examples、request tracing、Prometheus-style metrics、API benchmark profiles、config/security validation，並以 GitHub Actions 自動執行測試 |
+| 工程化維護 | 以 pytest 覆蓋 ETL / API 基礎行為，提供 OpenAPI schema、request examples、request tracing、Prometheus-style metrics、API benchmark profiles、optional API key / rate limit guardrails、config/security validation，並以 GitHub Actions 自動執行測試 |
 
 ## 問題背景
 
@@ -193,6 +193,8 @@ FastAPI endpoint：
 若只要檢視 FastAPI contract，可用 `API_DEMO_MODE=true` 或 `make api-demo` 啟動固定範例 API。此模式不載入模型檔、不連 MySQL，`/ready` 會回 200，`/predict` 與 `/stations/risk` 會回傳可重現的模擬結果；它只用於展示 API 行為，不代表模型評估結果。OpenAPI schema 與本機 request 範例可用 `make api-contract` 重新產生，輸出為 [`docs/openapi.json`](docs/openapi.json) 與 [`docs/api_examples.http`](docs/api_examples.http)。
 
 API 回應會帶 `X-Request-ID`。呼叫端若有傳入同名 header，服務會沿用；若未傳入，服務會自動產生一組 request id。API log 採 JSON event 格式，request completion 會記錄 `request_id`、`method`、`path`、`status_code`、`duration_ms` 與 `model_version`，方便追查單次推論請求。
+
+API 也提供可選的 `X-API-Key` 與單節點 rate limit guardrail。設定 `API_KEY` 後，`/stations`、`/predict` 與 `/stations/risk` 需要帶同一組 `X-API-Key`；設定 `API_RATE_LIMIT_PER_MINUTE` 大於 0 後，受保護 endpoint 會套用每分鐘請求上限。`/health`、`/ready` 與 `/metrics` 保持可用於本機檢查與監控。這是展示作品中的基本後端保護，不等同於完整 production auth、API gateway 或 WAF。
 
 `/metrics` 會輸出輕量 Prometheus-style 指標，包含各 endpoint 的 request count、5xx error count、duration sum/count/max 與 latency histogram。這是本機與展示用的基礎 observability，不等同於完整 production monitoring。PromQL 與 alert rule 草案見 [`docs/observability.md`](docs/observability.md)。
 
@@ -491,7 +493,7 @@ make dbt-build
 - ETL 空資料與缺欄位錯誤處理
 - ETL 正常轉換、站點去重與台北時間轉 UTC
 - ETL transform 後的重複 status key、負值與非數值 availability validation
-- FastAPI `/health` liveness、`/ready` inference-readiness、`/metrics` observability、JSON request logging、模型 lineage、API demo mode 與 `X-Request-ID` response tracing
+- FastAPI `/health` liveness、`/ready` inference-readiness、`/metrics` observability、JSON request logging、模型 lineage、API demo mode、`X-Request-ID` response tracing、optional API key 與 rate limit guardrail
 - OpenAPI schema 匯出與本機 request examples，方便檢查 API contract 與 validation 行為
 - `/metrics` latency histogram，可用 Prometheus `histogram_quantile()` 查 p95 / p99 latency
 - API benchmark profiles 的 latency、error rate、throughput 與 pass/watch/fail 摘要輸出
@@ -518,7 +520,7 @@ CI 設定位於 `.github/workflows/ci.yml`。
 - LSTM 訓練流程已提供可重現程式、baseline suite、Ridge lag-regression baseline 與小型測試；本地 checkpoint-data 評估顯示目前 LSTM 在下一筆 observation 與近似一小時 horizon 下，都沒有打敗最強 baseline。由於完整 processed training CSV 未提交，fresh clone 無法直接重現完整資料評估。
 - Dashboard 固定範例資料模式只代表介面流程與 response shape，不代表真實模型評估表現。
 - 本機 API benchmark profiles 是展示與回歸檢查用的容量探測，不是正式 production load test 或 SLO。
-- 設定與安全文件整理了 env var、secret handling 與 threat model，但本專案不主張已具備完整 production security controls，例如 auth、rate limit、secret rotation 或 WAF。
+- 設定與安全文件整理了 env var、secret handling 與 threat model；API 有可選 API key 與單節點 rate limit，但本專案不主張已具備完整 production security controls，例如正式身份系統、API gateway、secret rotation 或 WAF。
 
 ## 技術能力對應
 

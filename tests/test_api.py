@@ -17,7 +17,11 @@ from api.app import main as api_main  # noqa: E402
 def reset_model_resources(monkeypatch):
     """Keep API tests independent from real model artifacts."""
     monkeypatch.delenv(api_main.API_DEMO_MODE_ENV, raising=False)
+    monkeypatch.delenv(api_main.API_KEY_ENV, raising=False)
+    monkeypatch.delenv(api_main.API_REQUIRE_API_KEY_ENV, raising=False)
+    monkeypatch.delenv(api_main.API_RATE_LIMIT_PER_MINUTE_ENV, raising=False)
     api_main.reset_request_metrics()
+    api_main.reset_rate_limit_state()
     monkeypatch.setattr(api_main, "model", None)
     monkeypatch.setattr(api_main, "scaler", None)
     monkeypatch.setattr(api_main, "station_mapping", None)
@@ -145,6 +149,65 @@ def test_error_response_includes_request_id(client):
 
     assert response.status_code == 503
     assert response.headers[api_main.REQUEST_ID_HEADER]
+
+
+def test_api_key_does_not_block_health_endpoint(client, monkeypatch):
+    monkeypatch.setenv(api_main.API_KEY_ENV, "portfolio-demo-key")
+
+    response = client.get("/health")
+
+    assert response.status_code == 200
+
+
+def test_api_key_protects_inference_endpoints(client, monkeypatch):
+    monkeypatch.setenv(api_main.API_DEMO_MODE_ENV, "true")
+    monkeypatch.setenv(api_main.API_KEY_ENV, "portfolio-demo-key")
+    api_main.load_demo_resources()
+
+    missing_key_response = client.get("/stations")
+    wrong_key_response = client.get(
+        "/stations",
+        headers={api_main.API_KEY_HEADER: "wrong-key"},
+    )
+    valid_key_response = client.get(
+        "/stations",
+        headers={api_main.API_KEY_HEADER: "portfolio-demo-key"},
+    )
+
+    assert missing_key_response.status_code == 401
+    assert missing_key_response.json()["reason"] == "api_key_missing"
+    assert missing_key_response.headers[api_main.REQUEST_ID_HEADER]
+    assert wrong_key_response.status_code == 403
+    assert wrong_key_response.json()["reason"] == "api_key_invalid"
+    assert valid_key_response.status_code == 200
+
+
+def test_required_api_key_without_config_returns_service_error(client, monkeypatch):
+    monkeypatch.setenv(api_main.API_REQUIRE_API_KEY_ENV, "true")
+
+    response = client.get("/stations")
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "detail": "API access control is not configured",
+        "reason": "api_key_not_configured",
+    }
+
+
+def test_rate_limit_protects_inference_endpoints(client, monkeypatch):
+    monkeypatch.setenv(api_main.API_DEMO_MODE_ENV, "true")
+    monkeypatch.setenv(api_main.API_RATE_LIMIT_PER_MINUTE_ENV, "1")
+    api_main.load_demo_resources()
+
+    first_response = client.get("/stations")
+    second_response = client.get("/stations")
+    health_response = client.get("/health")
+
+    assert first_response.status_code == 200
+    assert second_response.status_code == 429
+    assert second_response.json()["reason"] == "rate_limit_exceeded"
+    assert int(second_response.headers["Retry-After"]) > 0
+    assert health_response.status_code == 200
 
 
 def test_health_returns_service_state_without_ready_model(client):
