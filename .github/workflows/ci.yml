@@ -43,6 +43,9 @@ jobs:
       - name: Validate config and secret boundaries
         run: make validate-config
 
+      - name: Validate dependency manifests
+        run: make validate-dependencies
+
       - name: Run tests
         run: python -m pytest tests/ -v
 

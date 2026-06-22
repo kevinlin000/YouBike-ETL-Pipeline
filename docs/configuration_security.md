@@ -68,20 +68,28 @@
 
 ## 自動化檢查
 
-本專案提供一個零新增依賴的檢查：
+本專案提供兩個零新增依賴的檢查：
 
 ```bash
 make validate-config
+make validate-dependencies
 ```
 
-檢查項目：
+`make validate-config` 檢查項目：
 
 - `.env`、`analytics/dbt/profiles.yml`、`analytics/dbt/.user.yml` 不可被 Git 追蹤。
 - `.gitignore` 必須保護本機 secret、dbt artifacts 與 local profiles。
 - `.env.example` 中列出的環境變數必須在本文件中有說明。
 - 追蹤檔案中不可出現常見 private key、GitHub token、AWS access key、Google API key、GCP service account JSON 等高風險 pattern。
 
-這不是完整 secret scanning 產品。它的定位是 portfolio 專案中的 CI guardrail，避免明顯的 secret / config 邊界回歸。
+`make validate-dependencies` 檢查項目：
+
+- requirements 不可使用裸套件名稱。
+- requirements 不可使用 direct URL、VCS 或 local path dependency。
+- requirements 不可使用 wildcard version。
+- `requirements.txt` 必須使用 exact pins。
+
+這些不是完整 secret scanning 或 SCA 產品。它們的定位是 portfolio 專案中的 CI guardrail，避免明顯的 secret / config / dependency 邊界回歸。
 
 ## Demo 與正式設定的界線
 
@@ -119,7 +127,7 @@ Demo mode 不能主張：
 | Dashboard -> FastAPI | API base URL、使用者輸入 | 指向錯誤 backend、API unavailable | `API_BASE_URL` env、dashboard demo mode、client error handling | 無 authentication、無 CSRF/session model |
 | ETL / Airflow -> Open Data API | Raw station data、pipeline availability | 外部 API timeout、schema drift、duplicate data | timeout/retry、strict validation、unique key handling | 無 upstream contract monitoring |
 | Airflow / ETL -> MySQL | warehouse tables、DB credentials | bad load、duplicate rows、secret exposure | transform validation、unique constraints、Secret Manager fallback | standalone job 與 DAG config 還未集中 |
-| Repo -> Public portfolio | source code、docs、screenshots | accidental secret commit、misleading claims | `.env` ignored、docs 明確 demo/mock limitation、`make validate-config` | 無完整企業級 secret scanning |
+| Repo -> Public portfolio | source code、docs、screenshots | accidental secret commit、misleading claims、dependency drift | `.env` ignored、docs 明確 demo/mock limitation、`make validate-config`、`make validate-dependencies` | 無完整企業級 secret scanning / SCA |
 
 ## API Threat Model
 
@@ -137,7 +145,7 @@ Demo mode 不能主張：
 
 可以這樣講：
 
-> 這個作品不是完整 production security project，但我有把設定邊界補清楚。Demo mode 完全不依賴 DB 或模型檔，適合展示 API contract；local full stack 透過 `.env` 注入 MySQL 和 Airflow 設定；ETL / Airflow 可用 GCP Secret Manager 讀 DB password。API 端有 Pydantic validation、readiness、request id、JSON logs、Prometheus metrics、benchmark profiles、可選 API key 與單節點 rate limit；CI 也會跑 `make validate-config`，避免 `.env`、dbt local profile 或常見 secret pattern 被提交。若要真的上線，我會再補正式身份系統或 API gateway、企業級 secret scanning、least-privilege DB user、正式 alert routing 和 secret rotation。
+> 這個作品不是完整 production security project，但我有把設定邊界補清楚。Demo mode 完全不依賴 DB 或模型檔，適合展示 API contract；local full stack 透過 `.env` 注入 MySQL 和 Airflow 設定；ETL / Airflow 可用 GCP Secret Manager 讀 DB password。API 端有 Pydantic validation、readiness、request id、JSON logs、Prometheus metrics、benchmark profiles、可選 API key 與單節點 rate limit；CI 也會跑 `make validate-config` 和 `make validate-dependencies`，避免 `.env`、dbt local profile、常見 secret pattern 或無約束 dependency 被提交。若要真的上線，我會再補正式身份系統或 API gateway、企業級 secret scanning / SCA、least-privilege DB user、正式 alert routing 和 secret rotation。
 
 ## English Summary
 

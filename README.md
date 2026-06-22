@@ -16,7 +16,7 @@
 
 本專案目前作為作品集展示，用來呈現資料管線設計、資料建模、統計分析、模型訓練與模型服務化能力；不是目前仍在線上營運的服務。
 
-完整專案脈絡整理在 [`docs/project_story.md`](docs/project_story.md)。API 行為可參考 [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md)，可觀測性設計可參考 [`docs/observability.md`](docs/observability.md)，設定與安全邊界可參考 [`docs/configuration_security.md`](docs/configuration_security.md)，本機 API 效能測試可參考 [`docs/performance_load_test.md`](docs/performance_load_test.md)，模型評估邊界則整理在 [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md) 與 [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md)。
+完整專案脈絡整理在 [`docs/project_story.md`](docs/project_story.md)。API 行為可參考 [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md)，可觀測性設計可參考 [`docs/observability.md`](docs/observability.md)，設定與安全邊界可參考 [`docs/configuration_security.md`](docs/configuration_security.md)，dependency / supply-chain 邊界可參考 [`docs/dependency_security.md`](docs/dependency_security.md)，本機 API 效能測試可參考 [`docs/performance_load_test.md`](docs/performance_load_test.md)，模型評估邊界則整理在 [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md) 與 [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md)。
 
 ## 核心成果
 
@@ -29,7 +29,7 @@
 | 預測建模 | 建立 Multi-Station LSTM prototype，整合站點、天氣與短序列狀態特徵，並封裝為 API artifact |
 | 服務化 | 以 FastAPI 提供模型推論與站點風險排序 API，Streamlit 提供單站預測與多站調度輔助介面 |
 | 部署證據 | 曾以 Docker Compose 部署於 GCP VM，並保留 Airflow、Docker、GCP 監控截圖 |
-| 工程化維護 | 以 pytest 覆蓋 ETL / API 基礎行為，提供 OpenAPI schema、request examples、request tracing、Prometheus-style metrics、API benchmark profiles、optional API key / rate limit guardrails、config/security validation，並以 GitHub Actions 自動執行測試 |
+| 工程化維護 | 以 pytest 覆蓋 ETL / API 基礎行為，提供 OpenAPI schema、request examples、request tracing、Prometheus-style metrics、API benchmark profiles、optional API key / rate limit guardrails、config/security validation、dependency manifest validation，並以 GitHub Actions 自動執行測試 |
 
 ## 問題背景
 
@@ -349,6 +349,7 @@ YouBike-ETL-Pipeline/
 │   ├── adr/                        # 維護決策紀錄
 │   ├── api_examples.http           # 本機 API request 範例
 │   ├── configuration_security.md   # 設定、secret handling 與 threat model
+│   ├── dependency_security.md      # dependency validation 與 supply-chain 邊界
 │   ├── openapi.json                # FastAPI OpenAPI schema 匯出
 │   ├── operations.md               # 本機啟動、觀測與故障處理 runbook
 │   ├── observability.md            # API metrics、JSON log、dashboard 與 alert rule 草案
@@ -457,10 +458,13 @@ ETL load 前會執行資料品質 validation。預設 `ETL_VALIDATION_MODE=stric
 ```bash
 make install-dev
 make validate-config
+make validate-dependencies
 make test
 ```
 
 `make validate-config` 會檢查 `.env` / dbt local profiles 不可被追蹤、`.gitignore` 必須保護本機 secret 與 local artifacts、`.env.example` 變數需在安全文件中說明，並掃描追蹤檔案中的常見 high-risk secret pattern。
+
+`make validate-dependencies` 會檢查 requirements 不可使用裸套件名稱、direct URL / VCS / local path dependency、wildcard version 或重複宣告；`requirements.txt` 作為歷史 analysis environment manifest，必須使用 exact pins。
 
 測試涵蓋 ETL transform、FastAPI 基礎行為、dashboard client 與 LSTM 訓練程式的小型 fixture，不需要連線到 MySQL 或 GCP，也不會載入真實模型檔。
 
@@ -498,6 +502,7 @@ make dbt-build
 - `/metrics` latency histogram，可用 Prometheus `histogram_quantile()` 查 p95 / p99 latency
 - API benchmark profiles 的 latency、error rate、throughput 與 pass/watch/fail 摘要輸出
 - config/security validation，避免 `.env`、dbt local profiles 或常見 secret pattern 被提交
+- dependency manifest validation，避免 requirements 出現無約束 dependency、direct URL / VCS / local path 或 wildcard version
 - `/stations` model-not-ready 行為
 - `/predict` request validation、`recent_observations` lag-window 與 warehouse lookup fallback 行為
 - `/stations/risk` 批次風險排序、request validation、unknown station 與 per-station `recent_observations` 行為
@@ -521,6 +526,7 @@ CI 設定位於 `.github/workflows/ci.yml`。
 - Dashboard 固定範例資料模式只代表介面流程與 response shape，不代表真實模型評估表現。
 - 本機 API benchmark profiles 是展示與回歸檢查用的容量探測，不是正式 production load test 或 SLO。
 - 設定與安全文件整理了 env var、secret handling 與 threat model；API 有可選 API key 與單節點 rate limit，但本專案不主張已具備完整 production security controls，例如正式身份系統、API gateway、secret rotation 或 WAF。
+- Dependency 文件整理了 requirements hygiene 與 supply-chain 邊界；目前有 CI manifest validation，但不主張已具備完整 SCA、SBOM、hash-pinned install 或自動 dependency upgrade workflow。
 
 ## 技術能力對應
 
@@ -543,6 +549,7 @@ CI 設定位於 `.github/workflows/ci.yml`。
 - [`docs/openapi.json`](docs/openapi.json) / [`docs/api_examples.http`](docs/api_examples.http)：可重生的 API schema 與 request 範例。
 - [`docs/observability.md`](docs/observability.md)：API metrics、JSON log、request tracing、PromQL、dashboard 與 alert rule 草案。
 - [`docs/configuration_security.md`](docs/configuration_security.md)：環境變數、secret handling、demo/正式設定邊界與 API threat model。
+- [`docs/dependency_security.md`](docs/dependency_security.md)：requirements hygiene、dependency validation 與 supply-chain 邊界。
 - [`docs/operations.md`](docs/operations.md)：本機 demo、Docker Compose、環境變數、health/readiness、metrics、JSON log、rollback 與故障排查。
 - [`docs/performance_load_test.md`](docs/performance_load_test.md)：本機 API benchmark profiles、延遲與錯誤率判讀方式。
 - [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md)：機器學習部分的可主張範圍與限制。

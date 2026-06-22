@@ -16,7 +16,7 @@ The project has three layers:
 
 This repository is a portfolio project rather than an actively operated production service. The Chinese README is the primary project narrative; this English README is a concise companion.
 
-For the end-to-end project narrative, see [`docs/project_story.md`](docs/project_story.md). API behavior is documented in [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md), observability design is documented in [`docs/observability.md`](docs/observability.md), configuration and security boundaries are documented in [`docs/configuration_security.md`](docs/configuration_security.md), local API benchmark profiles are documented in [`docs/performance_load_test.md`](docs/performance_load_test.md), and model evaluation boundaries are documented in [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md) and [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md).
+For the end-to-end project narrative, see [`docs/project_story.md`](docs/project_story.md). API behavior is documented in [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md), observability design is documented in [`docs/observability.md`](docs/observability.md), configuration and security boundaries are documented in [`docs/configuration_security.md`](docs/configuration_security.md), dependency / supply-chain boundaries are documented in [`docs/dependency_security.md`](docs/dependency_security.md), local API benchmark profiles are documented in [`docs/performance_load_test.md`](docs/performance_load_test.md), and model evaluation boundaries are documented in [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md) and [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md).
 
 ## Key Results
 
@@ -29,7 +29,7 @@ For the end-to-end project narrative, see [`docs/project_story.md`](docs/project
 | Forecasting | Built a Multi-Station LSTM prototype with station, weather, and short-sequence status features, then packaged it as API artifacts |
 | Serving | Exposed model inference and station risk ranking through FastAPI, with a Streamlit UI for prediction and redistribution support |
 | Deployment evidence | Historical GCP VM deployment with Docker Compose, Airflow, MySQL, API, and dashboard services |
-| Engineering hygiene | pytest coverage for ETL / API behavior, OpenAPI schema export, request examples, request tracing, Prometheus-style metrics, local API benchmark profiles, optional API-key / rate-limit guardrails, config/security validation, and GitHub Actions CI |
+| Engineering hygiene | pytest coverage for ETL / API behavior, OpenAPI schema export, request examples, request tracing, Prometheus-style metrics, local API benchmark profiles, optional API-key / rate-limit guardrails, config/security validation, dependency manifest validation, and GitHub Actions CI |
 
 ## Problem Context
 
@@ -331,6 +331,7 @@ YouBike-ETL-Pipeline/
 │   ├── adr/                        # Maintenance decisions
 │   ├── api_examples.http           # Local API request examples
 │   ├── configuration_security.md   # Env vars, secret handling, and threat model
+│   ├── dependency_security.md      # Dependency validation and supply-chain boundaries
 │   ├── openapi.json                # Exported FastAPI OpenAPI schema
 │   ├── operations.md               # Local run, observability, and troubleshooting runbook
 │   ├── observability.md            # API metrics, JSON logs, dashboard panels, and alert drafts
@@ -439,10 +440,13 @@ ETL runs data-quality validation before loading. The default `ETL_VALIDATION_MOD
 ```bash
 make install-dev
 make validate-config
+make validate-dependencies
 make test
 ```
 
 `make validate-config` checks that `.env` and dbt local profiles are not tracked, `.gitignore` protects local secrets and artifacts, `.env.example` variables are documented, and tracked files do not contain common high-risk secret patterns.
+
+`make validate-dependencies` checks that requirements files do not contain bare package names, direct URL / VCS / local-path dependencies, wildcard versions, or duplicate declarations. `requirements.txt`, which preserves the historical analysis environment, must use exact pins.
 
 The tests cover ETL transform logic, basic FastAPI behavior, the dashboard client, and a small-fixture run of the LSTM training script. They do not require MySQL or GCP access and do not load real model artifacts.
 
@@ -480,6 +484,7 @@ Current tests cover:
 - `/metrics` latency histogram for Prometheus `histogram_quantile()` p95 / p99 queries
 - API benchmark profile output for latency, error rate, throughput, and pass/watch/fail assessment
 - config/security validation for tracked env files, dbt local profiles, and common high-risk secret patterns
+- dependency manifest validation for unversioned requirements, direct URL / VCS / local-path dependencies, and wildcard versions
 - `/stations` model-not-ready behavior
 - `/predict` request validation, `recent_observations` lag-window behavior, and warehouse lookup fallback behavior
 - `/stations/risk` batch ranking, request validation, unknown station behavior, and per-station `recent_observations`
@@ -502,6 +507,7 @@ CI configuration lives in `.github/workflows/ci.yml`.
 - The LSTM training flow now has a script, a baseline suite, a Ridge lag-regression baseline, and small tests; local checkpoint-data evaluations show the current LSTM does not beat the strongest baseline for either the next-observation or approximate one-hour horizon. Because the full processed training CSV is not committed, fresh clones cannot directly reproduce the full-data evaluation.
 - The dashboard fixed-sample-data mode is for UI inspection and response-shape validation, not real model-performance evidence.
 - The configuration/security note documents environment variables, secret handling, and a threat model. The API has optional API-key and single-node rate-limit guardrails, but the project does not claim complete production security controls such as a formal identity system, API gateway, secret rotation, or WAF protection.
+- The dependency-security note documents requirements hygiene and supply-chain boundaries. The project has CI manifest validation, but it does not claim full SCA, SBOM generation, hash-pinned installs, or automated dependency-upgrade workflows.
 
 ## Role Relevance
 
@@ -524,6 +530,7 @@ Supporting technical notes:
 - [`docs/openapi.json`](docs/openapi.json) / [`docs/api_examples.http`](docs/api_examples.http): reproducible API schema and request examples.
 - [`docs/observability.md`](docs/observability.md): API metrics, JSON logs, request tracing, PromQL, dashboard panels, and alert-rule drafts.
 - [`docs/configuration_security.md`](docs/configuration_security.md): environment variables, secret handling, demo/production boundaries, and API threat model.
+- [`docs/dependency_security.md`](docs/dependency_security.md): requirements hygiene, dependency validation, and supply-chain boundaries.
 - [`docs/operations.md`](docs/operations.md): local demo, Docker Compose, environment variables, health/readiness, metrics, JSON logs, rollback, and troubleshooting.
 - [`docs/performance_load_test.md`](docs/performance_load_test.md): local API benchmark profiles and latency/error-rate interpretation.
 - [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md): machine-learning scope and limitations.
