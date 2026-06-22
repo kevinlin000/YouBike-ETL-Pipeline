@@ -29,7 +29,7 @@
 | 預測建模 | 建立 Multi-Station LSTM prototype，整合站點、天氣與短序列狀態特徵，並封裝為 API artifact |
 | 服務化 | 以 FastAPI 提供模型推論與站點風險排序 API，Streamlit 提供單站預測與多站調度輔助介面 |
 | 部署證據 | 曾以 Docker Compose 部署於 GCP VM，並保留 Airflow、Docker、GCP 監控截圖 |
-| 工程化維護 | 以 pytest 覆蓋 ETL / API 基礎行為，提供 OpenAPI schema、request examples、request tracing、Prometheus-style metrics、API benchmark profiles，並以 GitHub Actions 自動執行測試 |
+| 工程化維護 | 以 pytest 覆蓋 ETL / API 基礎行為，提供 OpenAPI schema、request examples、request tracing、Prometheus-style metrics、API benchmark profiles、config/security validation，並以 GitHub Actions 自動執行測試 |
 
 ## 問題背景
 
@@ -454,8 +454,11 @@ ETL load 前會執行資料品質 validation。預設 `ETL_VALIDATION_MODE=stric
 
 ```bash
 make install-dev
+make validate-config
 make test
 ```
+
+`make validate-config` 會檢查 `.env` / dbt local profiles 不可被追蹤、`.gitignore` 必須保護本機 secret 與 local artifacts、`.env.example` 變數需在安全文件中說明，並掃描追蹤檔案中的常見 high-risk secret pattern。
 
 測試涵蓋 ETL transform、FastAPI 基礎行為、dashboard client 與 LSTM 訓練程式的小型 fixture，不需要連線到 MySQL 或 GCP，也不會載入真實模型檔。
 
@@ -492,6 +495,7 @@ make dbt-build
 - OpenAPI schema 匯出與本機 request examples，方便檢查 API contract 與 validation 行為
 - `/metrics` latency histogram，可用 Prometheus `histogram_quantile()` 查 p95 / p99 latency
 - API benchmark profiles 的 latency、error rate、throughput 與 pass/watch/fail 摘要輸出
+- config/security validation，避免 `.env`、dbt local profiles 或常見 secret pattern 被提交
 - `/stations` model-not-ready 行為
 - `/predict` request validation、`recent_observations` lag-window 與 warehouse lookup fallback 行為
 - `/stations/risk` 批次風險排序、request validation、unknown station 與 per-station `recent_observations` 行為

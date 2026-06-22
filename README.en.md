@@ -29,7 +29,7 @@ For the end-to-end project narrative, see [`docs/project_story.md`](docs/project
 | Forecasting | Built a Multi-Station LSTM prototype with station, weather, and short-sequence status features, then packaged it as API artifacts |
 | Serving | Exposed model inference and station risk ranking through FastAPI, with a Streamlit UI for prediction and redistribution support |
 | Deployment evidence | Historical GCP VM deployment with Docker Compose, Airflow, MySQL, API, and dashboard services |
-| Engineering hygiene | pytest coverage for ETL / API behavior, OpenAPI schema export, request examples, request tracing, Prometheus-style metrics, local API benchmark profiles, and GitHub Actions CI |
+| Engineering hygiene | pytest coverage for ETL / API behavior, OpenAPI schema export, request examples, request tracing, Prometheus-style metrics, local API benchmark profiles, config/security validation, and GitHub Actions CI |
 
 ## Problem Context
 
@@ -436,8 +436,11 @@ ETL runs data-quality validation before loading. The default `ETL_VALIDATION_MOD
 
 ```bash
 make install-dev
+make validate-config
 make test
 ```
+
+`make validate-config` checks that `.env` and dbt local profiles are not tracked, `.gitignore` protects local secrets and artifacts, `.env.example` variables are documented, and tracked files do not contain common high-risk secret patterns.
 
 The tests cover ETL transform logic, basic FastAPI behavior, the dashboard client, and a small-fixture run of the LSTM training script. They do not require MySQL or GCP access and do not load real model artifacts.
 
@@ -474,6 +477,7 @@ Current tests cover:
 - OpenAPI schema export and local request examples for API contract and validation checks
 - `/metrics` latency histogram for Prometheus `histogram_quantile()` p95 / p99 queries
 - API benchmark profile output for latency, error rate, throughput, and pass/watch/fail assessment
+- config/security validation for tracked env files, dbt local profiles, and common high-risk secret patterns
 - `/stations` model-not-ready behavior
 - `/predict` request validation, `recent_observations` lag-window behavior, and warehouse lookup fallback behavior
 - `/stations/risk` batch ranking, request validation, unknown station behavior, and per-station `recent_observations`

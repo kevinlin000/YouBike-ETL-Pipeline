@@ -47,6 +47,7 @@
 
 - `.env` 已在 `.gitignore`，真實密碼不應提交。
 - `.env.example` 只放 placeholder 與非敏感預設。
+- `make validate-config` 會檢查追蹤檔案中的設定與 secret 邊界，CI 也會執行同一個檢查。
 - MySQL 密碼在 Docker Compose local full stack 由 `.env` 注入。
 - ETL / Airflow DAG 會先看 `DB_PASSWORD`，若未設定則嘗試從 GCP Secret Manager 讀取。
 - API warehouse fallback 只有在 `DB_PASSWORD` 存在時才建立 DB engine；缺 DB credentials 時會記錄 `warehouse_lookup_disabled`，不阻擋 API demo。
@@ -57,9 +58,26 @@
 - 沒有完整 secret rotation 流程。
 - 沒有集中式 config module。
 - 沒有 Kubernetes / cloud-native secret mount。
-- 沒有 CI secret scanning gate。
+- 沒有完整企業級 secret scanning 服務；目前提供的是 repo 內的輕量 config / secret-boundary validation。
 
 這些限制可以在面試時主動說明，不要把作品包裝成完整 production security implementation。
+
+## 自動化檢查
+
+本專案提供一個零新增依賴的檢查：
+
+```bash
+make validate-config
+```
+
+檢查項目：
+
+- `.env`、`analytics/dbt/profiles.yml`、`analytics/dbt/.user.yml` 不可被 Git 追蹤。
+- `.gitignore` 必須保護本機 secret、dbt artifacts 與 local profiles。
+- `.env.example` 中列出的環境變數必須在本文件中有說明。
+- 追蹤檔案中不可出現常見 private key、GitHub token、AWS access key、Google API key、GCP service account JSON 等高風險 pattern。
+
+這不是完整 secret scanning 產品。它的定位是 portfolio 專案中的 CI guardrail，避免明顯的 secret / config 邊界回歸。
 
 ## Demo 與正式設定的界線
 
@@ -95,7 +113,7 @@ Demo mode 不能主張：
 | Dashboard -> FastAPI | API base URL、使用者輸入 | 指向錯誤 backend、API unavailable | `API_BASE_URL` env、dashboard demo mode、client error handling | 無 authentication、無 CSRF/session model |
 | ETL / Airflow -> Open Data API | Raw station data、pipeline availability | 外部 API timeout、schema drift、duplicate data | timeout/retry、strict validation、unique key handling | 無 upstream contract monitoring |
 | Airflow / ETL -> MySQL | warehouse tables、DB credentials | bad load、duplicate rows、secret exposure | transform validation、unique constraints、Secret Manager fallback | standalone job 與 DAG config 還未集中 |
-| Repo -> Public portfolio | source code、docs、screenshots | accidental secret commit、misleading claims | `.env` ignored、docs 明確 demo/mock limitation | 無 automated secret scan |
+| Repo -> Public portfolio | source code、docs、screenshots | accidental secret commit、misleading claims | `.env` ignored、docs 明確 demo/mock limitation、`make validate-config` | 無完整企業級 secret scanning |
 
 ## API Threat Model
 
@@ -113,7 +131,7 @@ Demo mode 不能主張：
 
 可以這樣講：
 
-> 這個作品不是完整 production security project，但我有把設定邊界補清楚。Demo mode 完全不依賴 DB 或模型檔，適合展示 API contract；local full stack 透過 `.env` 注入 MySQL 和 Airflow 設定；ETL / Airflow 可用 GCP Secret Manager 讀 DB password。API 端有 Pydantic validation、readiness、request id、JSON logs、Prometheus metrics 和 benchmark profiles。若要真的上線，我會先補 auth/rate limit、secret scanning、least-privilege DB user、正式 alert routing 和 secret rotation。
+> 這個作品不是完整 production security project，但我有把設定邊界補清楚。Demo mode 完全不依賴 DB 或模型檔，適合展示 API contract；local full stack 透過 `.env` 注入 MySQL 和 Airflow 設定；ETL / Airflow 可用 GCP Secret Manager 讀 DB password。API 端有 Pydantic validation、readiness、request id、JSON logs、Prometheus metrics 和 benchmark profiles；CI 也會跑 `make validate-config`，避免 `.env`、dbt local profile 或常見 secret pattern 被提交。若要真的上線，我會先補 auth/rate limit、企業級 secret scanning、least-privilege DB user、正式 alert routing 和 secret rotation。
 
 ## English Summary
 

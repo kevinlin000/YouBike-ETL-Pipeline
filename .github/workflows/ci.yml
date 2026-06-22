@@ -40,6 +40,9 @@ jobs:
       - name: Install test dependencies
         run: python -m pip install -r requirements-test.txt
 
+      - name: Validate config and secret boundaries
+        run: make validate-config
+
       - name: Run tests
         run: python -m pytest tests/ -v
 

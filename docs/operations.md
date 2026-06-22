@@ -257,12 +257,13 @@ make api-load-test
 2. 若只是文件或 API demo 問題，優先用新 commit 修復，不做 destructive reset。
 3. 若模型 artifact 替換造成問題，還原上一版 `api/model_files` artifact，重啟 API，確認 `model_artifact_hash` 回到預期值。
 4. 若 Docker Compose 服務異常，先 `make down`，再 `make up`。
-5. Push 前執行 `make test`；涉及 dbt 時再執行 `DB_PASSWORD=dummy make dbt-parse`。
+5. Push 前執行 `make validate-config` 與 `make test`；涉及 dbt 時再執行 `DB_PASSWORD=dummy make dbt-parse`。
 
 ## CI 驗證
 
 GitHub Actions 會在 push / pull request 時執行：
 
+- Config/security validation：`make validate-config`
 - Python tests：`python -m pytest tests/ -v`
 - dbt dependencies install
 - dbt seed/build，使用一次性 MySQL service

@@ -275,6 +275,7 @@ API 回傳排序後的風險清單，dashboard 可以直接呈現調度順位，
 - ETL / Airflow 可從 GCP Secret Manager 讀取 DB password，或在本機使用 `DB_PASSWORD`。
 - API demo mode 不讀模型檔、不連 DB，可安全展示 contract。
 - API 使用 Pydantic validation、readiness、request id、JSON logs 與 metrics。
+- CI 執行 `make validate-config`，避免 `.env`、dbt local profiles 或常見 high-risk secret pattern 被提交。
 
 目前不主張已完成 production security controls，例如 auth、rate limit、secret rotation、WAF、CI secret scanning 或正式 incident response。
 
@@ -287,6 +288,7 @@ API 回傳排序後的風險清單，dashboard 可以直接呈現調度順位，
 - request tracing 與 JSON request logging。
 - `/metrics` request count、error count、latency summary 與 histogram buckets。
 - OpenAPI schema export 與本機 request examples。
+- config/security validation：`.env` / dbt local profiles 不可被追蹤，`.env.example` 變數必須有文件說明，並掃描常見 high-risk secret pattern。
 - 模型 lineage 與 artifact hash。
 - API demo mode。
 - `/predict` payload validation、unknown station、lag window、warehouse fallback。
