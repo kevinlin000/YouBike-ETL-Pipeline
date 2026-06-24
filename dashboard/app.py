@@ -54,17 +54,26 @@ def apply_dashboard_styles() -> None:
         """
         <style>
         :root {
-            --ink: #111827;
-            --muted: #64748b;
-            --line: #dbe3ed;
+            --ink: #162033;
+            --muted: #65748b;
+            --faint: #8a97aa;
+            --line: #d7e0ea;
             --panel: #ffffff;
-            --soft: #f8fafc;
-            --soft-blue: #eef6ff;
-            --teal: #0f766e;
-            --blue: #2563eb;
-            --amber: #b45309;
-            --red: #b91c1c;
-            --green: #15803d;
+            --soft: #f7f9fc;
+            --teal: #0f7b72;
+            --teal-dark: #0b615a;
+            --critical: #b42318;
+            --critical-soft: #fff4f2;
+            --critical-line: #fecdca;
+            --full: #b54708;
+            --full-soft: #fffaeb;
+            --full-line: #fedf89;
+            --watch: #175cd3;
+            --watch-soft: #eff8ff;
+            --watch-line: #b2ddff;
+            --stable: #067647;
+            --stable-soft: #ecfdf3;
+            --stable-line: #abefc6;
         }
 
         .stApp {
@@ -78,7 +87,7 @@ def apply_dashboard_styles() -> None:
         }
 
         [data-testid="stSidebar"] {
-            background: #f6f8fb;
+            background: #f5f7fa;
             border-right: 1px solid var(--line);
         }
 
@@ -101,7 +110,7 @@ def apply_dashboard_styles() -> None:
             align-items: flex-start;
             justify-content: space-between;
             gap: 1.5rem;
-            padding: 0.8rem 0 1rem;
+            padding: 0.55rem 0 0.9rem;
             border-bottom: 1px solid var(--line);
             margin-bottom: 0.9rem;
         }
@@ -169,6 +178,7 @@ def apply_dashboard_styles() -> None:
             background: var(--panel);
             padding: 0.7rem 0.8rem;
             min-height: 76px;
+            box-shadow: 0 1px 2px rgba(16, 24, 40, 0.03);
         }
 
         .overview-item span {
@@ -193,9 +203,9 @@ def apply_dashboard_styles() -> None:
         }
 
         .sidebar-note {
-            border: 1px solid #bfdbfe;
-            background: var(--soft-blue);
-            color: #1e3a8a;
+            border: 1px solid var(--line);
+            background: #ffffff;
+            color: var(--muted);
             border-radius: 8px;
             padding: 0.75rem 0.85rem;
             font-size: 0.9rem;
@@ -205,7 +215,7 @@ def apply_dashboard_styles() -> None:
 
         .sidebar-note strong {
             display: block;
-            color: #172554;
+            color: var(--ink);
             margin-bottom: 0.18rem;
         }
 
@@ -239,50 +249,103 @@ def apply_dashboard_styles() -> None:
             border: 1px solid var(--line);
             border-radius: 8px;
             background: var(--panel);
-            padding: 0.85rem;
-            min-height: 136px;
+            padding: 0.9rem;
+            min-height: 154px;
+            box-shadow: 0 1px 2px rgba(16, 24, 40, 0.03);
         }
 
-        .priority-card.risk-critical {
-            border-left: 5px solid var(--red);
-        }
-
-        .priority-card.risk-full {
-            border-left: 5px solid var(--amber);
-        }
-
-        .priority-card.risk-warning,
-        .priority-card.risk-dock {
-            border-left: 5px solid var(--blue);
-        }
-
-        .priority-card.risk-normal {
-            border-left: 5px solid var(--green);
+        .priority-card-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
         }
 
         .priority-card .rank {
             color: var(--muted);
             font-size: 0.78rem;
             font-weight: 700;
-            margin-bottom: 0.32rem;
+            white-space: nowrap;
+        }
+
+        .priority-card .rank::before {
+            content: "";
+            display: inline-block;
+            width: 0.45rem;
+            height: 0.45rem;
+            margin-right: 0.38rem;
+            border-radius: 999px;
+            background: var(--faint);
+            vertical-align: 0.08rem;
+        }
+
+        .priority-card.risk-critical .rank::before {
+            background: var(--critical);
+        }
+
+        .priority-card.risk-full .rank::before {
+            background: var(--full);
+        }
+
+        .priority-card.risk-warning .rank::before,
+        .priority-card.risk-dock .rank::before {
+            background: var(--watch);
+        }
+
+        .priority-card.risk-normal .rank::before {
+            background: var(--stable);
         }
 
         .priority-card .station {
             color: var(--ink);
             font-weight: 700;
             line-height: 1.35;
-            min-height: 2.7rem;
+            min-height: 2.45rem;
+            margin-bottom: 0.55rem;
         }
 
-        .priority-card .risk {
+        .status-pill {
             display: inline-block;
-            margin: 0.5rem 0 0.45rem;
-            padding: 0.2rem 0.55rem;
+            padding: 0.18rem 0.5rem;
             border-radius: 999px;
-            background: #f1f5f9;
+            border: 1px solid #e5eaf0;
+            background: #f6f8fb;
             color: var(--ink);
-            font-size: 0.82rem;
+            font-size: 0.76rem;
             font-weight: 700;
+            line-height: 1.35;
+            white-space: nowrap;
+        }
+
+        .status-pill.risk-critical {
+            border-color: var(--critical-line);
+            background: var(--critical-soft);
+            color: var(--critical);
+        }
+
+        .status-pill.risk-full {
+            border-color: var(--full-line);
+            background: var(--full-soft);
+            color: var(--full);
+        }
+
+        .status-pill.risk-warning,
+        .status-pill.risk-dock {
+            border-color: var(--watch-line);
+            background: var(--watch-soft);
+            color: var(--watch);
+        }
+
+        .status-pill.risk-normal {
+            border-color: var(--stable-line);
+            background: var(--stable-soft);
+            color: var(--stable);
+        }
+
+        .priority-card .status-pill {
+            background: #ffffff;
+            border-color: #e1e7ef;
         }
 
         .priority-card .stats {
@@ -298,11 +361,21 @@ def apply_dashboard_styles() -> None:
             font-weight: 700;
         }
 
-        .priority-card .action {
+        .priority-card .action-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 0.75rem;
+            border-top: 1px solid var(--line);
+            margin-top: 0.72rem;
+            padding-top: 0.68rem;
+            color: var(--muted);
+            font-size: 0.82rem;
+        }
+
+        .priority-card .action-row strong {
             color: var(--ink);
-            font-size: 0.9rem;
             font-weight: 700;
-            margin-top: 0.45rem;
+            text-align: right;
         }
 
         .input-panel,
@@ -312,6 +385,7 @@ def apply_dashboard_styles() -> None:
             background: var(--panel);
             padding: 1rem;
             min-height: 268px;
+            box-shadow: 0 1px 2px rgba(16, 24, 40, 0.03);
         }
 
         .panel-title {
@@ -350,23 +424,44 @@ def apply_dashboard_styles() -> None:
         }
 
         .forecast-panel {
-            border-left: 5px solid var(--green);
+            display: flex;
+            flex-direction: column;
         }
 
-        .forecast-panel.risk-critical {
-            border-left-color: var(--red);
+        .forecast-heading {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
         }
 
-        .forecast-panel.risk-warning {
-            border-left-color: var(--blue);
+        .panel-kicker {
+            color: var(--muted);
+            font-size: 0.78rem;
+            font-weight: 700;
+            margin-bottom: 0.2rem;
+        }
+
+        .forecast-number-row {
+            display: flex;
+            align-items: baseline;
+            gap: 0.4rem;
+            margin: 0.65rem 0 0.3rem;
         }
 
         .forecast-number {
             color: var(--ink);
-            font-size: 2.4rem;
+            font-size: 2.55rem;
             font-weight: 750;
             line-height: 1;
-            margin: 0.75rem 0 0.35rem;
+            margin: 0;
+        }
+
+        .forecast-unit {
+            color: var(--ink);
+            font-size: 1.25rem;
+            font-weight: 700;
         }
 
         .forecast-grid {
@@ -391,12 +486,21 @@ def apply_dashboard_styles() -> None:
         }
 
         .forecast-action {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
             border-top: 1px solid var(--line);
             margin-top: 0.85rem;
             padding-top: 0.75rem;
+            color: var(--muted);
+            font-size: 0.84rem;
+            line-height: 1.45;
+        }
+
+        .forecast-action strong {
             color: var(--ink);
             font-weight: 700;
-            line-height: 1.45;
+            text-align: right;
         }
 
         .forecast-stale {
@@ -448,8 +552,8 @@ def apply_dashboard_styles() -> None:
         }
 
         div.stButton > button[kind="primary"]:hover {
-            background: #115e59;
-            border-color: #115e59;
+            background: var(--teal-dark);
+            border-color: var(--teal-dark);
             color: white;
         }
 
@@ -482,6 +586,19 @@ def apply_dashboard_styles() -> None:
 
             .priority-list {
                 grid-template-columns: 1fr;
+            }
+
+            .forecast-heading,
+            .priority-card-head,
+            .forecast-action,
+            .priority-card .action-row {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .priority-card .action-row strong,
+            .forecast-action strong {
+                text-align: left;
             }
         }
         </style>
@@ -618,7 +735,13 @@ def render_prediction_panel(
         st.markdown(
             """
             <div class="forecast-panel">
-                <div class="panel-title">預測結果</div>
+                <div class="forecast-heading">
+                    <div>
+                        <div class="panel-kicker">預測結果</div>
+                        <div class="panel-title">模型時窗供需</div>
+                    </div>
+                    <span class="status-pill">等待輸入</span>
+                </div>
                 <p>尚未取得結果。設定站點與目前車輛後，按下更新即可檢視模型時窗內的供需風險。</p>
             </div>
             """,
@@ -635,9 +758,17 @@ def render_prediction_panel(
     )
     panel_html = (
         f'<div class="forecast-panel {tone_class}">'
-        '<div class="panel-title">預測結果</div>'
-        f"<p>{escape(PREDICTION_RISK_LABELS[tone_class])}</p>"
-        f'<div class="forecast-number">{prediction} 台</div>'
+        '<div class="forecast-heading">'
+        "<div>"
+        '<div class="panel-kicker">預測結果</div>'
+        '<div class="panel-title">模型時窗供需</div>'
+        "</div>"
+        f'<span class="status-pill {tone_class}">{escape(PREDICTION_RISK_LABELS[tone_class])}</span>'
+        "</div>"
+        '<div class="forecast-number-row">'
+        f'<div class="forecast-number">{prediction}</div>'
+        '<div class="forecast-unit">台</div>'
+        "</div>"
         f"<p>{escape(description)}</p>"
         f"{stale_message}"
         '<div class="forecast-grid">'
@@ -648,7 +779,10 @@ def render_prediction_panel(
         "<div><span>降雨</span>"
         f"<strong>{rain:.1f} mm</strong></div>"
         "</div>"
-        f'<div class="forecast-action">{escape(action)}</div>'
+        '<div class="forecast-action">'
+        "<span>建議動作</span>"
+        f"<strong>{escape(action)}</strong>"
+        "</div>"
         "</div>"
     )
 
@@ -731,14 +865,19 @@ def render_priority_cards(result_df: pd.DataFrame) -> None:
         cards.append(
             "<div class=\"priority-card "
             f"{risk_class}\">"
-            f"<div class=\"rank\">調度順位 {index}</div>"
+            "<div class=\"priority-card-head\">"
+            f"<div class=\"rank\">處理順位 {index}</div>"
+            f"<span class=\"status-pill {risk_class}\">{escape(row['risk_label'])} · {int(row['risk_score'])} 分</span>"
+            "</div>"
             f"<div class=\"station\">{escape(row['station_name'])}</div>"
-            f"<div class=\"risk\">{escape(row['risk_label'])} · {int(row['risk_score'])} 分</div>"
             "<div class=\"stats\">"
             f"<span>車輛 <strong>{escape(bike_flow)}</strong></span>"
             f"<span>空位 <strong>{escape(space_flow)}</strong></span>"
             "</div>"
-            f"<div class=\"action\">{escape(row['action_label'])}</div>"
+            "<div class=\"action-row\">"
+            "<span>建議動作</span>"
+            f"<strong>{escape(row['action_label'])}</strong>"
+            "</div>"
             "</div>"
         )
 
