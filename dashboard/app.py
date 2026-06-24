@@ -82,7 +82,7 @@ def apply_dashboard_styles() -> None:
 
         .block-container {
             max-width: 1220px;
-            padding-top: 1.2rem;
+            padding-top: 0.9rem;
             padding-bottom: 2.4rem;
         }
 
@@ -109,17 +109,17 @@ def apply_dashboard_styles() -> None:
             display: flex;
             align-items: flex-start;
             justify-content: space-between;
-            gap: 1.5rem;
-            padding: 0.55rem 0 0.9rem;
+            gap: 1.25rem;
+            padding: 0.35rem 0 0.75rem;
             border-bottom: 1px solid var(--line);
-            margin-bottom: 0.9rem;
+            margin-bottom: 0.75rem;
         }
 
         .dashboard-hero h1 {
-            margin: 0.15rem 0 0.35rem;
+            margin: 0.12rem 0 0.3rem;
             color: var(--ink);
-            font-size: clamp(1.8rem, 2.4vw, 2.35rem);
-            line-height: 1.12;
+            font-size: clamp(1.42rem, 1.9vw, 1.9rem);
+            line-height: 1.2;
             letter-spacing: 0;
         }
 
@@ -127,22 +127,22 @@ def apply_dashboard_styles() -> None:
             color: var(--muted);
             margin: 0;
             max-width: 780px;
-            font-size: 0.98rem;
-            line-height: 1.55;
+            font-size: 0.92rem;
+            line-height: 1.5;
         }
 
         .eyebrow {
             color: var(--teal) !important;
-            font-size: 0.82rem !important;
+            font-size: 0.76rem !important;
             font-weight: 700;
             letter-spacing: 0;
         }
 
         .run-state {
-            min-width: 190px;
+            min-width: 210px;
             border: 1px solid var(--line);
             border-radius: 8px;
-            padding: 0.7rem 0.85rem;
+            padding: 0.62rem 0.78rem;
             background: #ffffff;
         }
 
@@ -150,12 +150,41 @@ def apply_dashboard_styles() -> None:
             display: block;
             color: var(--muted);
             font-size: 0.76rem;
+            line-height: 1.35;
             margin-bottom: 0.2rem;
         }
 
         .run-state strong {
+            display: block;
             color: var(--ink);
             font-size: 0.98rem;
+            line-height: 1.35;
+        }
+
+        .run-state small {
+            display: block;
+            color: var(--muted);
+            line-height: 1.35;
+            margin-top: 0.18rem;
+        }
+
+        .section-header {
+            margin: 1rem 0 0.5rem;
+        }
+
+        .section-header h2 {
+            color: var(--ink);
+            font-size: 1.28rem;
+            line-height: 1.3;
+            margin: 0 0 0.28rem;
+            letter-spacing: 0;
+        }
+
+        .section-header p {
+            color: var(--muted);
+            margin: 0;
+            line-height: 1.5;
+            font-size: 0.92rem;
         }
 
         .section-note {
@@ -168,17 +197,26 @@ def apply_dashboard_styles() -> None:
         .overview-grid {
             display: grid;
             grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 0.75rem;
-            margin: 0.25rem 0 1.2rem;
-        }
-
-        .overview-item {
+            gap: 0;
+            margin: 0.15rem 0 0.95rem;
             border: 1px solid var(--line);
             border-radius: 8px;
             background: var(--panel);
-            padding: 0.7rem 0.8rem;
-            min-height: 76px;
-            box-shadow: 0 1px 2px rgba(16, 24, 40, 0.03);
+            overflow: hidden;
+        }
+
+        .overview-item {
+            border: 0;
+            border-left: 1px solid var(--line);
+            border-radius: 0;
+            background: var(--panel);
+            padding: 0.62rem 0.78rem;
+            min-height: 62px;
+            box-shadow: none;
+        }
+
+        .overview-item:first-child {
+            border-left: 0;
         }
 
         .overview-item span {
@@ -191,7 +229,7 @@ def apply_dashboard_styles() -> None:
         .overview-item strong {
             display: block;
             color: var(--ink);
-            font-size: 1rem;
+            font-size: 0.94rem;
             line-height: 1.3;
         }
 
@@ -251,7 +289,7 @@ def apply_dashboard_styles() -> None:
             background: var(--panel);
             padding: 0.9rem;
             min-height: 154px;
-            box-shadow: 0 1px 2px rgba(16, 24, 40, 0.03);
+            box-shadow: none;
         }
 
         .priority-card-head {
@@ -384,8 +422,8 @@ def apply_dashboard_styles() -> None:
             border-radius: 8px;
             background: var(--panel);
             padding: 1rem;
-            min-height: 268px;
-            box-shadow: 0 1px 2px rgba(16, 24, 40, 0.03);
+            min-height: 244px;
+            box-shadow: none;
         }
 
         .panel-title {
@@ -401,12 +439,13 @@ def apply_dashboard_styles() -> None:
             margin: 0;
             color: var(--muted);
             line-height: 1.5;
+            font-size: 0.92rem;
         }
 
         .station-readout {
             border-top: 1px solid var(--line);
-            margin-top: 0.9rem;
-            padding-top: 0.8rem;
+            margin-top: 0.72rem;
+            padding-top: 0.68rem;
         }
 
         .station-readout span {
@@ -452,7 +491,7 @@ def apply_dashboard_styles() -> None:
 
         .forecast-number {
             color: var(--ink);
-            font-size: 2.55rem;
+            font-size: 2.35rem;
             font-weight: 750;
             line-height: 1;
             margin: 0;
@@ -504,7 +543,7 @@ def apply_dashboard_styles() -> None:
         }
 
         .forecast-stale {
-            color: var(--amber);
+            color: var(--full);
             font-size: 0.78rem;
             font-weight: 700;
             margin-top: 0.45rem;
@@ -513,15 +552,24 @@ def apply_dashboard_styles() -> None:
         .risk-summary-grid {
             display: grid;
             grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 0.65rem;
+            gap: 0;
             margin: 0.75rem 0 0.9rem;
-        }
-
-        .risk-summary-item {
             border: 1px solid var(--line);
             border-radius: 8px;
             background: var(--panel);
+            overflow: hidden;
+        }
+
+        .risk-summary-item {
+            border: 0;
+            border-left: 1px solid var(--line);
+            border-radius: 0;
+            background: var(--panel);
             padding: 0.7rem 0.8rem;
+        }
+
+        .risk-summary-item:first-child {
+            border-left: 0;
         }
 
         .risk-summary-item span {
@@ -539,7 +587,7 @@ def apply_dashboard_styles() -> None:
         .table-title {
             color: var(--ink);
             font-weight: 700;
-            margin: 0.5rem 0 0.35rem;
+            margin: 0.75rem 0 0.35rem;
         }
 
         div.stButton > button[kind="primary"] {
@@ -582,6 +630,17 @@ def apply_dashboard_styles() -> None:
             .risk-summary-grid,
             .forecast-grid {
                 grid-template-columns: 1fr;
+            }
+
+            .overview-item,
+            .risk-summary-item {
+                border-left: 0;
+                border-top: 1px solid var(--line);
+            }
+
+            .overview-item:first-child,
+            .risk-summary-item:first-child {
+                border-top: 0;
             }
 
             .priority-list {
@@ -636,19 +695,20 @@ def station_name(station_map: dict, station_no: str) -> str:
 
 
 def render_dashboard_header(demo_mode: bool) -> None:
-    mode_label = "資料來源"
+    mode_label = "推論來源"
     source_label = "固定範例資料" if demo_mode else f"FastAPI：{API_BASE_URL}"
     st.markdown(
         f"""
         <div class="dashboard-hero">
             <div>
-                <p class="eyebrow">站點供需監控</p>
+                <p class="eyebrow">站點供需與調度檢視</p>
                 <h1>YouBike 調度風險工作台</h1>
-                <p>整合模型時窗預測與規則化風險分數，檢視單站水位、多站缺車風險與滿站風險，協助排序調度處理順序。</p>
+                <p>依站點目前水位、天氣條件與模型時窗預測，整理單站供需判斷與多站處理順序。</p>
             </div>
             <div class="run-state">
                 <span>{escape(mode_label)}</span>
                 <strong>{escape(source_label)}</strong>
+                <small>預測視窗：下一小時</small>
             </div>
         </div>
         """,
@@ -667,22 +727,22 @@ def render_overview_grid(
         f"""
         <div class="overview-grid">
             <div class="overview-item">
-                <span>服務狀態</span>
+                <span>模式</span>
                 <strong>{escape(display_mode_label(demo_mode))}</strong>
                 <small>{escape("不依賴後端服務" if demo_mode else "連線模型 API")}</small>
             </div>
             <div class="overview-item">
-                <span>支援站點</span>
+                <span>站點範圍</span>
                 <strong>{station_count} 站</strong>
-                <small>目前可供工作台檢視</small>
+                <small>可納入本次檢視</small>
             </div>
             <div class="overview-item">
-                <span>單站焦點</span>
+                <span>目前焦點</span>
                 <strong>{escape(selected_station_name)}</strong>
-                <small>側欄可切換站點</small>
+                <small>側欄切換檢視站點</small>
             </div>
             <div class="overview-item">
-                <span>天氣條件</span>
+                <span>條件</span>
                 <strong>{temperature:.1f}°C / {escape(rain_label(rain))}</strong>
                 <small>降雨量 {rain:.1f} mm</small>
             </div>
@@ -704,8 +764,9 @@ def render_single_input_panel(selected_station: str, selected_station_name: str,
     st.markdown(
         f"""
         <div class="input-panel">
-            <div class="panel-title">目前站點狀態</div>
-            <p>調整目前可借車輛與天氣條件後，工作台會重新評估模型時窗內的站點水位。</p>
+            <div class="panel-kicker">單站輸入</div>
+            <div class="panel-title">目前站點水位</div>
+            <p>工作台會以目前可借車輛、氣溫與降雨量重新計算下一小時水位。</p>
             <div class="station-readout">
                 <span>站點</span>
                 <strong>{escape(selected_station_name)}</strong>
@@ -894,9 +955,13 @@ def render_single_prediction(
     rain: float,
     demo_mode: bool,
 ) -> None:
-    st.subheader("單站水位預測")
     st.markdown(
-        '<p class="section-note">依目前車輛數與天氣條件，檢查指定站點在模型時窗內的供需狀態。</p>',
+        """
+        <div class="section-header">
+            <h2>單站水位預測</h2>
+            <p>檢查指定站點在下一小時的可借車輛狀態，供調度人員判斷是否需要提前處理。</p>
+        </div>
+        """,
         unsafe_allow_html=True,
     )
 
@@ -976,9 +1041,13 @@ def render_risk_ranking(
     rain: float,
     demo_mode: bool,
 ) -> None:
-    st.subheader("多站風險排序")
     st.markdown(
-        '<p class="section-note">比較多個站點的預測水位，將缺車、滿站與觀察名單依風險分數排序。</p>',
+        """
+        <div class="section-header">
+            <h2>多站風險排序</h2>
+            <p>比較多個站點的預測水位，依缺車、滿站與觀察名單產生處理順序。</p>
+        </div>
+        """,
         unsafe_allow_html=True,
     )
 
@@ -996,6 +1065,7 @@ def render_risk_ranking(
         return
 
     editable_rows = default_risk_rows(selected_options)
+    st.markdown('<div class="table-title">站點水位輸入</div>', unsafe_allow_html=True)
     edited_df = st.data_editor(
         pd.DataFrame(editable_rows),
         hide_index=True,
@@ -1056,6 +1126,7 @@ def render_risk_ranking(
             st.warning("輸入條件已變更，請重新更新風險排序。")
 
         render_risk_summary(result_df)
+        st.markdown('<div class="table-title">優先處理隊列</div>', unsafe_allow_html=True)
         render_priority_cards(result_df)
 
         display_df = result_df[
