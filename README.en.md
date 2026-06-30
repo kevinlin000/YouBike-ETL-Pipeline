@@ -8,6 +8,7 @@
 ![Streamlit](https://img.shields.io/badge/Dashboard-Streamlit-ff4b4b)
 [![Security](https://img.shields.io/badge/security-policy-0f766e)](SECURITY.md)
 [![OpenAPI](https://img.shields.io/badge/OpenAPI-exported-6b7280)](docs/openapi.json)
+[![License](https://img.shields.io/badge/license-source_available-64748b)](LICENSE)
 
 [中文 README](README.md)
 
@@ -608,6 +609,14 @@ Next technical improvements:
 1. Add weather history so inference can use time-aligned weather features.
 2. Improve lag features and simpler baselines before replacing the served LSTM artifact.
 3. If dashboard media is refreshed, record the actual interaction flow rather than stitching repeated preview clips.
+
+## License and Use
+
+This project is source-available for personal portfolio review.
+
+It is not an open-source project. The source code is public so interviewers and reviewers can inspect the engineering design, documentation, and implementation. No permission is granted to copy, modify, redistribute, sublicense, use commercially, or create derivative works without explicit written permission from the author.
+
+See [LICENSE](LICENSE) for the full terms.
 
 ## Author
 

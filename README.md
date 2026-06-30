@@ -8,6 +8,7 @@
 ![Streamlit](https://img.shields.io/badge/Dashboard-Streamlit-ff4b4b)
 [![Security](https://img.shields.io/badge/security-policy-0f766e)](SECURITY.md)
 [![OpenAPI](https://img.shields.io/badge/OpenAPI-exported-6b7280)](docs/openapi.json)
+[![License](https://img.shields.io/badge/license-source_available-64748b)](LICENSE)
 
 [English README](README.en.md)
 
@@ -610,6 +611,14 @@ CI 設定位於 `.github/workflows/ci.yml`。
 1. 補齊 weather history，讓推論路徑能使用與訓練資料一致的天氣時間序列。
 2. 加強 lag features 與簡單 baseline，再決定是否替換目前服務中的 LSTM artifact。
 3. 若要重新錄製 dashboard 展示素材，應以實際操作流程為主，不使用重複片段包裝成 demo 影片。
+
+## 授權與使用
+
+本專案是個人求職作品集展示，採 Source Available / All Rights Reserved 方式公開。
+
+這不是開源專案。原始碼公開的目的，是供面試官與審閱者檢視工程設計、文件與實作方式；除非取得作者書面同意，未授權他人複製、修改、散布、再授權、商業使用或建立衍生作品。
+
+完整條款見 [LICENSE](LICENSE)。
 
 ## 作者
 
