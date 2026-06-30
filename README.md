@@ -10,7 +10,7 @@
 [![OpenAPI](https://img.shields.io/badge/OpenAPI-exported-6b7280)](docs/openapi.json)
 [![License](https://img.shields.io/badge/license-source_available-64748b)](LICENSE)
 
-[English README](README.en.md)
+[線上 Dashboard Demo](https://youbike-etl-pipeline-8dyh8p6fb3m5kxkpwlhezb.streamlit.app) ｜ [English README](README.en.md)
 
 ## 快速導覽
 
@@ -18,6 +18,7 @@
 | --- | --- |
 | 先看作品定位 | [專案摘要](#專案摘要) |
 | 直接跑 dashboard demo | [快速展示](#快速展示) |
+| 打開線上 dashboard | [Streamlit 展示頁](https://youbike-etl-pipeline-8dyh8p6fb3m5kxkpwlhezb.streamlit.app) |
 | 部署 dashboard 雲端展示 | [`docs/streamlit_cloud_deployment.md`](docs/streamlit_cloud_deployment.md) |
 | 看後端與模型服務邊界 | [模型與 API](#模型與-api) |
 | 看系統架構與資料模型 | [系統架構](#系統架構)、[資料模型](#資料模型) |
@@ -42,6 +43,14 @@
 
 Dashboard demo 不需要啟動 FastAPI、模型檔、MySQL 或 Docker Compose，適合快速檢視單站預測與多站風險排序流程。
 
+線上展示：
+
+```text
+https://youbike-etl-pipeline-8dyh8p6fb3m5kxkpwlhezb.streamlit.app
+```
+
+線上 demo 使用固定範例資料，只展示介面流程與 API 回應格式，不代表模型評估結果。
+
 ```bash
 make install-app
 make dashboard-demo
@@ -55,13 +64,13 @@ http://localhost:8501
 
 固定範例資料只用於展示介面流程與 API 回應格式，不代表模型評估結果。
 
-若要把 dashboard 放到線上展示，建議使用 Streamlit Community Cloud，main file path 設為 `dashboard/app.py`，並在 app secrets 設定：
+若要重新部署 dashboard，建議使用 Streamlit Community Cloud，main file path 設為 `dashboard/app.py`。公開部署在未設定 `API_BASE_URL` 時會自動使用固定範例資料模式；也可以在 app secrets 明確設定：
 
 ```toml
 DASHBOARD_DEMO_MODE = true
 ```
 
-部署步驟整理在 [`docs/streamlit_cloud_deployment.md`](docs/streamlit_cloud_deployment.md)。拿到正式網址後，再把 live demo 連結補到 README；不要先放 placeholder。
+部署步驟整理在 [`docs/streamlit_cloud_deployment.md`](docs/streamlit_cloud_deployment.md)。
 
 若要展示 FastAPI contract，可另開一個 terminal：
 

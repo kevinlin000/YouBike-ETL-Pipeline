@@ -20,6 +20,8 @@ App secrets 設定：
 DASHBOARD_DEMO_MODE = true
 ```
 
+公開部署如果沒有設定 `API_BASE_URL`，dashboard 會自動使用固定範例資料模式。仍建議明確設定 `DASHBOARD_DEMO_MODE = true`，避免後續調整部署參數時誤切到 live mode。
+
 如果之後有公開可用的 FastAPI 服務，才需要改成 live mode，並新增：
 
 ```toml
@@ -50,8 +52,14 @@ Streamlit demo 使用 `dashboard/requirements.txt`，只保留 dashboard 必需�
 
 ## README 更新規則
 
-拿到正式 Streamlit Cloud 網址後，再更新 README：
+目前線上展示網址：
 
-- 在 badges 下方加入 `Live dashboard demo` 連結。
+```text
+https://youbike-etl-pipeline-8dyh8p6fb3m5kxkpwlhezb.streamlit.app
+```
+
+若之後重新建立 app、網址改變，再更新 README：
+
+- 在 badges 下方更新線上 dashboard 連結。
 - 在「快速展示」補上雲端展示網址。
 - 保留文字說明：雲端 demo 使用固定範例資料，不代表模型評估結果。

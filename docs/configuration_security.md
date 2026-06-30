@@ -37,8 +37,8 @@
 | `API_KEY` | FastAPI / Streamlit live mode | production-like 可選 | 是 | 無預設 | 設定後 `/stations`、`/predict`、`/stations/risk` 需帶 `X-API-Key`；dashboard live mode 會帶同一組 header |
 | `API_REQUIRE_API_KEY` | FastAPI | production-like 可選 | 否 | `false` | `true` 時強制檢查 `API_KEY` 是否已設定 |
 | `API_RATE_LIMIT_PER_MINUTE` | FastAPI | production-like 可選 | 否 | `0` | 大於 0 時對受保護 API 做單節點每分鐘限流 |
-| `DASHBOARD_DEMO_MODE` | Streamlit | demo 可選 | 否 | `false` | `true` 時 dashboard 使用固定範例資料 |
-| `API_BASE_URL` | Streamlit | dashboard live mode 必要 | 否 | `http://api:8000` | Dashboard 呼叫 FastAPI 的 base URL |
+| `DASHBOARD_DEMO_MODE` | Streamlit | demo 可選 | 否 | auto | `true` 時 dashboard 使用固定範例資料；未設定 `API_BASE_URL` 時預設使用 demo mode |
+| `API_BASE_URL` | Streamlit | dashboard live mode 必要 | 否 | `http://api:8000` | Dashboard 呼叫 FastAPI 的 base URL；Docker Compose 會明確設定此值 |
 | `AIRFLOW_USER` | Docker Compose Airflow | full stack 可選 | 否 | `admin` | 本機預設帳號；正式環境不可沿用 |
 | `AIRFLOW_PASSWORD` | Docker Compose Airflow | full stack 可選 | 是 | `admin` | 本機預設密碼；正式環境必須替換 |
 | `AIRFLOW_WEBSERVER_SECRET_KEY` | Docker Compose Airflow | full stack 可選 | 是 | `secret_key_change_in_production` | Airflow webserver secret key，正式環境必須替換 |

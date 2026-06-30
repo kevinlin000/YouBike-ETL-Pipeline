@@ -10,7 +10,7 @@
 [![OpenAPI](https://img.shields.io/badge/OpenAPI-exported-6b7280)](docs/openapi.json)
 [![License](https://img.shields.io/badge/license-source_available-64748b)](LICENSE)
 
-[中文 README](README.md)
+[Online Dashboard Demo](https://youbike-etl-pipeline-8dyh8p6fb3m5kxkpwlhezb.streamlit.app) | [中文 README](README.md)
 
 ## Navigation
 
@@ -18,6 +18,7 @@
 | --- | --- |
 | Understand the project position | [Summary](#summary) |
 | Run the dashboard demo | [Quick Demo](#quick-demo) |
+| Open the online dashboard | [Streamlit demo](https://youbike-etl-pipeline-8dyh8p6fb3m5kxkpwlhezb.streamlit.app) |
 | Deploy the dashboard demo | [`docs/streamlit_cloud_deployment.md`](docs/streamlit_cloud_deployment.md) |
 | Review model-serving boundaries | [Model Serving](#model-serving) |
 | Review architecture and data model | [Architecture](#architecture), [Data Model](#data-model) |
@@ -44,6 +45,14 @@ The Chinese README is the primary project narrative; this English README is a co
 
 The dashboard demo does not require FastAPI, model files, MySQL, or Docker Compose.
 
+Online demo:
+
+```text
+https://youbike-etl-pipeline-8dyh8p6fb3m5kxkpwlhezb.streamlit.app
+```
+
+The online demo uses fixed sample data. It shows the interface flow and API-shaped response fields; it is not model evaluation.
+
 ```bash
 make install-app
 make dashboard-demo
@@ -57,13 +66,13 @@ http://localhost:8501
 
 The fixed sample data is only for workflow inspection. It is not model evaluation.
 
-For an online portfolio demo, use Streamlit Community Cloud with `dashboard/app.py` as the main file path and this app secret:
+For redeployment, use Streamlit Community Cloud with `dashboard/app.py` as the main file path. Public deployments default to fixed-sample-data mode when `API_BASE_URL` is not configured. You can also set this app secret explicitly:
 
 ```toml
 DASHBOARD_DEMO_MODE = true
 ```
 
-Deployment notes are in [`docs/streamlit_cloud_deployment.md`](docs/streamlit_cloud_deployment.md). Add a live demo link to the README only after the deployed URL is confirmed.
+Deployment notes are in [`docs/streamlit_cloud_deployment.md`](docs/streamlit_cloud_deployment.md).
 
 For FastAPI contract inspection:
 

@@ -239,3 +239,17 @@ def test_dashboard_runtime_config_reads_streamlit_secrets(monkeypatch):
 
     assert runtime_config.dashboard_demo_mode_default(secrets) is True
     assert runtime_config.dashboard_api_base_url(secrets) == "https://dashboard-api.example.com"
+
+
+def test_dashboard_runtime_config_defaults_to_demo_without_api(monkeypatch):
+    monkeypatch.delenv("DASHBOARD_DEMO_MODE", raising=False)
+    monkeypatch.delenv("API_BASE_URL", raising=False)
+
+    assert runtime_config.dashboard_demo_mode_default({}) is True
+
+
+def test_dashboard_runtime_config_defaults_to_live_when_api_is_configured(monkeypatch):
+    monkeypatch.delenv("DASHBOARD_DEMO_MODE", raising=False)
+    monkeypatch.setenv("API_BASE_URL", "http://api:8000")
+
+    assert runtime_config.dashboard_demo_mode_default({}) is False
