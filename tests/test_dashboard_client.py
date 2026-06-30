@@ -6,6 +6,7 @@ import pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from dashboard import api_client  # noqa: E402
+from dashboard import runtime_config  # noqa: E402
 
 
 class FakeResponse:
@@ -212,3 +213,29 @@ def test_risk_and_action_labels():
     assert api_client.risk_level_label("unknown") == "unknown"
     assert api_client.suggested_action_label("rebalance_in") == "建議補車"
     assert api_client.suggested_action_label("unknown") == "unknown"
+
+
+def test_dashboard_runtime_config_prefers_environment(monkeypatch):
+    monkeypatch.setenv("DASHBOARD_DEMO_MODE", "true")
+    monkeypatch.setenv("API_BASE_URL", "http://localhost:8000")
+
+    secrets = {
+        "DASHBOARD_DEMO_MODE": False,
+        "API_BASE_URL": "https://example.invalid",
+    }
+
+    assert runtime_config.dashboard_demo_mode_default(secrets) is True
+    assert runtime_config.dashboard_api_base_url(secrets) == "http://localhost:8000"
+
+
+def test_dashboard_runtime_config_reads_streamlit_secrets(monkeypatch):
+    monkeypatch.delenv("DASHBOARD_DEMO_MODE", raising=False)
+    monkeypatch.delenv("API_BASE_URL", raising=False)
+
+    secrets = {
+        "DASHBOARD_DEMO_MODE": True,
+        "API_BASE_URL": "https://dashboard-api.example.com",
+    }
+
+    assert runtime_config.dashboard_demo_mode_default(secrets) is True
+    assert runtime_config.dashboard_api_base_url(secrets) == "https://dashboard-api.example.com"

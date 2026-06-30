@@ -15,6 +15,7 @@ REQUIREMENT_FILES = (
     "requirements-dbt.txt",
     "requirements_app.txt",
     "api/requirements.txt",
+    "dashboard/requirements.txt",
 )
 
 LOCKED_REQUIREMENT_FILES = {"requirements.txt"}

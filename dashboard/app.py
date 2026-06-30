@@ -1,4 +1,3 @@
-import os
 from html import escape
 
 import pandas as pd
@@ -18,12 +17,13 @@ from api_client import (
     station_display_options,
     suggested_action_label,
 )
+from runtime_config import dashboard_api_base_url, dashboard_demo_mode_default
 
 
 st.set_page_config(page_title="YouBike 調度風險工作台", layout="wide")
 
-API_BASE_URL = os.getenv("API_BASE_URL", "http://api:8000")
-DEMO_MODE_DEFAULT = os.getenv("DASHBOARD_DEMO_MODE", "").lower() in {"1", "true", "yes", "on"}
+API_BASE_URL = dashboard_api_base_url(st.secrets)
+DEMO_MODE_DEFAULT = dashboard_demo_mode_default(st.secrets)
 
 RISK_CLASS_MAP = {
     "嚴重缺車": "risk-critical",

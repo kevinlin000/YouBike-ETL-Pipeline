@@ -18,6 +18,7 @@
 | --- | --- |
 | Understand the project position | [Summary](#summary) |
 | Run the dashboard demo | [Quick Demo](#quick-demo) |
+| Deploy the dashboard demo | [`docs/streamlit_cloud_deployment.md`](docs/streamlit_cloud_deployment.md) |
 | Review model-serving boundaries | [Model Serving](#model-serving) |
 | Review architecture and data model | [Architecture](#architecture), [Data Model](#data-model) |
 | Review tests and CI | [Test Status](#test-status) |
@@ -56,6 +57,14 @@ http://localhost:8501
 
 The fixed sample data is only for workflow inspection. It is not model evaluation.
 
+For an online portfolio demo, use Streamlit Community Cloud with `dashboard/app.py` as the main file path and this app secret:
+
+```toml
+DASHBOARD_DEMO_MODE = true
+```
+
+Deployment notes are in [`docs/streamlit_cloud_deployment.md`](docs/streamlit_cloud_deployment.md). Add a live demo link to the README only after the deployed URL is confirmed.
+
 For FastAPI contract inspection:
 
 ```bash
@@ -76,6 +85,7 @@ API demo mode exposes fixed sample responses for `/health`, `/ready`, `/stations
 | Document | Purpose |
 | --- | --- |
 | [`docs/project_story.md`](docs/project_story.md) | Problem, data, analysis, modeling, and serving narrative |
+| [`docs/streamlit_cloud_deployment.md`](docs/streamlit_cloud_deployment.md) | Streamlit Community Cloud demo deployment settings |
 | [`docs/system_design.md`](docs/system_design.md) | Backend / AI application design and failure modes |
 | [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md) | FastAPI endpoints, request / response contracts, and error boundaries |
 | [`docs/observability.md`](docs/observability.md) | Metrics, JSON logs, request tracing, and alert-rule drafts |
@@ -467,6 +477,8 @@ make dashboard-demo
 ```
 
 This is equivalent to running `DASHBOARD_DEMO_MODE=true streamlit run dashboard/app.py`. This mode uses fixed sample stations and reproducible simulated predictions. It is useful for inspecting the single-station prediction and multi-station risk-ranking flow; it is not a model evaluation result.
+
+For Streamlit Community Cloud deployment, see [`docs/streamlit_cloud_deployment.md`](docs/streamlit_cloud_deployment.md). The online demo should use fixed-sample-data mode so reviewers do not need to start the backend API or model files.
 
 To inspect the FastAPI contract directly without model files, MySQL, or Docker Compose, enable API demo mode:
 

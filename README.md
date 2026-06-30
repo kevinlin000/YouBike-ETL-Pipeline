@@ -18,6 +18,7 @@
 | --- | --- |
 | 先看作品定位 | [專案摘要](#專案摘要) |
 | 直接跑 dashboard demo | [快速展示](#快速展示) |
+| 部署 dashboard 雲端展示 | [`docs/streamlit_cloud_deployment.md`](docs/streamlit_cloud_deployment.md) |
 | 看後端與模型服務邊界 | [模型與 API](#模型與-api) |
 | 看系統架構與資料模型 | [系統架構](#系統架構)、[資料模型](#資料模型) |
 | 看測試與 CI | [測試狀態](#測試狀態) |
@@ -54,6 +55,14 @@ http://localhost:8501
 
 固定範例資料只用於展示介面流程與 API 回應格式，不代表模型評估結果。
 
+若要把 dashboard 放到線上展示，建議使用 Streamlit Community Cloud，main file path 設為 `dashboard/app.py`，並在 app secrets 設定：
+
+```toml
+DASHBOARD_DEMO_MODE = true
+```
+
+部署步驟整理在 [`docs/streamlit_cloud_deployment.md`](docs/streamlit_cloud_deployment.md)。拿到正式網址後，再把 live demo 連結補到 README；不要先放 placeholder。
+
 若要展示 FastAPI contract，可另開一個 terminal：
 
 ```bash
@@ -74,6 +83,7 @@ API demo mode 會提供 `/health`、`/ready`、`/stations`、`/predict` 與 `/st
 | 文件 | 用途 |
 | --- | --- |
 | [`docs/project_story.md`](docs/project_story.md) | 問題、資料、分析、模型與服務化脈絡 |
+| [`docs/streamlit_cloud_deployment.md`](docs/streamlit_cloud_deployment.md) | Streamlit Community Cloud 展示部署設定 |
 | [`docs/system_design.md`](docs/system_design.md) | 後端 / AI 應用系統設計與 failure modes |
 | [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md) | FastAPI endpoint、request / response 與錯誤邊界 |
 | [`docs/observability.md`](docs/observability.md) | metrics、JSON log、request tracing 與 alert rule 草案 |
@@ -483,6 +493,8 @@ make dashboard-demo
 ```
 
 這等同於執行 `DASHBOARD_DEMO_MODE=true streamlit run dashboard/app.py`。此模式使用固定範例站點與可重現的模擬推論結果，方便檢視單站預測與多站風險排序流程；它不是模型效果評估結果。
+
+若要部署到 Streamlit Community Cloud，請參考 [`docs/streamlit_cloud_deployment.md`](docs/streamlit_cloud_deployment.md)。雲端 demo 應使用固定範例資料模式，避免要求面試官啟動後端服務或模型檔。
 
 如果想直接展示 FastAPI，而不依賴模型檔、MySQL 或 Docker Compose，可啟動 API demo mode：
 
