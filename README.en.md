@@ -1,22 +1,88 @@
-# Taipei YouBike 2.0 Data Engineering and Mobility Analytics
+# YouBike 2.0 Rebalancing Risk Workbench
 
-> A portfolio-scale data engineering and analytics project built on Taipei YouBike 2.0 open data, covering scheduled ingestion, relational data modeling, statistical analysis, LSTM training, and FastAPI model serving.
+> A backend / AI application portfolio project for Taipei YouBike 2.0 station imbalance, covering Airflow ingestion, MySQL modeling, statistical analysis, an LSTM serving prototype, FastAPI model-serving APIs, and a Streamlit operations workbench.
+
+[![CI](https://github.com/kevinlin000/YouBike-ETL-Pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/kevinlin000/YouBike-ETL-Pipeline/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/API-FastAPI-009688)
+![Streamlit](https://img.shields.io/badge/Dashboard-Streamlit-ff4b4b)
+[![Security](https://img.shields.io/badge/security-policy-0f766e)](SECURITY.md)
+[![OpenAPI](https://img.shields.io/badge/OpenAPI-exported-6b7280)](docs/openapi.json)
 
 [中文 README](README.md)
 
+## Navigation
+
+| Goal | Start here |
+| --- | --- |
+| Understand the project position | [Summary](#summary) |
+| Run the dashboard demo | [Quick Demo](#quick-demo) |
+| Review model-serving boundaries | [Model Serving](#model-serving) |
+| Review architecture and data model | [Architecture](#architecture), [Data Model](#data-model) |
+| Review tests and CI | [Test Status](#test-status) |
+| Review security boundaries | [SECURITY.md](SECURITY.md), [`docs/configuration_security.md`](docs/configuration_security.md) |
+| Review model claims and limitations | [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md), [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md) |
+
 ## Summary
 
-This project originated from a probability and statistics research report and was later extended into a data engineering and AI application portfolio project. The goal is to analyze supply-demand imbalance in Taipei's YouBike 2.0 system and evaluate whether high-frequency station data improves operational forecasting.
+This project originated from a probability and statistics research report and was later shaped into a backend / AI application portfolio project. The problem is station-level supply-demand imbalance in Taipei's YouBike 2.0 system: some stations run out of bikes, while others run out of empty docks. City-wide averages do not capture this tail risk.
 
-The project has three layers:
+The repository keeps the full engineering path:
 
-1. **Data engineering**: Airflow ingests YouBike station status every 10 minutes and stores normalized records in MySQL.
-2. **Statistical analysis**: Descriptive statistics, t-tests, K-Means, ANOVA, chi-square testing, and regression are used to analyze station imbalance and regional behavior.
-3. **Application serving**: A PyTorch LSTM model is served through FastAPI, with a Streamlit interface for single-station prediction and multi-station risk ranking.
+1. **Data foundation**: Airflow ingests station status every 10 minutes and stores static station metadata and dynamic status records in MySQL.
+2. **Analysis and modeling**: statistical methods identify station imbalance patterns, while a PyTorch LSTM prototype validates the model-serving path.
+3. **Backend application**: FastAPI exposes prediction, readiness, request tracing, metrics, and multi-station risk-ranking APIs.
+4. **Operations workbench**: Streamlit turns API responses into single-station water-level checks and multi-station priority queues.
 
-This repository is a portfolio project rather than an actively operated production service. The Chinese README is the primary project narrative; this English README is a concise companion.
+This repository is a portfolio project, not an actively operated production service. The LSTM should be described as a model-serving prototype; local evaluation shows it has not beaten the strongest baseline, so this README does not make an accuracy claim.
 
-For the end-to-end project narrative, see [`docs/project_story.md`](docs/project_story.md). API behavior is documented in [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md), observability design is documented in [`docs/observability.md`](docs/observability.md), configuration and security boundaries are documented in [`docs/configuration_security.md`](docs/configuration_security.md), dependency / supply-chain boundaries are documented in [`docs/dependency_security.md`](docs/dependency_security.md), local API benchmark profiles are documented in [`docs/performance_load_test.md`](docs/performance_load_test.md), and model evaluation boundaries are documented in [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md) and [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md).
+The Chinese README is the primary project narrative; this English README is a companion.
+
+## Quick Demo
+
+The dashboard demo does not require FastAPI, model files, MySQL, or Docker Compose.
+
+```bash
+make install-app
+make dashboard-demo
+```
+
+Open:
+
+```text
+http://localhost:8501
+```
+
+The fixed sample data is only for workflow inspection. It is not model evaluation.
+
+For FastAPI contract inspection:
+
+```bash
+make install-app
+make api-demo
+```
+
+Open:
+
+```text
+http://localhost:8000/docs
+```
+
+API demo mode exposes fixed sample responses for `/health`, `/ready`, `/stations`, `/predict`, and `/stations/risk`, which is useful for reviewing validation, readiness, and request tracing.
+
+## Documentation Map
+
+| Document | Purpose |
+| --- | --- |
+| [`docs/project_story.md`](docs/project_story.md) | Problem, data, analysis, modeling, and serving narrative |
+| [`docs/system_design.md`](docs/system_design.md) | Backend / AI application design and failure modes |
+| [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md) | FastAPI endpoints, request / response contracts, and error boundaries |
+| [`docs/observability.md`](docs/observability.md) | Metrics, JSON logs, request tracing, and alert-rule drafts |
+| [`docs/configuration_security.md`](docs/configuration_security.md) | Environment variables, secret handling, and demo / production-like boundaries |
+| [`docs/dependency_security.md`](docs/dependency_security.md) | Dependency validation and supply-chain boundaries |
+| [`docs/performance_load_test.md`](docs/performance_load_test.md) | Local API benchmark profiles and capacity probes |
+| [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md) | Defensible machine-learning claims and limitations |
+| [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md) | Local LSTM baseline evaluation |
 
 ## Key Results
 
@@ -26,10 +92,11 @@ For the end-to-end project narrative, see [`docs/project_story.md`](docs/project
 | Ingestion | 10-minute micro-batch ingestion with Airflow |
 | Data model | Split static station metadata and dynamic status logs into dimension / fact tables |
 | Analysis | Used CV, t-tests, ANOVA, chi-square testing, and regression to identify imbalance patterns |
-| Forecasting | Built a Multi-Station LSTM prototype with station, weather, and short-sequence status features, then packaged it as API artifacts |
-| Serving | Exposed model inference and station risk ranking through FastAPI, with a Streamlit UI for prediction and redistribution support |
+| Forecasting | Built a Multi-Station LSTM prototype and exported model artifacts, scaler, station mappings, and metadata |
+| Serving | Exposed inference, readiness, metrics, request tracing, and station risk ranking through FastAPI |
+| Operations UI | Built a Streamlit workbench for single-station checks and multi-station priority queues |
 | Deployment evidence | Historical GCP VM deployment with Docker Compose, Airflow, MySQL, API, and dashboard services |
-| Engineering hygiene | pytest coverage for ETL / API behavior, OpenAPI schema export, request examples, request tracing, Prometheus-style metrics, local API benchmark profiles, optional API-key / rate-limit guardrails, config/security validation, dependency manifest validation, and GitHub Actions CI |
+| Engineering hygiene | pytest, dbt seed/build, OpenAPI export, API benchmark profiles, config/security validation, dependency manifest validation, and GitHub Actions CI |
 
 ## Problem Context
 

@@ -1,22 +1,86 @@
-# 台北 YouBike 2.0 資料工程與交通效能分析
+# YouBike 2.0 調度風險工作台
 
-> 以台北市 YouBike 2.0 開放資料為基礎，建置一套涵蓋資料擷取、排程編排、關聯式資料建模、統計分析、模型訓練與 API 服務化的資料應用專案。
+> 以台北市 YouBike 2.0 站點資料為基礎，整理資料擷取、MySQL 建模、統計分析、LSTM 原型、FastAPI 模型服務與 Streamlit 調度工作台的後端 / AI 應用作品。
+
+[![CI](https://github.com/kevinlin000/YouBike-ETL-Pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/kevinlin000/YouBike-ETL-Pipeline/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/API-FastAPI-009688)
+![Streamlit](https://img.shields.io/badge/Dashboard-Streamlit-ff4b4b)
+[![Security](https://img.shields.io/badge/security-policy-0f766e)](SECURITY.md)
+[![OpenAPI](https://img.shields.io/badge/OpenAPI-exported-6b7280)](docs/openapi.json)
 
 [English README](README.en.md)
 
+## 快速導覽
+
+| 你想看什麼 | 入口 |
+| --- | --- |
+| 先看作品定位 | [專案摘要](#專案摘要) |
+| 直接跑 dashboard demo | [快速展示](#快速展示) |
+| 看後端與模型服務邊界 | [模型與 API](#模型與-api) |
+| 看系統架構與資料模型 | [系統架構](#系統架構)、[資料模型](#資料模型) |
+| 看測試與 CI | [測試狀態](#測試狀態) |
+| 看安全與設定邊界 | [SECURITY.md](SECURITY.md)、[`docs/configuration_security.md`](docs/configuration_security.md) |
+| 看模型可主張範圍 | [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md)、[`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md) |
+
 ## 專案摘要
 
-本專案源自「機率與統計」課程研究，後續延伸為資料工程與 AI 應用作品。研究目標是分析台北市 YouBike 2.0 系統在尖峰時段的供需失衡問題，並驗證高頻資料擷取對即時預測與調度決策的價值。
+本專案源自「機率與統計」課程研究，後續整理成後端與 AI 應用作品。題目是台北市 YouBike 2.0 在尖峰時段的站點供需失衡：有些站點無車可借，有些站點無位可還，平均值無法描述這類尾端風險。
 
-專案實作包含三個層次：
+目前專案保留完整工程路徑：
 
-1. **資料工程層**：以 Airflow 每 10 分鐘擷取 YouBike 即時站點資料，將站點靜態資訊與即時狀態寫入 MySQL。
-2. **統計分析層**：使用描述統計、t 檢定、K-Means、ANOVA、卡方檢定與迴歸模型，分析站點失衡、土地使用型態與尖峰波動。
-3. **應用服務層**：將 PyTorch LSTM 模型封裝為 FastAPI 推論服務，並以 Streamlit 建立單站預測與多站風險排序介面。
+1. **資料基礎**：Airflow 每 10 分鐘擷取 YouBike 站點狀態，將站點靜態資訊與動態狀態寫入 MySQL。
+2. **分析與模型**：用統計方法分析站點失衡，並建立 PyTorch LSTM 原型驗證模型服務化流程。
+3. **後端應用**：FastAPI 提供模型推論、readiness、request tracing、metrics 與多站風險排序 API。
+4. **展示工作台**：Streamlit 將 API 回應轉成單站水位預測與多站優先處理隊列。
 
-本專案目前作為作品集展示，用來呈現資料管線設計、資料建模、統計分析、模型訓練與模型服務化能力；不是目前仍在線上營運的服務。
+本專案是作品集展示，不是目前仍在線上營運的正式服務。LSTM 目前應定位為模型服務化原型；本地評估顯示它尚未打敗最強 baseline，因此 README 不把模型準確率作為主要主張。
 
-完整專案脈絡整理在 [`docs/project_story.md`](docs/project_story.md)。API 行為可參考 [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md)，可觀測性設計可參考 [`docs/observability.md`](docs/observability.md)，設定與安全邊界可參考 [`docs/configuration_security.md`](docs/configuration_security.md)，dependency / supply-chain 邊界可參考 [`docs/dependency_security.md`](docs/dependency_security.md)，本機 API 效能測試可參考 [`docs/performance_load_test.md`](docs/performance_load_test.md)，模型評估邊界則整理在 [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md) 與 [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md)。
+## 快速展示
+
+Dashboard demo 不需要啟動 FastAPI、模型檔、MySQL 或 Docker Compose，適合快速檢視單站預測與多站風險排序流程。
+
+```bash
+make install-app
+make dashboard-demo
+```
+
+啟動後打開：
+
+```text
+http://localhost:8501
+```
+
+固定範例資料只用於展示介面流程與 API 回應格式，不代表模型評估結果。
+
+若要展示 FastAPI contract，可另開一個 terminal：
+
+```bash
+make install-app
+make api-demo
+```
+
+啟動後打開：
+
+```text
+http://localhost:8000/docs
+```
+
+API demo mode 會提供 `/health`、`/ready`、`/stations`、`/predict` 與 `/stations/risk` 的固定範例回應，方便檢查 request validation、readiness 與 request tracing。
+
+## 文件導覽
+
+| 文件 | 用途 |
+| --- | --- |
+| [`docs/project_story.md`](docs/project_story.md) | 問題、資料、分析、模型與服務化脈絡 |
+| [`docs/system_design.md`](docs/system_design.md) | 後端 / AI 應用系統設計與 failure modes |
+| [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md) | FastAPI endpoint、request / response 與錯誤邊界 |
+| [`docs/observability.md`](docs/observability.md) | metrics、JSON log、request tracing 與 alert rule 草案 |
+| [`docs/configuration_security.md`](docs/configuration_security.md) | 環境變數、secret handling、demo / 正式設定邊界 |
+| [`docs/dependency_security.md`](docs/dependency_security.md) | dependency validation 與 supply-chain 邊界 |
+| [`docs/performance_load_test.md`](docs/performance_load_test.md) | 本機 API benchmark profiles 與容量探測 |
+| [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md) | 機器學習部分的可主張範圍與限制 |
+| [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md) | LSTM 與 baseline 的本地評估結果 |
 
 ## 核心成果
 
@@ -26,10 +90,11 @@
 | 擷取頻率 | 以 Airflow micro-batch 每 10 分鐘擷取一次即時資料 |
 | 資料建模 | 使用 `station_info` 維度表與 `station_status` 事實表分離靜態與動態資料 |
 | 統計分析 | 使用 CV、t 檢定、ANOVA、卡方檢定與迴歸分析定位缺車熱點 |
-| 預測建模 | 建立 Multi-Station LSTM prototype，整合站點、天氣與短序列狀態特徵，並封裝為 API artifact |
-| 服務化 | 以 FastAPI 提供模型推論與站點風險排序 API，Streamlit 提供單站預測與多站調度輔助介面 |
+| 預測建模 | 建立 Multi-Station LSTM 原型，輸出模型 artifact、scaler、站點 mapping 與 metadata |
+| 服務化 | 以 FastAPI 提供模型推論、readiness、metrics、request tracing 與站點風險排序 API |
+| 操作展示 | 以 Streamlit 提供單站水位預測與多站優先處理隊列 |
 | 部署證據 | 曾以 Docker Compose 部署於 GCP VM，並保留 Airflow、Docker、GCP 監控截圖 |
-| 工程化維護 | 以 pytest 覆蓋 ETL / API 基礎行為，提供 OpenAPI schema、request examples、request tracing、Prometheus-style metrics、API benchmark profiles、optional API key / rate limit guardrails、config/security validation、dependency manifest validation，並以 GitHub Actions 自動執行測試 |
+| 工程化維護 | pytest、dbt seed/build、OpenAPI export、API benchmark、config/security validation、dependency manifest validation 與 GitHub Actions CI |
 
 ## 問題背景
 
@@ -540,22 +605,7 @@ CI 設定位於 `.github/workflows/ci.yml`。
 
 ## 後續維護方向
 
-補充技術文件：
-
-- [`docs/project_story.md`](docs/project_story.md)：專案問題、資料、分析、模型與服務化流程。
-- [`docs/system_design.md`](docs/system_design.md)：後端與 AI 應用系統設計、API 邊界、demo mode、failure modes 與擴展方向。
-- [`docs/backend_ai_architecture.md`](docs/backend_ai_architecture.md)：後端與模型服務架構圖說明。
-- [`docs/api_contract_walkthrough.md`](docs/api_contract_walkthrough.md)：FastAPI endpoint、request/response 與錯誤邊界。
-- [`docs/openapi.json`](docs/openapi.json) / [`docs/api_examples.http`](docs/api_examples.http)：可重生的 API schema 與 request 範例。
-- [`docs/observability.md`](docs/observability.md)：API metrics、JSON log、request tracing、PromQL、dashboard 與 alert rule 草案。
-- [`docs/configuration_security.md`](docs/configuration_security.md)：環境變數、secret handling、demo/正式設定邊界與 API threat model。
-- [`docs/dependency_security.md`](docs/dependency_security.md)：requirements hygiene、dependency validation 與 supply-chain 邊界。
-- [`docs/operations.md`](docs/operations.md)：本機 demo、Docker Compose、環境變數、health/readiness、metrics、JSON log、rollback 與故障排查。
-- [`docs/performance_load_test.md`](docs/performance_load_test.md)：本機 API benchmark profiles、延遲與錯誤率判讀方式。
-- [`docs/ml_modeling_audit.md`](docs/ml_modeling_audit.md)：機器學習部分的可主張範圍與限制。
-- [`docs/lstm_evaluation_report.md`](docs/lstm_evaluation_report.md)：本地 LSTM baseline 評估結果。
-
-後續若要繼續深化，優先順序如下：
+技術文件已整理在前面的 [文件導覽](#文件導覽)。後續若要繼續深化，優先順序如下：
 
 1. 補齊 weather history，讓推論路徑能使用與訓練資料一致的天氣時間序列。
 2. 加強 lag features 與簡單 baseline，再決定是否替換目前服務中的 LSTM artifact。
