@@ -106,7 +106,7 @@ API demo mode 會提供 `/health`、`/ready`、`/stations`、`/predict` 與 `/st
 
 | 面向 | 成果 |
 | --- | --- |
-| 資料規模 | 累積處理超過 4M 筆 YouBike 站點狀態紀錄 |
+| 資料規模 | 累積處理超過 4M 筆 YouBike 站點狀態紀錄（歷史 CSV 的 `wc -l` 行數證據；佐證見 [`docs/images/data_volume.png`](docs/images/data_volume.png)，不是即時 MySQL `COUNT(*)` 查詢） |
 | 擷取頻率 | 以 Airflow micro-batch 每 10 分鐘擷取一次即時資料 |
 | 資料建模 | 使用 `station_info` 維度表與 `station_status` 事實表分離靜態與動態資料 |
 | 統計分析 | 使用 CV、t 檢定、ANOVA、卡方檢定與迴歸分析定位缺車熱點 |
